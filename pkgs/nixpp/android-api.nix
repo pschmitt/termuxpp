@@ -6,7 +6,6 @@
   lib,
   python3,
   runCommand,
-  rustPlatform,
   stdenv,
   symlinkJoin,
   writeShellApplication,
@@ -26,7 +25,7 @@ let
   # socket is reached through the abstract socket namespace, so no file of the
   # app prefix is involved.
   tppCli = callPackage ./tpp.nix { };
-  signalStack = (callPackage ./default.nix { }).signalStack;
+  inherit (callPackage ./default.nix { }) signalStack;
   session = writeShellApplication {
     name = "tpp-session";
     text = ''

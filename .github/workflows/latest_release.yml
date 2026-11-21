@@ -41,6 +41,9 @@ jobs:
 
       - uses: pschmitt/ci-workflows/.github/actions/setup-jdk-gradle@main
 
+      - name: Install Rust Android targets
+        run: rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
+
       - name: Build the APKs
         shell: bash
         run: |
