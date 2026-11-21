@@ -20,32 +20,50 @@ files as fallbacks. Edit the file in the same home to manage it through dotfiles
 
 ## Session commands
 
-`termuxpp-session` controls the terminal tabs owned by the running TermuxPP
-app. Open TermuxPP before running it. The app installs the CLI under its
-native prefix with Bash, Zsh, and Fish completions. Install Python in a native
-session with `pkg install python`. Completion suggests live IDs and positions.
+`tpp session` and `tpp-session` control the terminal tabs owned by the running TermuxPP
+app. Open TermuxPP before running either command. Both names run the same native code in
+the `tpp` binary, which the app installs under its native prefix together with Bash, Zsh,
+and Fish completions; no Python or other package is needed. Completion suggests commands,
+live IDs and positions, `--json` for every command (once), `--help` for every command, and the
+shells for `completions`. `tpp session` completes the same words through the `tpp` completions.
 
 ```text
-termuxpp-session list --json
-termuxpp-session focus ID
-termuxpp-session rename ID "Build logs"
-termuxpp-session move ID 1
-termuxpp-session close ID
-termuxpp-session kill ID
+tpp-session list --json
+tpp-session focus ID
+tpp-session rename ID "Build logs"
+tpp-session move ID 1
+tpp-session close ID
+tpp-session kill ID
 ```
 
-Copy an ID from `termuxpp-session list`. IDs stay the same when tabs are
+Every command accepts `--json`, after the command or in front of it
+(`tpp --json session close ID`). `list --json` prints the sessions as a JSON array. `close`,
+`focus`, `kill`, `move`, `rename` and `reload-settings` print nothing without
+`--json`; with it they print a JSON object that echoes the request after the app
+accepted it:
+
+```json
+{"ok": true, "action": "close", "id": "ID"}
+{"ok": true, "action": "move", "id": "ID", "position": 1}
+{"ok": true, "action": "rename", "id": "ID", "name": "Build logs"}
+{"ok": true, "action": "reload-settings"}
+```
+
+For `close` this means that the hangup was requested, not that the shell has
+exited. `completions --json` prints `{"output": SCRIPT}`. Failures behave the
+same with and without `--json`: a message on standard error, no output on
+standard output and a non-zero exit status. JSON is colored on a terminal
+(unless `NO_COLOR` is set) and plain when piped.
+
+Copy an ID from `tpp-session list`. IDs stay the same when tabs are
 renamed or moved. Positions start at 1. `focus` selects the tab without
 bringing the app to the foreground. `close` requests a hangup for a running
 shell and dismisses the tab when the shell exits. `kill` sends SIGKILL
 to the shell. Run `close` on an exited tab to dismiss it.
 
-From the Nix guest, use its Python interpreter and the copy of the script under
-the mounted Android prefix.
-
-```sh
-python3 /android/data/data/dev.pschmitt.termux/files/usr/bin/termuxpp-session list
-```
+The Nix guest has the same commands in its own build of the same code; both talk to the
+app through the same abstract Unix socket. `TPP_SESSION_SOCKET` selects a different socket name
+(for tests).
 
 ## Configuration files
 
@@ -60,7 +78,7 @@ and `~/.termux`, in that order. Other appearance files use the same
 directory order. Lookup is per file. `XDG_CONFIG_HOME` does not change these
 paths. See [Built-in integrations](integrations.md) for script locations.
 
-Run `termuxpp-reload-settings` after editing a file. In native sessions, TermuxPP's
+Run `tpp-session reload-settings` after editing a file. In native sessions, TermuxPP's
 adapted `termux-tools` also reads `shell` and `motd.sh` in the same
 directory order. A custom `motd.sh` can override the welcome message.
 
@@ -71,7 +89,7 @@ short terminal messages such as the session number. The default is
 `top-center`. The nine values are `top-left`, `top-center`, `top-right`,
 `center-left`, `center`, `center-right`, `bottom-left`, `bottom-center`, and
 `bottom-right`. You can also write `terminal-toast-position = top-right` in
-`termuxpp.properties` and run `termuxpp-reload-settings`.
+`termuxpp.properties` and run `tpp-session reload-settings`.
 
 ## Tap and swipe actions
 
@@ -102,7 +120,7 @@ The gesture keys are independent and active at the same time. Valid values, case
 | `toggle-keyboard` | Hide the soft keyboard if it is visible, otherwise show it. Before Android 6 the visibility cannot be read and this only shows it. |
 | `next-session` | Switch to the next session, wrapping around. With one session, creates a new one if `create-session-on-single-session-switch=true`. |
 | `previous-session` | Switch to the previous session, wrapping around. With one session, creates a new one if `create-session-on-single-session-switch=true`. |
-| `new-session` | Open a new terminal session and switch to it, like the **New session** button. |
+| `new-session` | Open a new terminal session and switch to it, like the **New** button. |
 | `toggle-text-input` | Switch the extra keys toolbar to its text input, or back to the extra keys. Does nothing while the toolbar is hidden. |
 | `open-sidebar` | Open the sidebar with the session list. It is not opened while it is locked closed in copy mode. |
 | `open-menu` | Open the terminal menu, the bottom sheet that a long press on the terminal and then "More..." opens (Extract URL, Share transcript, Autofill, Reset, Kill process, Style, Settings and so on). It never touches the soft keyboard. |

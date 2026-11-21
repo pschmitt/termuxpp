@@ -5,6 +5,13 @@
     <string name="ui_session_unnamed">Session %1$d</string>
     <string name="ui_session_exited">Exited (%1$d)</string>
     <string name="ui_session_null">No session</string>
+    <string name="ui_session_action_rename">Rename</string>
+    <string name="ui_session_action_move_up">Move up</string>
+    <string name="ui_session_action_move_down">Move down</string>
+    <string name="ui_session_action_move_top">Move to top</string>
+    <string name="ui_session_action_move_bottom">Move to bottom</string>
+    <string name="ui_session_action_remove">Remove session</string>
+    <string name="ui_session_action_remove_detail">its process has exited</string>
     <!-- Context menu sheet groups -->
     <string name="ui_menu_group_text">Text</string>
     <string name="ui_menu_group_session">Session</string>

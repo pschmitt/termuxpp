@@ -23,10 +23,12 @@ import androidx.annotation.Nullable;
 
 import com.termux.R;
 import com.termux.app.event.SystemEventReceiver;
+import com.termux.app.nativecli.NativeCliInstaller;
 import com.termux.app.nativecli.NativeCliUpdater;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.TermuxTerminalSessionServiceClient;
 import com.termux.app.terminal.GestureCommandLaunch;
+import com.termux.app.terminal.SessionReorder;
 import dev.pschmitt.termux.shared.termux.plugins.TermuxPluginUtils;
 import dev.pschmitt.termux.shared.data.IntentUtils;
 import dev.pschmitt.termux.shared.net.uri.UriUtils;
@@ -61,11 +63,11 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
-import java.io.FileOutputStream;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -135,7 +137,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     boolean mWantsToStop = false;
 
     private SessionCommandServer sessionCommandServer;
-    private boolean sessionCliInstalled;
+    private boolean legacySessionCliRemoved;
     private final Set<String> closingSessions = new HashSet<>();
 
     private static final String LOG_TAG = "TermuxService";
@@ -156,7 +158,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         } catch (IOException e) {
             Logger.logWarn(LOG_TAG, "Could not start the session command listener: " + e.getMessage());
         }
-        installSessionCli();
+        removeLegacySessionCli();
         NativeCliUpdater.installAsync(this);
 
         SystemEventReceiver.registerPackageUpdateEvents(this);
@@ -725,7 +727,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     @Nullable
     public synchronized TermuxSession createTermuxSession(ExecutionCommand executionCommand) {
         if (executionCommand == null) return null;
-        installSessionCli();
+        removeLegacySessionCli();
         NativeCliUpdater.installAsync(this);
 
         Logger.logDebug(LOG_TAG, "Creating \"" + executionCommand.getCommandIdAndLabelLogString() + "\" TermuxSession");
@@ -834,46 +836,61 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         }
     }
 
-    private void installSessionCli() {
-        if (sessionCliInstalled) return;
+    /**
+     * Removes the files that earlier app versions wrote for the Java/Python {@code tpp-session}: the
+     * launcher script, the {@code tpp-session} script and its plugin copy, and the completions. The
+     * command is now part of the native {@code tpp} binary, which {@link NativeCliUpdater} installs
+     * (with {@code bin/tpp-session} as a link to it). That installer leaves a path it did not create
+     * alone, so the old files must go first. Only regular files that carry the marks of the old
+     * installation are removed; anything the user put there stays.
+     */
+    private void removeLegacySessionCli() {
+        if (legacySessionCliRemoved) return;
         File prefix = new File(TermuxConstants.TERMUX_PREFIX_DIR_PATH);
-        File bin = new File(prefix, "bin");
-        if (!bin.isDirectory()) return;
-
+        if (!new File(prefix, "bin").isDirectory()) return;
+        String[][] legacy = {
+            {"bin/tpp-session", "libexec/tpp/session-launcher"},
+            {"libexec/tpp/plugins/session", "libexec/tpp/session-launcher"},
+            {"libexec/tpp/session-launcher", "Native tpp-session backend"},
+            {"share/bash-completion/completions/tpp-session", "tpp-session"},
+            {"share/fish/vendor_completions.d/tpp-session.fish", "tpp-session"},
+            {"share/zsh/site-functions/_tpp-session", "tpp-session"},
+        };
+        // Paths that the native installer recorded are its own files (the new completions have the
+        // same names and similar text as the old ones), never leftovers.
+        JSONObject recorded = null;
         try {
-            installSessionAsset("session-completions/bash",
-                new File(prefix, "share/bash-completion/completions/termuxpp-session"), null);
-            installSessionAsset("session-completions/fish",
-                new File(prefix, "share/fish/vendor_completions.d/termuxpp-session.fish"), null);
-            installSessionAsset("session-completions/zsh",
-                new File(prefix, "share/zsh/site-functions/_termuxpp-session"), null);
-            String python = "#!" + bin + "/python3\n";
-            installSessionAsset("termuxpp-session", new File(bin, "termuxpp-session"), python);
-            installSessionAsset("termuxpp-session", new File(bin, "termuxpp-reload-settings"), python);
-            sessionCliInstalled = true;
-        } catch (IOException e) {
-            Logger.logWarn(LOG_TAG, "Could not install termuxpp-session: " + e.getMessage());
+            File state = new File(prefix, NativeCliInstaller.STATE_FILE);
+            if (state.isFile())
+                recorded = new JSONObject(new String(Files.readAllBytes(state.toPath()), StandardCharsets.UTF_8))
+                    .optJSONObject("files");
+        } catch (IOException | JSONException e) {
+            Logger.logWarn(LOG_TAG, "Could not read the native install record: " + e.getMessage());
         }
+        for (String[] entry : legacy) {
+            File file = new File(prefix, entry[0]);
+            try {
+                if (recorded != null && recorded.has(entry[0])) continue;
+                if (!isLegacySessionFile(file, entry[1])) continue;
+                if (!file.delete()) Logger.logWarn(LOG_TAG, "Could not remove the old " + file);
+            } catch (IOException e) {
+                Logger.logWarn(LOG_TAG, "Could not check the old " + file + ": " + e.getMessage());
+            }
+        }
+        legacySessionCliRemoved = true;
     }
 
-    private void installSessionAsset(String asset, File target, String shebang) throws IOException {
-        File directory = target.getParentFile();
-        if (!directory.mkdirs() && !directory.isDirectory())
-            throw new IOException("Could not create " + directory);
-        File staging = File.createTempFile(".termuxpp-session-", ".tmp", directory);
-        try {
-            try (InputStream source = getAssets().open(asset);
-                 OutputStream destination = new FileOutputStream(staging)) {
-                if (shebang != null) destination.write(shebang.getBytes(StandardCharsets.UTF_8));
-                byte[] buffer = new byte[4096];
-                int count;
-                while ((count = source.read(buffer)) != -1) destination.write(buffer, 0, count);
-            }
-            if ((shebang != null && !staging.setExecutable(true, true)) || !staging.renameTo(target))
-                throw new IOException("Could not replace " + target);
-        } finally {
-            staging.delete();
+    /** True for a regular file, never a link, whose first 64 KiB contain {@code mark}. */
+    private static boolean isLegacySessionFile(File file, String mark) throws IOException {
+        if (!file.isFile() || Files.isSymbolicLink(file.toPath())) return false;
+        byte[] head = new byte[64 * 1024];
+        int length = 0;
+        try (InputStream source = new FileInputStream(file)) {
+            int count;
+            while (length < head.length && (count = source.read(head, length, head.length - length)) != -1)
+                length += count;
         }
+        return new String(head, 0, length, StandardCharsets.ISO_8859_1).contains(mark);
     }
 
     /** Called on the main thread by the app-UID session socket. */
@@ -1208,6 +1225,16 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
 
     public synchronized List<TermuxSession> getTermuxSessions() {
         return mShellManager.mTermuxSessions;
+    }
+
+    /**
+     * Move a session to another position of the session list, shifting those in between. The list order is
+     * what the sidebar shows and what the next and previous session actions follow.
+     *
+     * @return Whether the order changed.
+     */
+    public synchronized boolean moveTermuxSession(int from, int to) {
+        return SessionReorder.move(mShellManager.mTermuxSessions, from, to);
     }
 
     @Nullable

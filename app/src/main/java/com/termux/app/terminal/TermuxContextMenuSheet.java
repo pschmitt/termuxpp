@@ -236,6 +236,13 @@ public class TermuxContextMenuSheet {
         return this;
     }
 
+    public TermuxContextMenuSheet setSessionHeader(CharSequence title, CharSequence detail,
+                                                   int actionId, CharSequence actionDescription, @DrawableRes int actionIcon) {
+        setHeader(title, detail, actionId, actionDescription, actionIcon);
+        mSessionHeader = true;
+        return this;
+    }
+
     /** Add a labelled action to the grid. Consecutive tiles are laid out two per row; a lone last one spans it. */
     public TermuxContextMenuSheet addTile(int id, CharSequence title, @Nullable CharSequence detail,
                                           @DrawableRes int icon) {
@@ -548,6 +555,7 @@ public class TermuxContextMenuSheet {
             title.setTextSize(16);
             TextView subtitle = view.findViewById(R.id.context_header_subtitle);
             subtitle.setTextSize(11);
+            subtitle.setVisibility(TextUtils.isEmpty(header.detail) ? View.GONE : View.VISIBLE);
         }
         if (header.actionId < 0) return;
         ImageButton action = view.findViewById(R.id.context_header_action);

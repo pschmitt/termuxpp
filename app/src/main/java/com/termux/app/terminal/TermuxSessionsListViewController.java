@@ -8,21 +8,27 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.ListView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.app.TermuxService;
+import dev.pschmitt.termux.shared.interact.DialogUtils;
 import dev.pschmitt.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.terminal.TerminalSession;
 
 import java.util.List;
 
-public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession> implements AdapterView.OnItemClickListener, AdapterView.OnItemLongClickListener {
+public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession>
+    implements AdapterView.OnItemClickListener, AdapterView.OnItemLongClickListener, SessionsListView.ReorderListener {
 
     final TermuxActivity mActivity;
+    @Nullable private android.app.Dialog mActionsDialog;
 
     public TermuxSessionsListViewController(TermuxActivity activity, List<TermuxSession> sessionList) {
         super(activity.getApplicationContext(), R.layout.item_terminal_sessions_list, sessionList);
@@ -45,6 +51,10 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
 
         int number = position + 1;
         sessionIndexView.setText(String.valueOf(number));
+        bindNumberGestures(sessionRowView, sessionIndexView);
+        // Rows are reused, so one that was lifted for a drag must not carry that into another session. The list
+        // itself lifts the row that is being dragged.
+        SessionsListView.resetRowStyle(sessionRowView);
 
         TerminalSession sessionAtRow = getItem(position).getTerminalSession();
         if (sessionAtRow == null) {
@@ -96,6 +106,39 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
         return sessionRowView;
     }
 
+    /**
+     * Holding the number of a row picks the row up to be dragged to another position. A tap on the number
+     * still chooses the session, which it would not do on its own once the number is long-clickable.
+     */
+    private void bindNumberGestures(@NonNull View row, @NonNull View numberView) {
+        numberView.setOnClickListener(v -> {
+            ListView list = getListView();
+            if (list == null) return;
+            int position = list.getPositionForView(row);
+            if (position >= 0) list.performItemClick(row, position, getItemId(position));
+        });
+        numberView.setOnLongClickListener(v -> {
+            SessionsListView list = getSessionsListView();
+            if (list == null) return false;
+            int position = list.getPositionForView(row);
+            // With a single session there is nothing to reorder: the hold opens the actions like the rest of the row.
+            if (position >= 0 && list.beginDrag(position)) return true;
+            if (position >= 0) showActions(position);
+            return position >= 0;
+        });
+    }
+
+    @Nullable
+    private ListView getListView() {
+        return mActivity.findViewById(R.id.terminal_sessions_list);
+    }
+
+    @Nullable
+    private SessionsListView getSessionsListView() {
+        ListView list = getListView();
+        return list instanceof SessionsListView ? (SessionsListView) list : null;
+    }
+
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
         TermuxSession clickedSession = getItem(position);
@@ -105,9 +148,125 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
 
     @Override
     public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
-        final TermuxSession selectedSession = getItem(position);
-        mActivity.getTermuxTerminalSessionClient().renameSession(selectedSession.getTerminalSession());
+        showActions(position);
         return true;
+    }
+
+    // Reordering
+
+    @Override
+    public boolean onMove(int from, int to) {
+        return moveSession(from, to);
+    }
+
+    @Override
+    public void onDragChanged(int position, boolean dragging) {
+        notifyDataSetChanged();
+    }
+
+    /**
+     * Move a session to another position, as the drag and the actions dialog do. The list is the service's
+     * session list, so the next and previous session actions follow the new order too.
+     */
+    public boolean moveSession(int from, int to) {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null || !service.moveTermuxSession(from, to)) return false;
+        notifyDataSetChanged();
+        // The list keeps its chosen row by position, not by session, so point it at the current session again.
+        ListView list = getListView();
+        TerminalSession current = mActivity.getCurrentSession();
+        int currentIndex = current == null ? -1 : service.getIndexOfSession(current);
+        if (list != null && currentIndex >= 0) list.setItemChecked(currentIndex, true);
+        return true;
+    }
+
+    // Actions dialog
+
+    /** Show the dialog of what can be done with the session at a position. */
+    public void showActions(int position) {
+        if (mActivity.isFinishing() || mActivity.isDestroyed()) return;
+        if (mActionsDialog != null && mActionsDialog.isShowing()) return;
+        TermuxSession termuxSession = position >= 0 && position < getCount() ? getItem(position) : null;
+        TerminalSession session = termuxSession == null ? null : termuxSession.getTerminalSession();
+        if (session == null) return;
+
+        SessionActionsMenu.State state = new SessionActionsMenu.State(session.mSessionName, session.getTitle(),
+            position + 1, getCount(), session.isRunning());
+        try {
+            mActionsDialog = SessionActionsMenu.populateSheet(new TermuxContextMenuSheet(mActivity),
+                mActivity.getResources(), state).show(chosenId -> {
+                    mActionsDialog = null;
+                    if (chosenId >= 0) handleAction(chosenId, session);
+                });
+        } catch (RuntimeException e) {
+            // The sheet is the only way to reach these actions from a tap, so fall back to renaming.
+            mActivity.getTermuxTerminalSessionClient().renameSession(session);
+        }
+    }
+
+    /** Close the dialog, for when the activity goes away. */
+    public void dismissDialogs() {
+        if (mActionsDialog != null) mActionsDialog.dismiss();
+        mActionsDialog = null;
+    }
+
+    private void handleAction(int actionId, @NonNull TerminalSession session) {
+        TermuxService service = mActivity.getTermuxService();
+        if (service == null) return;
+        // The session may have moved or gone while the dialog was open, so look its position up again.
+        int index = service.getIndexOfSession(session);
+        if (index < 0) return;
+
+        SessionReorder.Move move = SessionActionsMenu.moveFor(actionId);
+        if (move != null) {
+            int target = SessionReorder.targetFor(move, index, service.getTermuxSessionsSize());
+            if (moveSession(index, target)) {
+                ListView list = getListView();
+                if (list != null) list.smoothScrollToPosition(target);
+            }
+            return;
+        }
+
+        switch (actionId) {
+            case SessionActionsMenu.RENAME:
+                mActivity.getTermuxTerminalSessionClient().renameSession(session);
+                break;
+            case SessionActionsMenu.KILL:
+                confirmKill(session);
+                break;
+            case SessionActionsMenu.KILL_NOW:
+                session.finishIfRunning();
+                break;
+            case SessionActionsMenu.REMOVE:
+                removeExitedSession(service, session);
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void confirmKill(@NonNull TerminalSession session) {
+        DialogUtils.builder(mActivity, R.drawable.ui_ic_delete, true)
+            .setTitle(R.string.title_confirm_kill_process)
+            .setMessage(R.string.msg_confirm_kill_process)
+            .setPositiveButton(R.string.action_kill_session, (dialog, id) -> {
+                dialog.dismiss();
+                session.finishIfRunning();
+            })
+            .setNegativeButton(android.R.string.cancel, null)
+            .show();
+    }
+
+    /** Take a session whose process exited out of the list, like pressing Return in it does. */
+    private void removeExitedSession(@NonNull TermuxService service, @NonNull TerminalSession session) {
+        if (session.isRunning()) return;
+        TermuxTerminalSessionActivityClient client = mActivity.getTermuxTerminalSessionClient();
+        if (session == mActivity.getCurrentSession()) {
+            client.removeFinishedSession(session);
+        } else {
+            service.removeTermuxSession(session);
+            notifyDataSetChanged();
+        }
     }
 
 }

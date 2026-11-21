@@ -46,6 +46,7 @@ import dev.pschmitt.termux.shared.termux.TermuxConstants.TERMUX_APP.TERMUX_ACTIV
 import com.termux.app.activities.SettingsActivity;
 import dev.pschmitt.termux.shared.termux.crash.TermuxCrashUtils;
 import dev.pschmitt.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
+import com.termux.app.terminal.SessionsListView;
 import com.termux.app.terminal.TermuxSessionsListViewController;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
 import com.termux.app.terminal.TermuxTerminalViewClient;
@@ -351,6 +352,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     @Override
     public void onDestroy() {
         if (mContextSheetDialog != null) mContextSheetDialog.dismiss();
+        if (mTermuxSessionListViewController != null) mTermuxSessionListViewController.dismissDialogs();
         super.onDestroy();
 
         Logger.logDebug(LOG_TAG, "onDestroy");
@@ -509,6 +511,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         termuxSessionsListView.setAdapter(mTermuxSessionListViewController);
         termuxSessionsListView.setOnItemClickListener(mTermuxSessionListViewController);
         termuxSessionsListView.setOnItemLongClickListener(mTermuxSessionListViewController);
+        if (termuxSessionsListView instanceof SessionsListView)
+            ((SessionsListView) termuxSessionsListView).setReorderListener(mTermuxSessionListViewController);
     }
 
 
