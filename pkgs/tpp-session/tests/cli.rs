@@ -230,7 +230,10 @@ fn golden_help() -> Vec<(String, String)> {
     let fixture = include_str!("fixtures/python-help.txt");
     let mut sections: Vec<(String, String)> = Vec::new();
     for line in fixture.split_inclusive('\n') {
-        if let Some(name) = line.strip_prefix("### ").or_else(|| line.strip_prefix("###\n")) {
+        if let Some(name) = line
+            .strip_prefix("### ")
+            .or_else(|| line.strip_prefix("###\n"))
+        {
             sections.push((name.trim_end_matches('\n').to_string(), String::new()));
         } else if let Some((_, body)) = sections.last_mut() {
             body.push_str(line);
