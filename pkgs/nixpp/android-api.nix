@@ -26,15 +26,18 @@ let
   # socket is reached through the abstract socket namespace, so no file of the
   # app prefix is involved.
   tppCli = callPackage ./tpp.nix { };
+  signalStack = (callPackage ./default.nix { }).signalStack;
   session = writeShellApplication {
     name = "tpp-session";
     text = ''
+      export LD_PRELOAD=${signalStack}/lib/stack.so''${LD_PRELOAD:+:$LD_PRELOAD}
       exec -a tpp-session ${tppCli}/bin/tpp "$@"
     '';
   };
   reloadSettings = writeShellApplication {
     name = "tpp-reload-settings";
     text = ''
+      export LD_PRELOAD=${signalStack}/lib/stack.so''${LD_PRELOAD:+:$LD_PRELOAD}
       exec -a tpp-session ${tppCli}/bin/tpp reload-settings "$@"
     '';
   };
@@ -126,6 +129,7 @@ let
   tpp = writeShellApplication {
     name = "tpp";
     text = ''
+      export LD_PRELOAD=${signalStack}/lib/stack.so''${LD_PRELOAD:+:$LD_PRELOAD}
       export TPP_PLUGIN_DIR=${tppPlugins}
       # The API commands reach the app through TermuxAm, and guest paths
       # (/home, /nix, /android/...) are converted to the Android paths that the
