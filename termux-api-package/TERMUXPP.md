@@ -30,6 +30,20 @@ guide](../docs/en/aarch64-bootstrap.md) for the complete procedure.
 Battery status, cold-start broadcast fallback, and toast delivery were tested
 successfully on a device.
 
+The native prefix gets the same commands from the app: `app/tpp-native.gradle`
+packs `tpp.in`, the command scripts, the tables, `termux-callback.in` and the
+completions into the APK assets and builds `termux-api` and
+`termux-api-broadcast` with the NDK as `libtermux-api-broadcast.so` (only
+`lib*.so` files are extracted from an APK). At app and session start
+`NativeCliInstaller` copies the assets into the prefix (replacing
+`@TERMUX_PREFIX@`) and links `libexec/termux-api-broadcast` to the library, so an
+app update updates the CLI. It writes only paths that are absent or that it
+installed unchanged before (digests in `var/lib/tpp/native-install.json`), and
+reports files of Debian packages, edited files and stale `termux-api` or
+`termux-am` dpkg entries without touching them or the dpkg database. The
+client still runs `PREFIX/bin/am`, which the APK does not ship: keep an existing
+`termux-am` installation.
+
 Install the [TermuxPP app with its built-in API](../docs/en/integrations.md#api) and
 sign it with the same certificate as TermuxPP. Test `termux-battery-status`,
 `termux-api-start`, and `termux-api-stop` on-device. The API socket's same-UID

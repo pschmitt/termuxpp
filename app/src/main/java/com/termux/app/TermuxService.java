@@ -23,6 +23,7 @@ import androidx.annotation.Nullable;
 
 import com.termux.R;
 import com.termux.app.event.SystemEventReceiver;
+import com.termux.app.nativecli.NativeCliUpdater;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
 import com.termux.app.terminal.TermuxTerminalSessionServiceClient;
 import com.termux.app.terminal.GestureCommandLaunch;
@@ -156,6 +157,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
             Logger.logWarn(LOG_TAG, "Could not start the session command listener: " + e.getMessage());
         }
         installSessionCli();
+        NativeCliUpdater.installAsync(this);
 
         SystemEventReceiver.registerPackageUpdateEvents(this);
 
@@ -724,6 +726,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     public synchronized TermuxSession createTermuxSession(ExecutionCommand executionCommand) {
         if (executionCommand == null) return null;
         installSessionCli();
+        NativeCliUpdater.installAsync(this);
 
         Logger.logDebug(LOG_TAG, "Creating \"" + executionCommand.getCommandIdAndLabelLogString() + "\" TermuxSession");
 
