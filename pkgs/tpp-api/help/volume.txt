@@ -1,0 +1,4 @@
+Usage: tpp volume stream volume
+Change volume of audio stream
+Valid audio streams are: alarm, music, notification, ring, system, call
+Call w/o arguments to show information about each audio stream

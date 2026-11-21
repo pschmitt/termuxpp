@@ -1,0 +1,2 @@
+Usage: tpp torch [on | off]
+Toggle LED Torch on device

@@ -1,0 +1,4 @@
+Usage: tpp saf rm uri
+Removes the file or folder at the given URI. See other tpp saf commands for more info.
+Returns 0 on success, 1 if the file or folder couldn't be deleted and 2 if another error occurred.
+ -h  show this help

@@ -1,0 +1,17 @@
+[package]
+name = "tpp-api"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+description = "TermuxPP API command backends: the termux-api socket protocol client and every `tpp` API command, as a library"
+license = "GPL-3.0-only"
+publish = false
+
+[lib]
+name = "tpp_api"
+path = "src/lib.rs"
+
+# No dependencies on purpose (like tpp-cli and tpp-session): the code is built
+# for four Android ABIs and for the guest, and a vendored dependency tree would
+# need a Nix hash per change. The few libc calls are declared in src/sys.rs.
+[dependencies]

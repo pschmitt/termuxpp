@@ -1,0 +1,37 @@
+#!@TERMUX_PREFIX@/bin/sh
+set -e -u
+
+SCRIPTNAME="tpp notification list"
+show_usage () {
+    echo "Usage: $SCRIPTNAME"
+    echo "Show the list of currently shown notifications."
+    exit 0
+}
+
+while getopts :h option
+do
+    case "$option" in
+        h) show_usage;;
+        ?) echo "$SCRIPTNAME: illegal option -$OPTARG"; exit 1;
+    esac
+done
+shift $((OPTIND-1))
+
+if [ $# != 0 ]; then echo "$SCRIPTNAME: too many arguments"; exit 1; fi
+
+# The app answers with a JSON object holding "API_ERROR" instead of the array of
+# notifications when it cannot list them (notification access not granted or
+# listener not connected). Report that on stderr and fail instead of printing it.
+output="$(@TERMUX_PREFIX@/libexec/termux-api NotificationList)" || exit $?
+case "$output" in
+    "")
+        echo "$SCRIPTNAME: no response from TermuxPP" >&2
+        exit 1
+        ;;
+    "{"*)
+        message="$(printf '%s\n' "$output" | sed -n 's/^[[:space:]]*"API_ERROR":[[:space:]]*"\(.*\)"[[:space:]]*$/\1/p')"
+        echo "$SCRIPTNAME: ${message:-failed to list the notifications}" >&2
+        exit 1
+        ;;
+esac
+printf '%s\n' "$output"

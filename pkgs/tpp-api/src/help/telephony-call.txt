@@ -1,0 +1,2 @@
+Usage: tpp telephony call <number>
+Call a telephony number.

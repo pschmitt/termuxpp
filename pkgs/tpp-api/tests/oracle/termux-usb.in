@@ -1,0 +1,114 @@
+#!@TERMUX_PREFIX@/bin/bash
+set -e -u
+
+SCRIPTNAME="tpp usb"
+show_usage () {
+    echo "Usage: $SCRIPTNAME [-l | [-r] [-E] [-e command] [device | vendorId productId]]"
+    echo "List or access USB devices. Devices cannot be accessed directly,"
+    echo "                 only using $SCRIPTNAME."
+    echo "  -l           list available devices"
+    echo "  -r           show permission request dialog if necessary"
+    echo "  -e command   execute the specified command with a file descriptor"
+    echo "                 referring to the device as an argument (unless -E"
+    echo "                 argument is given)"
+    echo "  -E           transfer file descriptor as TERMUX_USB_FD env var"
+    echo "                 instead of as command line argument"
+    exit 0
+}
+
+# The termux-api client execs the callback with its own standard output. That
+# is captured below to read the client's own messages (No such device, ...), so
+# the callback gets the real standard output back, saved in the descriptor
+# TPP_USB_OUT: its output is neither buffered nor altered (NUL bytes included).
+# TPP_USB_RAN is a descriptor of an unlinked scratch file, written to when the
+# callback starts, so that an answer of the app without a device is no success.
+# Both are descriptors of this script's own choosing (10 and up), which leaves
+# those the caller passes down (4, ...) to the callback.
+tpp_usb_callback () {
+    local command=$TPP_USB_COMMAND
+    if [[ -n "${TPP_USB_RAN:-}" ]]; then
+        echo ran >&"$TPP_USB_RAN"
+        exec {TPP_USB_RAN}>&-
+    fi
+    exec >&"$TPP_USB_OUT" {TPP_USB_OUT}>&-
+    unset TPP_USB_COMMAND TPP_USB_OUT TPP_USB_RAN
+    $command "$@"
+}
+
+ACTION="permission"
+PARAMS=""
+while getopts :hlre:E option
+do
+    case "$option" in
+        h) show_usage;;
+        l) ACTION="list";;
+        r) PARAMS="$PARAMS --ez request true";;
+        e) ACTION="open"; export TPP_USB_COMMAND="$OPTARG"
+           export -f tpp_usb_callback; export TERMUX_CALLBACK=tpp_usb_callback;;
+        E) export TERMUX_EXPORT_FD=true;;
+        ?) echo "$SCRIPTNAME: illegal option -$OPTARG"; exit 1;
+    esac
+done
+shift $((OPTIND-1))
+
+if [ "$ACTION" == "list" ]
+then
+    if [ $# -gt 0 ]; then echo "$SCRIPTNAME: too many arguments"; exit 1; fi
+else
+    if [ $# -lt 1 ]; then
+        echo "$SCRIPTNAME: missing -l or device path"
+        exit 1
+    elif [ $# -eq 1 ]; then
+        # The device's usbfs path has been provided
+        PARAMS="$PARAMS --es device $1"
+    elif [ $# -eq 2 ]; then
+        # A vendorId and ProductId of the device has been provided
+        PARAMS="$PARAMS --es vendorId $1"
+        PARAMS="$PARAMS --es productId $2"
+    else
+        echo "$SCRIPTNAME: too many arguments"
+        exit 1
+    fi
+fi
+
+CMD="@TERMUX_PREFIX@/libexec/termux-api Usb -a $ACTION $PARAMS"
+
+if [[ "$ACTION" == "open" ]]; then
+    exec {TPP_USB_OUT}>&1
+    TPP_USB_RAN=
+    if SCRATCH="$(mktemp "${TMPDIR:-@TERMUX_PREFIX@/tmp}/termux-usb.XXXXXX" 2>/dev/null)"; then
+        exec {TPP_USB_RAN}<>"$SCRATCH"
+        rm -f "$SCRATCH"
+    fi
+    export TPP_USB_OUT TPP_USB_RAN
+fi
+
+if [[ "$ACTION" == "list" ]]; then
+    $CMD
+elif [[ "$ACTION" == "permission" ]]; then
+    OUTPUT="$($CMD)"
+    case "$OUTPUT" in
+        "No such device"|"No such device.") echo "No such device."; exit 1;;
+        "yes") echo "Permission granted."; exit 0;;
+        "no"|"Permission denied.") echo "Permission denied."; exit 1;;
+        "Permission request timeout.") echo "Permission request timeout."; exit 1;;
+        *) printf "%s\n" "$OUTPUT"; exit 0;;
+    esac
+elif [[ "$ACTION" == "open" ]]; then
+    # A failing callback ends the script with its exit status (set -e)
+    OUTPUT="$($CMD)"
+    case "$OUTPUT" in
+        "No such device"|"No such device.") echo "No such device."; exit 1;;
+        "No permission"|"Permission denied.") echo "Permission denied."; exit 1;;
+        "Permission request timeout.") echo "Permission request timeout."; exit 1;;
+        "Failed to open device"|"Open device failed.") echo "Open device failed."; exit 1;;
+        "") # Nothing printed: fine if the callback ran, else the app sent no device
+            if [[ -z "$TPP_USB_RAN" || ! -e /dev/fd/$TPP_USB_RAN || -s /dev/fd/$TPP_USB_RAN ]]; then
+                exit 0
+            fi
+            echo "Open device failed."; exit 1;;
+        *) printf "%s\n" "$OUTPUT"; exit 0;;
+    esac
+fi
+
+exit 0

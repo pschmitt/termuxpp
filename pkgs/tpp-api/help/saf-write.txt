@@ -1,0 +1,3 @@
+Usage: tpp saf write uri
+Writes the standard input into an existing file identified by a URI. The previous contents are erased. To create a new file, use tpp saf create.
+ -h  show this help

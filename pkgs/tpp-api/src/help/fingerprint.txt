@@ -1,0 +1,3 @@
+Usage: tpp fingerprint [-t title] [-d description] [-s subtitle] [-c cancel]
+Use fingerprint sensor on device to check for authentication
+NOTE: Only available on Marshmallow and later

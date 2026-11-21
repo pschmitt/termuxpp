@@ -1,0 +1,5 @@
+Usage: tpp saf read uri
+Reads from a file identified by a URI and writes the data to sstandard output.
+You can use pipes to process the data or redirect it into a file to make a local copy.
+See tpp saf ls to get the URIs to files.
+ -h  show this help

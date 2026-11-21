@@ -1,0 +1,4 @@
+Usage: tpp media scan [-v] [-r] file [file...]
+Scan the specified file(s) and add it to the media content provider.
+  -r  scan directories recursively
+  -v  verbose mode

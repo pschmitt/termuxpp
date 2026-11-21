@@ -1,0 +1,4 @@
+Usage: tpp saf stat uri
+Returns the file or folder info as a JSON object.
+The format is the same as an entry from tpp saf ls.
+ -h  show this help

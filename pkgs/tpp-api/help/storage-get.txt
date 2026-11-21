@@ -1,0 +1,2 @@
+Usage: tpp storage get output-file
+Request a file from the system and output it to the specified file.

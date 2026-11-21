@@ -1,5 +1,0 @@
-include ':app'
-include ':termux-shared', ':terminal-view', ':terminal-emulator'
-['termux-shared', 'terminal-view', 'terminal-emulator'].each { module ->
-    project(":${module}").projectDir = file("termux-app/${module}")
-}

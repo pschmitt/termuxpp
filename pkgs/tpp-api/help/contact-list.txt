@@ -1,0 +1,2 @@
+Usage: tpp contacts list
+List all contacts.

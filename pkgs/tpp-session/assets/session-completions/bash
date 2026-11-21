@@ -1,0 +1,48 @@
+_termuxpp_session() {
+  local current=${COMP_WORDS[COMP_CWORD]} action=${COMP_WORDS[1]-} candidate word
+  local flags='--json --help'
+  local -a positional=()
+  COMPREPLY=()
+  if (( COMP_CWORD == 1 ))
+  then
+    mapfile -t COMPREPLY < <(compgen -W 'list close focus kill move rename reload-settings completions --help' -- "$current")
+    return
+  fi
+  for word in "${COMP_WORDS[@]:2:COMP_CWORD-2}"
+  do
+    case $word in
+      -h|--help) return ;;
+      --json) flags='--help' ;;
+      -*) ;;
+      *) positional+=("$word") ;;
+    esac
+  done
+  [[ $action == -h || $action == --help ]] && return
+  if [[ $current == -* ]]
+  then
+    mapfile -t COMPREPLY < <(compgen -W "$flags" -- "$current")
+    return
+  fi
+  case $action in
+    completions)
+      (( ${#positional[@]} == 0 )) && mapfile -t COMPREPLY < <(compgen -W 'bash fish zsh' -- "$current")
+      ;;
+    close|focus|kill|move|rename)
+      if (( ${#positional[@]} == 0 ))
+      then
+        while IFS= read -r candidate
+        do
+          [[ $candidate == "$current"* ]] && COMPREPLY+=("$candidate")
+        done < <(tpp-session __complete ids)
+      elif [[ $action == move ]] && (( ${#positional[@]} == 1 ))
+      then
+        while IFS= read -r candidate
+        do
+          [[ $candidate == "$current"* ]] && COMPREPLY+=("$candidate")
+        done < <(tpp-session __complete positions)
+      fi
+      ;;
+  esac
+}
+complete -F _termuxpp_session tpp-session
+# vim: set sw=2 sts=2 et:

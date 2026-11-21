@@ -1,0 +1,7 @@
+Change wallpaper on your device
+
+Usage: tpp wallpaper [options]
+-h         show this help
+-f <file>  set wallpaper from file
+-u <url>   set wallpaper from url resource
+-l         set wallpaper for lockscreen (Nougat and later)

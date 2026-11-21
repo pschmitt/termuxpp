@@ -1,0 +1,2 @@
+Usage: tpp api stop
+Stop the TermuxPP API keep-alive service.

@@ -1,0 +1,95 @@
+###
+usage: tpp-session [-h] [--json]
+                   {list,close,focus,kill,move,rename,completions,reload-settings} ...
+
+Manage TermuxPP terminal sessions.
+
+positional arguments:
+  {list,close,focus,kill,move,rename,completions,reload-settings}
+    list                list sessions and their IDs
+    close               hang up a shell or dismiss an exited tab
+    focus               switch to a session
+    kill                force-kill a session shell
+    move                move a session to a one-based position
+    rename              change the session name
+    completions         print completion source
+    reload-settings     reload app properties and styling
+
+options:
+  -h, --help            show this help message and exit
+  --json                output JSON
+
+Every command accepts --json, also in front of the command (tpp --json session
+...). list prints the sessions as a JSON array. The other commands print a
+JSON object that names the action and its arguments, for example {"ok": true,
+"action": "close", "id": "ID"}; completions prints {"output": SCRIPT}.
+Failures print a message on standard error and exit with a non-zero status,
+with or without --json.
+### list
+usage: tpp-session list [-h] [--json]
+
+options:
+  -h, --help  show this help message and exit
+  --json      output JSON
+### close
+usage: tpp-session close [-h] [--json] id
+
+positional arguments:
+  id
+
+options:
+  -h, --help  show this help message and exit
+  --json      output JSON
+### focus
+usage: tpp-session focus [-h] [--json] id
+
+positional arguments:
+  id
+
+options:
+  -h, --help  show this help message and exit
+  --json      output JSON
+### kill
+usage: tpp-session kill [-h] [--json] id
+
+positional arguments:
+  id
+
+options:
+  -h, --help  show this help message and exit
+  --json      output JSON
+### move
+usage: tpp-session move [-h] [--json] id position
+
+positional arguments:
+  id
+  position
+
+options:
+  -h, --help  show this help message and exit
+  --json      output JSON
+### rename
+usage: tpp-session rename [-h] [--json] id name
+
+positional arguments:
+  id
+  name
+
+options:
+  -h, --help  show this help message and exit
+  --json      output JSON
+### completions
+usage: tpp-session completions [-h] [--json] {bash,fish,zsh}
+
+positional arguments:
+  {bash,fish,zsh}
+
+options:
+  -h, --help       show this help message and exit
+  --json           output JSON
+### reload-settings
+usage: tpp-session reload-settings [-h] [--json]
+
+options:
+  -h, --help  show this help message and exit
+  --json      output JSON

@@ -1,0 +1,5 @@
+Usage: tpp dialog widget [options]
+Get user input w/ different widgets! Default: text
+   -h, help   Show this help
+   -l, list   List all widgets and their options
+   -t, title  Set title of input dialog (optional)

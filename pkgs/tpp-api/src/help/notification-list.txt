@@ -1,0 +1,2 @@
+Usage: tpp notification list
+Show the list of currently shown notifications.

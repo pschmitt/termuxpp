@@ -1,0 +1,9 @@
+Usage: tpp saf create [-t mime-type] folder-uri name
+Creates a file in a folder managed by Termux:API.
+Returns the URI you can use to read and write the file with tpp saf read and tpp saf write.
+You can specify the mime type explicitly or let it be guessed based on the file extension.
+As the folder URI you can use the URI of a directory listed by tpp saf dirs or by tpp saf ls.
+Android doesn't allow creating files with the same name, so the name may be changed if a file or folder with that name already exists.
+You can use tpp saf stat with the returned URI to get the name it was really given.
+ -h  show this help
+ -t  specify the mime type of the file. The mime type is required for other apps to recognize the content as e.g. a video. If not specified, 'application/octet-stream' is assumed, that means raw binary data.

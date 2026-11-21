@@ -1,0 +1,2 @@
+Usage: tpp audio info
+Get information about audio capabilities.

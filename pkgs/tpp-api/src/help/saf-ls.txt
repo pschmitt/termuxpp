@@ -1,0 +1,15 @@
+Usage: tpp saf ls folder-uri
+Lists the files and folders in a folder identified by a URI.
+You can get a folder URI by:
+- Listing folders with tpp saf ls
+- Giving Termux:API access to folders with tpp saf managedir
+- Listing the folders you gave Termux:API access to with tpp saf dirs
+- Creating a folder with tpp saf mkdir
+The list is returned as a JSON array with one JSON object per entry.
+The objects have the keys:
+- 'name' for the human-readable name
+- 'uri' for URI you can use with the other tpp saf commands
+- 'type' for the mime type
+- 'length' for size in bytes if it's a file
+You can recognize folders by the special mime type 'vnd.android.document/directory'.
+ -h  show this help

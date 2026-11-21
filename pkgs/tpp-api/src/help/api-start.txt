@@ -1,0 +1,2 @@
+Usage: tpp api start
+Start the TermuxPP API keep-alive service.

@@ -1,0 +1,8 @@
+Usage: tpp media player cmd [args]
+
+help        Shows this help
+info        Displays current playback information
+play        Resumes playback if paused
+play <file> Plays specified media file
+pause       Pauses playback
+stop        Quits playback

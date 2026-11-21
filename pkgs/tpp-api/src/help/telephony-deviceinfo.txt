@@ -1,0 +1,2 @@
+Usage: tpp telephony device-info
+Get information about the telephony device.

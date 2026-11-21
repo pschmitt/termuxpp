@@ -67,7 +67,7 @@ companion implementation. I found no droid-nix companion merge to carry over.
   no separate companion package is required for API, Tasker, Boot, Styling,
   Widget, or Float behavior.
 - From the app terminal and an SSH session, run an API command such as
-  `termux-battery-status` and check its structured response. Include one
+  `tpp battery` and check its structured response. Include one
   permission-gated API command and cold-start the API service after force-stop.
 - From Tasker, discover the bundled plugin and execute a foreground and a
   background script through the managed Nix session. Check arguments, stdin,
@@ -102,7 +102,7 @@ adb shell am instrument -w \
   dev.pschmitt.termux.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
-The device needs the device-mode `termux-api` and `termux-am` helper packages,
+The device needs the nixpp guest's `tpp` and `am` helpers,
 the native `nixpp` executable and seed assets, and an active guest generation
 with `/run/current-system/sw/bin/env`. The integration script lives inside
 `~/.config/termuxpp/tasker/`, so it does not require `allow-external-apps`.

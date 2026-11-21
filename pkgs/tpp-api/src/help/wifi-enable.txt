@@ -1,0 +1,3 @@
+Usage: tpp wifi enable
+       tpp wifi disable
+Turn Wi-Fi on or off.

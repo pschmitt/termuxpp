@@ -1,0 +1,10 @@
+Usage: tpp notification channel -d channel-id
+       tpp notification channel channel-id channel-name
+Create or delete a notification channel.
+Only usable on Android 8.0 and higher.
+Use -d to delete a channel.
+Creating a channel requires a channel id and a channel name.
+The name will be visible in the options, the id is used to send notifications on that specific channel.
+Creating a channel with the same id again will change the name.
+Creating a channel with the same id as a deleted channel will restore the user settings of the deleted channel.
+Use tpp notification send --channel channel-id to send a notification on a custom channel.

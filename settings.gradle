@@ -1,10 +1,10 @@
 include ':app', ':termux-shared', ':terminal-emulator', ':terminal-view'
 include ':termux-api', ':termux-tasker', ':termux-boot', ':termux-styling', ':termux-widget', ':termux-float', ':termux-am'
 
-project(':termux-api').projectDir = file('termux-api/app')
-project(':termux-tasker').projectDir = file('termux-tasker/app')
-project(':termux-boot').projectDir = file('termux-boot/app')
-project(':termux-styling').projectDir = file('termux-styling/app')
-project(':termux-widget').projectDir = file('termux-widget/app')
-project(':termux-float').projectDir = file('termux-float/app')
-project(':termux-am').projectDir = file('termux-am/app')
+project(':termux-api').projectDir = file('android/components/termux-api/app')
+project(':termux-tasker').projectDir = file('android/components/termux-tasker/app')
+project(':termux-boot').projectDir = file('android/components/termux-boot/app')
+project(':termux-styling').projectDir = file('android/components/termux-styling/app')
+project(':termux-widget').projectDir = file('android/components/termux-widget/app')
+project(':termux-float').projectDir = file('android/components/termux-float/app')
+project(':termux-am').projectDir = file('android/components/termux-am/app')

@@ -1,0 +1,2 @@
+Usage: tpp speech-to-text
+Converts speech to text, sending partial matches to stdout.

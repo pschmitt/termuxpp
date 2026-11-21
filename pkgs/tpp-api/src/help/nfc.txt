@@ -1,0 +1,7 @@
+Usage: tpp nfc [-r [short|full]] [-w] [-t [text for TAG]
+ read/write data from/to NDEF tag
+   -r, read tag
+     short, read short information from tag
+     full,  read full information from tag
+   -w, write information on tag
+   -t, text  for tag

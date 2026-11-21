@@ -9,7 +9,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     # Sources (MIT) of the full-Nix launcher, bootstrap seed and Android API
-    # bridge (nix/nixpp/bootstrap-seed.nix); no droid-nix binary is used.
+    # bridge (pkgs/nixpp/bootstrap-seed.nix); no droid-nix binary is used.
     droid-nix-src = {
       url = "github:lassulus/droid-nix/bb08d50117568e9994b6d87c918c4c2d7b5de9b1";
       flake = false;
@@ -19,10 +19,10 @@
   outputs =
     { nixpkgs, ... }@inputs:
     let
-      nixppFor = pkgs: import ./nix/nixpp/packages.nix { inherit inputs pkgs; };
-      # Host-side ADB client (scripts/termuxpp-adb-*.py) built with a caller's Nixpkgs.
+      nixppFor = pkgs: import ./pkgs/nixpp/packages.nix { inherit inputs pkgs; };
+      # Host-side ADB client built with a caller's Nixpkgs.
       adbShellFor = pkgs: {
-        termuxpp-adb-shell = pkgs.callPackage ./nix/termuxpp-adb-shell.nix { };
+        tpp-adb-shell = pkgs.callPackage ./pkgs/tpp-adb-shell { };
       };
       system = "x86_64-linux";
       pkgs = import nixpkgs {
@@ -48,6 +48,18 @@
       };
       sdk = "${android.androidsdk}/libexec/android-sdk";
       gradle = pkgs.gradle_8;
+      # cargo and the Android std for every ABI of the APK: app/tpp-native.gradle
+      # builds the Rust tpp executable (crates tpp-cli and tpp-session) with it,
+      # through -PtppCargo.
+      fenixPkgs = inputs.fenix.packages.${system};
+      tppRust = fenixPkgs.combine [
+        fenixPkgs.minimal.cargo
+        fenixPkgs.minimal.rustc
+        fenixPkgs.targets.aarch64-linux-android.latest.rust-std
+        fenixPkgs.targets.armv7-linux-androideabi.latest.rust-std
+        fenixPkgs.targets.i686-linux-android.latest.rust-std
+        fenixPkgs.targets.x86_64-linux-android.latest.rust-std
+      ];
       java = pkgs.jdk17_headless;
       bootstrapVersion = "2026.02.12-r1%2Bapt.android-7";
       gradleTasks = [
@@ -80,6 +92,7 @@
           gradle
           java
           pkgs.patchelf
+          tppRust
         ];
         ANDROID_HOME = sdk;
         ANDROID_SDK_ROOT = sdk;
@@ -106,6 +119,7 @@
         gradleFlags = [
           "--no-daemon"
           "-Pandroid.aapt2FromMavenOverride=${sdk}/build-tools/36.0.0/aapt2"
+          "-PtppCargo=${tppRust}/bin/cargo"
         ];
 
         preBuild = ''
@@ -120,84 +134,6 @@
           cp app/build/outputs/apk/debug/termux-app_apt-android-7-debug_universal.apk "$out/termuxpp-debug.apk"
         '';
       });
-      termuxAm = pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
-        pname = "termuxpp-termux-am-helper";
-        version = "0.8.1";
-        src = ./.;
-        nativeBuildInputs = [
-          gradle
-          java
-        ];
-        ANDROID_HOME = sdk;
-        ANDROID_SDK_ROOT = sdk;
-        ANDROID_USER_HOME = "/tmp/termuxpp-android-user";
-        JAVA_HOME = java.home;
-        LANG = "C.UTF-8";
-        LC_ALL = "C.UTF-8";
-        TZ = "UTC";
-
-        mitmCache = gradle.fetchDeps {
-          pkg = finalAttrs.finalPackage;
-          data = ./nix/deps.json;
-          bwrapFlags = "--dir /bin --symlink ${pkgs.bash}/bin/bash /bin/sh";
-        };
-        gradleBuildTask = ":termux-am:assembleRelease -x :termux-am:lintVitalAnalyzeRelease -x :termux-am:lintVitalReportRelease -x :termux-am:lintVitalRelease";
-        gradleUpdateTask = ":termux-am:assembleRelease -x :termux-am:lintVitalAnalyzeRelease -x :termux-am:lintVitalReportRelease -x :termux-am:lintVitalRelease";
-        gradleFlags = [
-          "--no-daemon"
-          "-Pandroid.aapt2FromMavenOverride=${sdk}/build-tools/35.0.0/aapt2"
-        ];
-        preBuild = ''
-          mkdir -p "$ANDROID_USER_HOME"
-        '';
-        installPhase = ''
-          mkdir -p "$out"
-          cp termux-am/app/build/outputs/apk/release/termux-am-release-unsigned.apk \
-            "$out/termux-am-release-unsigned.apk"
-        '';
-      });
-      termuxApiNative = pkgs.stdenv.mkDerivation {
-        pname = "termuxpp-termux-api-native-aarch64";
-        version = "0.60.0";
-        src = ./termux-api-package;
-        nativeBuildInputs = [
-          pkgs.cmake
-          pkgs.ninja
-        ];
-        cmakeFlags = [
-          "-DCMAKE_TOOLCHAIN_FILE=${sdk}/ndk/29.0.14206865/build/cmake/android.toolchain.cmake"
-          "-DANDROID_ABI=arm64-v8a"
-          "-DANDROID_PLATFORM=android-24"
-          "-DCMAKE_INSTALL_PREFIX=/data/data/dev.pschmitt.termux/files/usr"
-          "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"
-        ];
-        installPhase = ''
-          DESTDIR="$out" cmake --install .
-        '';
-      };
-      helperDebs =
-        name: bootstrap:
-        pkgs.runCommand name
-          {
-            nativeBuildInputs = [ pkgs.python3 ];
-          }
-          ''
-            mkdir -p "$out"
-            ${pkgs.python3}/bin/python3 ${./scripts/package-helpers.py} \
-              --am-source ${./termux-am} \
-              --am-apk ${termuxAm}/termux-am-release-unsigned.apk \
-              --api-source ${./termux-api-package} \
-              --api-prefix ${termuxApiNative}/data/data/dev.pschmitt.termux/files/usr \
-              --out-dir "$out" ${pkgs.lib.optionalString bootstrap "--bootstrap"}
-          '';
-      helperDeb =
-        name: source: filename:
-        pkgs.runCommand name { } ''
-          mkdir -p "$out"
-          cp ${source}/${filename} "$out/"
-        '';
-      deviceHelperDebs = helperDebs "termuxpp-helper-debs-device-aarch64" false;
-      bootstrapHelperDebs = helperDebs "termuxpp-helper-debs-bootstrap-aarch64" true;
       androidShell = pkgs.mkShell {
         packages = [
           gradle
@@ -206,6 +142,7 @@
           android.platform-tools
           pkgs.git
           pkgs.patchelf
+          tppRust
         ];
         ANDROID_HOME = sdk;
         ANDROID_SDK_ROOT = sdk;
@@ -223,7 +160,7 @@
       lib.nixpp = {
         packagesFor = nixppFor;
         # Tests and assets that nixos-config's system checks run against.
-        src = ./nix/nixpp;
+        src = ./pkgs/nixpp;
       };
 
       # The host-side ADB client for a caller's Nixpkgs (nixos-config:
@@ -246,18 +183,6 @@
         // {
           default = apk;
           inherit apk;
-          termux-am-device =
-            helperDeb "termuxpp-termux-am-device-deb-aarch64" deviceHelperDebs
-              "termux-am_0.8.1+termuxpp1_all.deb";
-          termux-api-device =
-            helperDeb "termuxpp-termux-api-device-deb-aarch64" deviceHelperDebs
-              "termux-api_0.60.0+termuxpp1_aarch64.deb";
-          termux-am-bootstrap =
-            helperDeb "termuxpp-termux-am-bootstrap-deb-aarch64" bootstrapHelperDebs
-              "termux-am_0.8.1+termuxpp1_all.deb";
-          termux-api-bootstrap =
-            helperDeb "termuxpp-termux-api-bootstrap-deb-aarch64" bootstrapHelperDebs
-              "termux-api_0.60.0+termuxpp1_aarch64.deb";
         };
       apps.${system}.update-deps = {
         type = "app";

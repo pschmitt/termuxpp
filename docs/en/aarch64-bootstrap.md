@@ -43,10 +43,6 @@ scripts/build-aarch64-bootstrap.py fetch \
 #    (share/nixpp), on an x86_64 Linux worker.
 scripts/build-aarch64-bootstrap.py build \
     --deb-dir debs --lock debs/debs.lock.json \
-    --deb /path/to/termux-api-bootstrap.deb \
-    --deb /path/to/termux-am-bootstrap.deb \
-    --upgrade \
-    --hold-package termux-api --hold-package termux-am \
     --nixpp /path/to/nixpp --nixpp-version 0.5.0 \
     --nixpp-assets /path/to/seed/share/nixpp \
     -o out/bootstrap-aarch64.zip
@@ -82,6 +78,7 @@ entries).
 | `--prefix DIR` | Prepared package prefix laid out like `$PREFIX` (`bin/`, `lib/`, `etc/`, ...). |
 | `--nixpp FILE` | AArch64 ELF installed as `bin/nixpp` and registered as dpkg package `nixpp`. |
 | `--upgrade` | Allow a deb to replace an older version of a package bundled in the base. |
+| `--hold-package NAME` | Mark an installed package held against APT upgrades (repeatable). |
 | `--force-overwrite` | Allow overwriting files of another package (removed from its dpkg lists). |
 | `--no-check-deps` | Skip the dpkg dependency check of the result. |
 
@@ -124,52 +121,16 @@ they start with a stock prefix; other entries, their order and the `:`/space sep
 Without `TERMUX_APP__DATA_DIR` (stock Termux) nothing is rewritten. `scripts/test-pkg-redirect.sh`
 covers both cases; run it on a disposable worker.
 
-## Fork-compatible Android helpers
+## Android helpers
 
-Stock `termux-am` embeds `com.termux` as its Android caller identity. Stock
-`termux-api` targets the upstream receiver and socket. Filesystem redirection
-cannot fix either identity. The matching helper sources are part of this
-repository: TermuxAm is the `:termux-am` Gradle project, and the native API tools
-are under `termux-api-package/`.
-
-Run from the monorepo root on a build worker with JDK 17, Android SDK 35, NDK
-29.0.14206865, and CMake available:
-
-```sh
-./gradlew :termux-am:assembleRelease
-cmake -S termux-api-package -B build/termux-api-package \
-    -DCMAKE_TOOLCHAIN_FILE="$ANDROID_HOME/ndk/29.0.14206865/build/cmake/android.toolchain.cmake" \
-    -DANDROID_ABI=arm64-v8a -DANDROID_PLATFORM=android-24 \
-    -DCMAKE_INSTALL_PREFIX=/data/data/dev.pschmitt.termux/files/usr \
-    -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-cmake --build build/termux-api-package
-DESTDIR="$PWD/termux-api-package/staging" \
-    cmake --install build/termux-api-package
-python3 -I scripts/package-helpers.py \
-    --am-source termux-am \
-    --am-apk termux-am/app/build/outputs/apk/release/termux-am-release-unsigned.apk \
-    --api-source termux-api-package \
-    --api-prefix termux-api-package/staging/data/data/dev.pschmitt.termux/files/usr \
-    --out-dir helper-debs --bootstrap
-```
-
-Add both generated `.deb` files to the bootstrap `build` command with repeatable
-`--deb FILE` arguments and `--upgrade` to replace the upstream `termux-am`.
-Also pass `--hold-package termux-am --hold-package termux-api` to protect both
-helpers from incompatible upstream upgrades.
-For an existing TermuxPP installation, rerun packaging **without** `--bootstrap`
-and install those packages inside TermuxPP with `dpkg -i FILE...`. Bootstrap
-packages use upstream archive paths; device packages use the real fork prefix.
-Do not install bootstrap-mode packages directly on a device.
-
-The packages retain the `termux-am` and `termux-api` names so nixpp's APT
-requirements are satisfied. After installing on an existing device, run
-`apt-mark hold termux-am termux-api` to prevent ordinary upstream upgrades from
-silently replacing the compatible helpers. Bootstrap builds use the
-`--hold-package` options above to set the same dpkg selection state. To update,
-install matching fork packages and reapply the holds. `apt-mark unhold` opts
-back into incompatible upstream tools. The `am` launcher makes its APK read-only
-before loading it on Android 14+.
+TermuxPP no longer builds Debian packages of the `termux-am` and `termux-api`
+helpers. Its Rust `tpp` API commands and the `am` launcher come from the nixpp
+guest (`pkgs/nixpp/android-api.nix`). The native API bridge sources are under
+`pkgs/tpp-api-bridge/`, and the `:termux-am` Gradle project remains in the
+repository; neither is packaged as a `.deb` here. Stock `termux-am` and
+`termux-api` packages address stock Termux identities (see
+[the differences](termuxpp-differences.md)), so do not add them to this
+bootstrap expecting the TermuxPP identity.
 
 ## Limitations
 

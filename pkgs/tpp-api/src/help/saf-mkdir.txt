@@ -1,0 +1,4 @@
+Usage: tpp saf mkdir parent-uri name
+Creates a directory via SAF.
+This behaves like tpp saf create, just for directories.
+ -h  show this help

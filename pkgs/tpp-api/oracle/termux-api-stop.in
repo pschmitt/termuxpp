@@ -1,0 +1,10 @@
+#!@TERMUX_PREFIX@/bin/sh
+case "${1:-}" in
+  -h|--help)
+    echo "Usage: tpp api stop"
+    echo "Stop the TermuxPP API keep-alive service."
+    exit 0
+    ;;
+esac
+
+am stopservice -n dev.pschmitt.termux/dev.pschmitt.termux.api.KeepAliveService

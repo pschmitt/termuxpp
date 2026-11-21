@@ -1,0 +1,2 @@
+Usage: tpp camera info
+Get information about device camera(s).

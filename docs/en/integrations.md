@@ -10,8 +10,8 @@ Open **Settings → Integrations** for their available controls and diagnostics.
 ## API
 
 API receivers and services run in TermuxPP. Shell commands such as
-`termux-battery-status` use the TermuxPP build of the `termux-api` helper
-package. See [building and packaging helpers](aarch64-bootstrap.md#fork-compatible-android-helpers).
+`tpp battery` use the TermuxPP build of the API command-line tools,
+provided by the nixpp guest. See [Android helpers](aarch64-bootstrap.md#android-helpers).
 Grant the Android permissions required by the commands you use. Expiring
 shell notifications display a countdown in the Android notification shade.
 Critical notifications stay visible until dismissed.
@@ -53,17 +53,17 @@ apps through Android settings. [APK updates](self-update.md).
 
 The Gradle projects are linked into the main APK. Build the app from the
 repository root using the [Android build instructions](../../AGENTS.md).
-The native API and TermuxAm helper packages have their own build instructions.
+The native API tools and the TermuxAm helper have their own build instructions.
 
 | Component | Source |
 | --- | --- |
-| API | [Android component](../../termux-api/) and [CLI helper package](../../termux-api-package/TERMUXPP.md) |
-| Tasker | [Plug-in component](../../termux-tasker/) |
-| Boot | [Boot component](../../termux-boot/) |
-| Float | [Floating terminal component](../../termux-float/) |
-| Styling | [Styling component](../../termux-styling/) |
-| Widget | [Widget component](../../termux-widget/) |
-| TermuxAm | [Helper package](../../termux-am/TERMUXPP.md) |
+| API | [Android component](../../android/components/termux-api/) and [CLI tools](../../pkgs/tpp-api-bridge/TERMUXPP.md) |
+| Tasker | [Plug-in component](../../android/components/termux-tasker/) |
+| Boot | [Boot component](../../android/components/termux-boot/) |
+| Float | [Floating terminal component](../../android/components/termux-float/) |
+| Styling | [Styling component](../../android/components/termux-styling/) |
+| Widget | [Widget component](../../android/components/termux-widget/) |
+| TermuxAm | [Helper](../../android/components/termux-am/TERMUXPP.md) |
 
 ## ADB shell Wi-Fi restriction
 

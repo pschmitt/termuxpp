@@ -1,0 +1,3 @@
+Usage: tpp camera photo [-c camera-id] output-file
+Take a photo and save it to a file in JPEG format.
+  -c camera-id  ID of the camera to use (see tpp camera info), default: 0

@@ -1,0 +1,19 @@
+[package]
+name = "tpp"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+description = "TermuxPP unified Android API command line: dispatcher, help, output rendering and completion"
+license = "GPL-3.0-only"
+publish = false
+
+[[bin]]
+name = "tpp"
+path = "src/main.rs"
+
+# The sibling crates of the workspace are the only dependencies, and they have
+# none: the binary is built for four Android ABIs and for the guest, and a
+# vendored dependency tree would need a Nix hash per change.
+[dependencies]
+tpp-api = { path = "../tpp-api" }
+tpp-session = { path = "../tpp-session" }

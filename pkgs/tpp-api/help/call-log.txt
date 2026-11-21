@@ -1,0 +1,4 @@
+Usage: tpp call-log [-l <limit>] [-o <offset>]
+List call log history
+  -l <limit>   limit in call log list (default: 10)
+  -o <offset>  offset in call log list (default: 0)

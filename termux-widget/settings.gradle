@@ -1,5 +1,0 @@
-include ':app', ':termux-shared', ':terminal-emulator', ':terminal-view'
-
-project(':termux-shared').projectDir = file('termux-app/termux-shared')
-project(':terminal-emulator').projectDir = file('termux-app/terminal-emulator')
-project(':terminal-view').projectDir = file('termux-app/terminal-view')

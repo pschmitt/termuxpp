@@ -1,0 +1,14 @@
+# One tpp executable: the dispatcher (tpp-cli) with the session control
+# (tpp-session) and the API command backends (tpp-api) linked in. The crates
+# have no third-party dependencies, so Cargo.lock lists only them.
+[workspace]
+resolver = "2"
+members = ["pkgs/tpp-cli", "pkgs/tpp-session", "pkgs/tpp-api"]
+default-members = ["pkgs/tpp-cli"]
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

@@ -1,7 +1,0 @@
-include ':app'
-
-// Build against the matching TermuxPP core shared modules.
-include ':terminal-emulator', ':terminal-view', ':termux-shared'
-project(':terminal-emulator').projectDir = file('termux-app/terminal-emulator')
-project(':terminal-view').projectDir = file('termux-app/terminal-view')
-project(':termux-shared').projectDir = file('termux-app/termux-shared')

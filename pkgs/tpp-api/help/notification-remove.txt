@@ -1,0 +1,2 @@
+Usage: tpp notification remove notification-id
+Remove a notification previously shown with tpp notification send --id.

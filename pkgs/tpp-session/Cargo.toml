@@ -1,0 +1,20 @@
+[package]
+name = "tpp-session"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+description = "tpp-session: control TermuxPP terminal sessions through the app's session socket"
+license = "GPL-3.0-only"
+publish = false
+
+[lib]
+name = "tpp_session"
+path = "src/lib.rs"
+
+# Only the integration tests run this thin wrapper; it is not packaged. The shipped `tpp` calls
+# the library directly (`tpp session ...`, or argv0 `tpp-session`).
+[[bin]]
+name = "tpp-session"
+path = "src/main.rs"
+
+[dependencies]

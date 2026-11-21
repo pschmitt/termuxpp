@@ -1,0 +1,6 @@
+Usage: tpp saf dirs
+Lists all directories you gave Termux:API in the same format as tpp saf ls.
+That meas this lists the 'directory' that contains all directories you can access with the other tpp saf commands.
+The URIs can be used with the other tpp saf commands to create files and folders and list the directory contents.
+See tpp saf managedir to give Termux:API access to a folder.
+ -h  show this help

@@ -1,0 +1,2 @@
+Usage: tpp clipboard get
+Get the system clipboard text.

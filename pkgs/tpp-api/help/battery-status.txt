@@ -1,0 +1,2 @@
+Usage: tpp battery
+Get the status of the device battery.

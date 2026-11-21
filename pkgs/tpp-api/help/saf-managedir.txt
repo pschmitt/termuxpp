@@ -1,0 +1,7 @@
+Usage: tpp saf managedir
+Opens the system file explorer and lets you specify a folder Termux:API get access to.
+You can then use the tpp saf utilities to manage the contents in that folder.
+Returns a URI identifying the directory, this URI can be used with the other tpp saf commands to create files and folders and list the directory contents.
+If you close the file manager instead, an empty string will be returned.
+You can use tpp saf dirs to list out all directories you gave Termux:API access to like this.
+ -h  show this help

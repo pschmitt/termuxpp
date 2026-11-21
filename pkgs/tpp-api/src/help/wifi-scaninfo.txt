@@ -1,0 +1,2 @@
+Usage: tpp wifi scan
+Get information about the last wifi scan.

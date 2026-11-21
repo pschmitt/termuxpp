@@ -1,0 +1,2 @@
+Usage: tpp brightness auto|LEVEL
+Set the screen brightness between 0 and 255 or auto
