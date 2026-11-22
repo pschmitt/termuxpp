@@ -5,6 +5,8 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import android.app.Dialog;
+import android.content.ClipboardManager;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.Window;
@@ -52,6 +54,12 @@ public class ServicesPreferencesFragmentUiTest {
         MenuItem help = menu.findItem(R.id.boot_script_help);
         assertNotNull(help);
         assertTrue(activity.onMenuItemSelected(Window.FEATURE_OPTIONS_PANEL, help));
-        assertTrue(ShadowDialog.getLatestDialog().isShowing());
+        Dialog setup = ShadowDialog.getLatestDialog();
+        assertTrue(setup.isShowing());
+        assertTrue(setup.findViewById(R.id.boot_script_copy).performClick());
+        ClipboardManager clipboard = activity.getSystemService(ClipboardManager.class);
+        assertEquals(activity.getString(R.string.boot_script_example),
+            clipboard.getPrimaryClip().getItemAt(0).getText().toString());
+        assertTrue(setup.isShowing());
     }
 }

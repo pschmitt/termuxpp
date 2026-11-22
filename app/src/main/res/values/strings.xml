@@ -287,7 +287,11 @@
     <string name="about_preference_title">About</string>
     <string name="about_information_title">About this app</string>
     <string name="about_information_summary">Version, device details and project links</string>
-    <string name="about_information_action_title">View app and device details</string>
+    <string name="about_information_action_title">App and device details</string>
+    <string name="about_information_loading">Loading app and device details</string>
+    <string name="about_information_copied">App and device details copied</string>
+    <string name="about_information_saved">App and device details saved</string>
+    <string name="about_information_save_failed">Could not save app and device details</string>
 
     <!-- Donate Preference -->
     <string name="donate_preference_title">Donate</string>

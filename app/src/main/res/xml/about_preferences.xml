@@ -14,6 +14,7 @@
 
         <Preference
             app:key="about_information"
+            app:fragment="com.termux.app.fragments.settings.AppDetailsFragment"
             app:icon="@drawable/ui_ic_info"
             app:title="@string/about_information_action_title"
             app:summary="@string/about_information_summary"

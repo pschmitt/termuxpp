@@ -9,6 +9,7 @@ import androidx.preference.PreferenceFragmentCompat;
 import com.termux.R;
 import com.termux.app.TermuxActivity;
 import com.termux.app.fragments.settings.AboutPreferencesFragment;
+import com.termux.app.fragments.settings.AppDetailsFragment;
 import com.termux.app.terminal.ReportIssueRequest;
 
 import org.junit.Assert;
@@ -43,6 +44,25 @@ public class SettingsReportIssueTest {
         Assert.assertTrue(reportIssue.isVisible());
         Assert.assertEquals(activity.getString(R.string.action_report_issue), reportIssue.getTitle().toString());
         Assert.assertSame(reportIssue, about.getPreferenceScreen().getPreference(0));
+    }
+
+    @Test
+    public void appDetailsOpenInsideSettingsAndBackReturnsToAbout() {
+        SettingsActivity activity = Robolectric.buildActivity(SettingsActivity.class).setup().get();
+        PreferenceFragmentCompat root = rootFragment(activity);
+        root.findPreference("about").performClick();
+        activity.getSupportFragmentManager().executePendingTransactions();
+
+        PreferenceFragmentCompat about = rootFragment(activity);
+        about.findPreference("about_information").performClick();
+        activity.getSupportFragmentManager().executePendingTransactions();
+
+        Fragment details = activity.getSupportFragmentManager().findFragmentById(R.id.settings);
+        Assert.assertTrue(details instanceof AppDetailsFragment);
+        Assert.assertEquals(activity.getString(R.string.about_information_action_title), activity.getTitle());
+        Assert.assertNull(Shadows.shadowOf(activity).getNextStartedActivity());
+        Assert.assertTrue(activity.getSupportFragmentManager().popBackStackImmediate());
+        Assert.assertSame(about, rootFragment(activity));
     }
 
     @Test

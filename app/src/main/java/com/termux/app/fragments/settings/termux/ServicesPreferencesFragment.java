@@ -2,6 +2,7 @@ package com.termux.app.fragments.settings.termux;
 
 import android.content.Context;
 import android.content.res.ColorStateList;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -51,6 +52,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import dev.pschmitt.termux.shared.interact.DialogUtils;
+import dev.pschmitt.termux.shared.interact.ShareUtils;
 import dev.pschmitt.termux.shared.termux.TermuxConstants;
 import dev.pschmitt.termux.shared.termux.nix.TermuxNix;
 import dev.pschmitt.termux.shared.termux.shell.command.environment.TermuxShellEnvironment;
@@ -129,9 +131,15 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
     }
 
     private void showBootSetup() {
-        DialogUtils.builder(requireContext())
+        Context context = requireContext();
+        View setup = LayoutInflater.from(context).inflate(R.layout.ui_boot_script_setup, null);
+        setup.findViewById(R.id.boot_script_copy).setOnClickListener(button ->
+            ShareUtils.copyTextToClipboard(context, getString(R.string.boot_script_example_title),
+                getString(R.string.boot_script_example), Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+                    ? getString(R.string.boot_script_example_copied) : null));
+        DialogUtils.builder(context)
             .setTitle(R.string.boot_setup_title)
-            .setView(R.layout.ui_boot_script_setup)
+            .setView(setup)
             .setPositiveButton(android.R.string.ok, null)
             .show();
     }

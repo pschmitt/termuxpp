@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Environment;
 
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
@@ -14,14 +13,9 @@ import androidx.preference.Preference;
 import com.termux.R;
 import com.termux.app.settings.GroupedPreferencesFragment;
 import com.termux.app.TermuxActivity;
-import com.termux.app.models.UserAction;
 import com.termux.app.terminal.ReportIssueRequest;
-import dev.pschmitt.termux.shared.activities.ReportActivity;
-import dev.pschmitt.termux.shared.android.AndroidUtils;
 import dev.pschmitt.termux.shared.android.PackageUtils;
-import dev.pschmitt.termux.shared.file.FileUtils;
 import dev.pschmitt.termux.shared.interact.ShareUtils;
-import dev.pschmitt.termux.shared.models.ReportInfo;
 import dev.pschmitt.termux.shared.termux.TermuxConstants;
 import dev.pschmitt.termux.shared.termux.TermuxUtils;
 
@@ -43,14 +37,6 @@ public class AboutPreferencesFragment extends GroupedPreferencesFragment {
                 Intent intent = TermuxActivity.newInstance(context);
                 intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 context.startActivity(intent);
-                return true;
-            });
-        }
-
-        Preference aboutInformation = findPreference("about_information");
-        if (aboutInformation != null) {
-            aboutInformation.setOnPreferenceClickListener(preference -> {
-                showAboutInformation(context);
                 return true;
             });
         }
@@ -97,24 +83,5 @@ public class AboutPreferencesFragment extends GroupedPreferencesFragment {
         Activity activity = getActivity();
         if (activity != null && previousTitle != null) activity.setTitle(previousTitle);
         super.onStop();
-    }
-
-    private void showAboutInformation(Context context) {
-        new Thread(() -> {
-            StringBuilder aboutString = new StringBuilder();
-            aboutString.append(TermuxUtils.getAppInfoMarkdownString(context, TermuxUtils.AppInfoMode.TERMUX_AND_PLUGIN_PACKAGES));
-            aboutString.append("\n\n").append(AndroidUtils.getDeviceInfoMarkdownString(context, true));
-            aboutString.append("\n\n").append(TermuxUtils.getImportantLinksMarkdownString(context));
-
-            String userActionName = UserAction.ABOUT.getName();
-            ReportInfo reportInfo = new ReportInfo(userActionName,
-                TermuxConstants.TERMUX_APP.TERMUX_SETTINGS_ACTIVITY_NAME,
-                context.getString(R.string.about_preference_title));
-            reportInfo.setReportString(aboutString.toString());
-            reportInfo.setReportSaveFileLabelAndPath(userActionName,
-                Environment.getExternalStorageDirectory() + "/" +
-                    FileUtils.sanitizeFileName(TermuxConstants.TERMUX_APP_NAME + "-" + userActionName + ".log", true, true));
-            ReportActivity.startReportActivity(context, reportInfo);
-        }).start();
     }
 }
