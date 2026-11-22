@@ -48,7 +48,7 @@ existing installs. Before pruning generations, `nixpp gc` tries to restore any
 missing bootstrap store paths from the public cache and checks both guest
 entry points. [Bootstrap preparation](../../pkgs/nixpp/source/src/bootstrap.rs)
 and [garbage collection](../../pkgs/nixpp/source/src/gc.rs) implement this
-TermuxPP runtime behavior.
+TermuxPP runtime behavior. Bare `tpp toast` in a terminal shows how to supply a message. Toast text can be passed as arguments or piped to standard input, and empty input is rejected.
 
 ## Session sidebar
 

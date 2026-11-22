@@ -708,10 +708,16 @@ fn run_captured(class: &str, imp: &str, args: &[OsString], json: bool, acknowled
     if status == 0 && data.is_empty() && acknowledge {
         if json {
             return render_output("auto", br#"{"status":"request sent"}"#, true);
-        } else if ctx::use_color() {
-            write_out(b"\x1b[32mRequest sent\x1b[0m\n");
+        }
+        let message = if imp == "toast" {
+            "Toast requested"
         } else {
-            write_out(b"Request sent\n");
+            "Request sent"
+        };
+        if ctx::use_color() {
+            write_out(format!("\x1b[32m{message}\x1b[0m\n").as_bytes());
+        } else {
+            write_out(format!("{message}\n").as_bytes());
         }
         return 0;
     }
@@ -866,6 +872,7 @@ fn run_entry(e: &Entry, args: Vec<OsString>, json: bool) -> i32 {
         .is_some_and(|arg| is(arg, "--help") || is(arg, "-h") || is(arg, "help"))
     {
         let text = match (e.group.as_str(), e.action.as_str()) {
+            ("toast", "-") => "Usage: tpp toast [OPTIONS] TEXT...\n       COMMAND | tpp toast [OPTIONS]\n\nShow a short popup with text from arguments or piped standard input.\nPiped input has a three-second read limit.\n\nOptions:\n  -b COLOR     Set the background color.\n  -c COLOR     Set the text color.\n  -g POSITION  Place the popup at top, middle, or bottom.\n  -s           Use the shorter display duration.\n\nExamples:\n  tpp toast \"Build finished\"\n  printf '%s\\n' \"Build finished\" | tpp toast\n",
             ("usb", "list") => "Usage: tpp usb list\nList USB devices.\n",
             ("usb", "permission") => "Usage: tpp usb permission DEVICE | VENDOR_ID PRODUCT_ID\nCheck USB device permission.\n",
             ("usb", "request") => "Usage: tpp usb request DEVICE | VENDOR_ID PRODUCT_ID\nRequest USB device permission.\n",

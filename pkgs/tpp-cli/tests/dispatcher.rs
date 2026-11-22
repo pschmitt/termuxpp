@@ -388,7 +388,12 @@ fn silent_actions_acknowledge_requests() {
     for command in commands {
         let (human, _) = fx.app(command, b"");
         assert_eq!(code(&human), 0, "{command:?}: {}", err(&human));
-        assert_eq!(out(&human), "Request sent\n", "{command:?}");
+        let expected = if command[0] == "toast" {
+            "Toast requested\n"
+        } else {
+            "Request sent\n"
+        };
+        assert_eq!(out(&human), expected, "{command:?}");
         let mut args = vec!["--json"];
         args.extend_from_slice(command);
         let (json, _) = fx.app(&args, b"");
@@ -904,4 +909,26 @@ fn unique_prefixes_resolve_commands_and_actions() {
     assert!(err(&ambiguous).contains("pause, play"));
     let (_, options) = complete(&fx, &["not", "l", "--"]);
     assert!(options.contains(&"--help".to_owned()));
+}
+
+#[test]
+fn toast_requires_a_message_and_keeps_piped_input_quiet() {
+    let fx = Fixture::new("toast-input");
+    let output = fx.run(&["toast"]);
+    assert_eq!(code(&output), 2);
+    assert!(out(&output).is_empty());
+    assert!(err(&output).contains("no message received"));
+    let message = fx.dir.join("message");
+    fs::write(&message, b"Build finished\n").unwrap();
+    let (output, call) = fx.app_with(&["toast"], b"", |command| {
+        command.stdin(Stdio::from(fs::File::open(&message).unwrap()));
+    });
+    assert_eq!(code(&output), 0);
+    assert_eq!(call.method(), "Toast");
+    assert_eq!(out(&output), "Toast requested\n");
+    assert_eq!(call.stdin, b"Build finished\n");
+    assert!(err(&output).is_empty());
+    let (output, call) = fx.app(&["toast", "--", "-n"], b"");
+    assert_eq!(code(&output), 0);
+    assert_eq!(call.stdin, b"-n\n");
 }

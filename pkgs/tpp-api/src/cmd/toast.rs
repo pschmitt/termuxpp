@@ -1,6 +1,7 @@
 //! `toast`: `tpp toast [-b bgcolor] [-c color] [-g gravity] [-s] [text]`.
 use crate::getopts::{Getopts, Opt};
 use crate::{Call, Io};
+use std::io::IsTerminal;
 use std::time::Duration;
 
 pub const USAGE: &str = include_str!("../help/toast.txt");
@@ -28,6 +29,11 @@ pub fn run(args: &[String], io: &mut Io) -> i32 {
         }
     }
     let rest = g.rest();
+    if io.strict_usage && rest.is_empty() && std::io::stdin().is_terminal() {
+        io.errln("tpp toast: enter a message as an argument, or pipe text into the command.");
+        io.errln("Example: tpp toast \"Build finished\"");
+        return 2;
+    }
     // The text comes from the arguments, else from standard input (3 s).
     let mut text: Vec<u8> = if rest.is_empty() {
         io.read_stdin_until_nul(Duration::from_secs(3))
@@ -35,14 +41,19 @@ pub fn run(args: &[String], io: &mut Io) -> i32 {
         rest.join(" ").into_bytes()
     };
     // TOAST_TEXT="$(echo "$TOAST_TEXT")": trailing newlines go away
-    if std::str::from_utf8(&text)
-        .map(is_echo_option)
-        .unwrap_or(false)
+    if !io.strict_usage
+        && std::str::from_utf8(&text)
+            .map(is_echo_option)
+            .unwrap_or(false)
     {
         text.clear();
     }
     while text.last() == Some(&b'\n') {
         text.pop();
+    }
+    if io.strict_usage && text.iter().all(u8::is_ascii_whitespace) {
+        io.errln("tpp toast: no message received. Try: tpp toast \"Build finished\"");
+        return 2;
     }
     // echo "$TOAST_TEXT" | termux-api Toast ...
     text.push(b'\n');
