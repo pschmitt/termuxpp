@@ -315,6 +315,23 @@ fn render_output(class: &str, data: &[u8], json: bool) -> i32 {
     }
 }
 
+fn api_error(data: &[u8]) -> Option<String> {
+    let text = std::str::from_utf8(data).ok()?;
+    let value = tpp_session::json::parse(text).ok()?;
+    match value.get("API_ERROR")? {
+        tpp_session::json::Value::String(message) => Some(message.clone()),
+        _ => None,
+    }
+}
+
+fn report_api_error(message: &str) {
+    if ctx::use_color() {
+        eprintln!("\x1b[31mtpp: error: {message}\x1b[0m");
+    } else {
+        eprintln!("tpp: error: {message}");
+    }
+}
+
 /// Render complete JSON objects from a live stream without waiting for EOF.
 struct StreamRenderer<W: Write> {
     out: W,
@@ -326,6 +343,7 @@ struct StreamRenderer<W: Write> {
     mode: Mode,
     color: bool,
     invalid_text: bool,
+    api_failed: bool,
     unwrap_array: bool,
     array_started: bool,
     array_has_value: bool,
@@ -343,6 +361,7 @@ impl<W: Write> StreamRenderer<W> {
             mode,
             color,
             invalid_text: false,
+            api_failed: false,
             unwrap_array: false,
             array_started: false,
             array_has_value: false,
@@ -350,6 +369,20 @@ impl<W: Write> StreamRenderer<W> {
     }
 
     fn emit(&mut self) -> io::Result<()> {
+        if self.structured {
+            if let Some(message) = api_error(&self.pending) {
+                self.api_failed = true;
+                if self.mode == Mode::Human {
+                    report_api_error(&message);
+                    self.pending.clear();
+                    self.depth = 0;
+                    self.quoted = false;
+                    self.escaped = false;
+                    self.structured = false;
+                    return Ok(());
+                }
+            }
+        }
         if self.mode == Mode::Json
             && (self.pending.contains(&0) || std::str::from_utf8(&self.pending).is_err())
         {
@@ -464,6 +497,20 @@ mod stream_tests {
     use super::*;
 
     #[test]
+    fn api_error_is_detected_in_a_stream() {
+        let mut stream = StreamRenderer::new(Vec::new(), Mode::Json, false);
+        stream
+            .write_all(br#"{"API_ERROR":"location denied"}"#)
+            .unwrap();
+        stream.finish().unwrap();
+        assert!(stream.api_failed);
+        assert!(String::from_utf8(stream.out)
+            .unwrap()
+            .contains("location denied"));
+        assert_eq!(api_error(br#"[{"API_ERROR":"ordinary data"}]"#), None);
+    }
+
+    #[test]
     fn complete_records_are_emitted_without_waiting_for_eof() {
         let mut stream = StreamRenderer::new(Vec::new(), Mode::Human, false);
         stream
@@ -528,6 +575,9 @@ fn run_stream(imp: &str, args: &[OsString], json: bool) -> i32 {
             return 1;
         }
     }
+    if output.api_failed && status == 0 {
+        return 1;
+    }
     if output.invalid_text {
         err!("refusing --json: the output is binary or not valid UTF-8");
         if status == 0 {
@@ -589,6 +639,16 @@ fn run_captured(class: &str, imp: &str, args: &[OsString], json: bool, acknowled
             write_out(b"No output\n");
         }
         return 0;
+    }
+    if class == "auto" {
+        if let Some(message) = api_error(&data) {
+            if json {
+                let _ = render_output(class, &data, true);
+            } else {
+                report_api_error(&message);
+            }
+            return if status == 0 { 1 } else { status };
+        }
     }
     let rc = render_output(class, &data, json);
     if let Some(code) = signal_status() {

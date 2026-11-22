@@ -19,9 +19,7 @@ import androidx.annotation.RequiresPermission;
 import dev.pschmitt.termux.api.TermuxApiReceiver;
 import dev.pschmitt.termux.api.util.ResultReturner;
 import dev.pschmitt.termux.api.util.ResultReturner.ResultJsonWriter;
-import dev.pschmitt.termux.shared.android.PermissionUtils;
 import dev.pschmitt.termux.shared.logger.Logger;
-import dev.pschmitt.termux.shared.termux.TermuxConstants;
 
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
@@ -76,18 +74,6 @@ public class LocationAPI {
             public void writeJson(final JsonWriter out) throws Exception {
                 LocationManager manager = (LocationManager) LocationService.this.getSystemService(Context.LOCATION_SERVICE);
 
-                // If on Android `>= 11` and background location permission is missing, ask user to grant it.
-                // - https://developer.android.com/reference/android/Manifest.permission#ACCESS_BACKGROUND_LOCATION
-                // - https://developer.android.com/develop/sensors-and-location/location/permissions/background
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
-                    !PermissionUtils.checkPermission(LocationService.this, Manifest.permission.ACCESS_BACKGROUND_LOCATION)) {
-                    out.beginObject()
-                        .name("API_ERROR")
-                        .value("Background location permission not granted." +
-                                " Grant it manually from Android Settings -> Apps -> " + TermuxConstants.TERMUX_API_APP_NAME + " -> Permissions -> Location -> Allow all the time").endObject();
-                    return;
-                }
-
                 String provider = intent.getStringExtra("provider");
                 if (provider == null)
                     provider = LocationManager.GPS_PROVIDER;
@@ -107,8 +93,12 @@ public class LocationAPI {
                 final String request = requestParam;
                 switch (request) {
                     case REQUEST_LAST_KNOWN:
-                        Location lastKnownLocation = manager.getLastKnownLocation(provider);
-                        locationToJson(lastKnownLocation, out);
+                        try {
+                            Location lastKnownLocation = manager.getLastKnownLocation(provider);
+                            locationToJson(lastKnownLocation, out);
+                        } catch (SecurityException e) {
+                            out.beginObject().name("API_ERROR").value("Location permission is not available. Open TermuxPP and try again.").endObject();
+                        }
                         break;
                     case REQUEST_ONCE:
                     case REQUEST_UPDATES:
@@ -159,7 +149,12 @@ public class LocationAPI {
                             } else {
                                 manager.requestLocationUpdates(provider, 5000, 1.f, locationListener, locationThread.getLooper());
                             }
+                        } catch (SecurityException e) {
+                            locationThread.quitSafely();
+                            out.beginObject().name("API_ERROR").value("Location permission is not available. Open TermuxPP and try again.").endObject();
+                            return;
                         } catch (Throwable t) {
+                            locationThread.quitSafely();
                             out.beginObject().name("API_ERROR").value("Failed to request location:\n" + Logger.getStackTraceString(t)).endObject();
                             return;
                         }
