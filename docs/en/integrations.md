@@ -36,7 +36,7 @@ optional relaunch.
 | Integration | Where to use it |
 | --- | --- |
 | **Boot** | Open **Settings → Services → Run at boot** to see the scripts Android will schedule. Put scripts in the native TermuxPP home's `~/.config/termuxpp/boot/`. TermuxPP schedules them in filename order. For duplicate names, that directory takes precedence over `~/.config/termux/boot/` and `~/.termux/boot/`. |
-| **Float** | Start a floating terminal and allow the overlay permission if Android requests it. Float reads `~/.config/termuxpp/termux.float.properties`. |
+| **Float** | Open **TermuxPP:Float** from Android’s launcher. If the launcher groups the entries, run `am start -n dev.pschmitt.termux/com.termux.window.TermuxFloatActivity` from TermuxPP. Allow the overlay permission if Android requests it. Float reads `~/.config/termuxpp/termux.float.properties`. |
 | **Styling** | Open **Settings → Display** to choose a font and color scheme. See [Terminal settings](terminal-settings.md#configuration-files) for custom files. |
 | **Widget** | Add the TermuxPP widget from your launcher. Put terminal shortcuts in the native home's `~/.shortcuts/` and background tasks in `~/.shortcuts/tasks/`. |
 

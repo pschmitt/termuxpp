@@ -318,6 +318,10 @@ companion. Stock Termux packages, APKs, and Android helpers remain a separate
 family. The path redirect and unchanged Tasker protocol preserve specific
 compatibility points; neither makes the two app identities interchangeable.
 
+The bundled Float activity has its own **TermuxPP:Float** launcher label.
+It shares the main APK identity. See [the Float manifest](../../android/components/termux-float/app/src/main/AndroidManifest.xml)
+and [launcher instructions](integrations.md#boot-float-styling-and-widget).
+
 ## Services settings
 
 When the managed Nix guest is available, **Settings > TermuxPP > Services** lists

@@ -14,7 +14,7 @@
             android:theme="@android:style/Theme.NoDisplay"
             android:noHistory="true"
             android:name=".TermuxFloatActivity"
-            android:label="@string/app_name" >
+            android:label="@string/termux_float_launcher_label" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
