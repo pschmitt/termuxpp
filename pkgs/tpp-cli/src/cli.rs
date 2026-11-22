@@ -825,6 +825,13 @@ pub fn run(mut args: Vec<OsString>) -> i32 {
             return run_entry(e, argv, json);
         }
         if argv.is_empty() {
+            if let Some(e) = app
+                .table
+                .find(&group, "list")
+                .or_else(|| app.table.find(&group, "get"))
+            {
+                return run_entry(e, argv, json);
+            }
             write_err(&group_usage(&app, &group));
             return 2;
         }

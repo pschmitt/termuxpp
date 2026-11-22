@@ -229,6 +229,23 @@ fn code(o: &Output) -> i32 {
 const BATTERY: &[u8] = b"{\"percentage\": 85, \"status\": \"FULL\"}\n";
 
 #[test]
+fn groups_default_to_list_or_get() {
+    let fx = Fixture::new("default-actions");
+    for (group, action, reply) in [
+        ("clipboard", "get", b"hello".as_slice()),
+        ("contacts", "list", b"[]".as_slice()),
+        ("notification", "list", b"[]".as_slice()),
+        ("sms", "list", b"[]".as_slice()),
+    ] {
+        let (default, default_call) = fx.app(&[group], reply);
+        let (explicit, explicit_call) = fx.app(&[group, action], reply);
+        assert_eq!(code(&default), code(&explicit), "{group}");
+        assert_eq!(default.stdout, explicit.stdout, "{group}");
+        assert_eq!(default_call.method(), explicit_call.method(), "{group}");
+    }
+}
+
+#[test]
 fn structured_read_commands_render_human_and_json_results() {
     let fx = Fixture::new("structured-commands");
     let commands: &[&[&str]] = &[
