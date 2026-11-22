@@ -1,6 +1,5 @@
 package com.termux.app.fragments.settings.termux;
 
-import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Toast;
 
@@ -14,6 +13,7 @@ import androidx.preference.PreferenceCategory;
 import androidx.preference.PreferenceScreen;
 
 import com.termux.R;
+import com.termux.app.TermuxActivity;
 import com.termux.app.settings.GroupedPreferencesFragment;
 import com.termux.app.settings.TermuxPropertiesEditor;
 import com.termux.app.settings.PropertyInputSpec;
@@ -211,9 +211,7 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
     private boolean save(String key, String value) {
         try {
             editor.set(key, value.isEmpty() ? null : value);
-            Intent reload = new Intent(TermuxConstants.TERMUX_APP.TERMUX_ACTIVITY.ACTION_RELOAD_STYLE);
-            reload.setPackage(requireContext().getPackageName());
-            requireContext().sendBroadcast(reload);
+            TermuxActivity.onPropertiesEditedFromSettings(requireContext());
             return true;
         } catch (IOException | IllegalArgumentException e) {
             Toast.makeText(requireContext(), R.string.properties_save_error, Toast.LENGTH_LONG).show();

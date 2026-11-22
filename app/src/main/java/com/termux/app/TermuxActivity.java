@@ -201,6 +201,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private AlertDialog sessionSwitcher;
     private String appAccent;
+    private static boolean pendingPropertiesReload;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -322,6 +323,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         if (mIsInvalidState) return;
         if (!AppAccent.get(this).equals(appAccent)) {
             recreate();
+            return;
+        }
+        if (pendingPropertiesReload) {
+            reloadActivityStyling(true);
             return;
         }
 
@@ -471,6 +476,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private void reloadProperties() {
         mProperties.loadTermuxPropertiesFromDisk();
+        pendingPropertiesReload = false;
 
         if (mTermuxTerminalViewClient != null)
             mTermuxTerminalViewClient.onReloadProperties();
@@ -1104,6 +1110,14 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
 
 
+
+    public static void onPropertiesEditedFromSettings(Context context) {
+        // Settings can stop the terminal activity, which temporarily unregisters its receiver.
+        pendingPropertiesReload = true;
+        Intent intent = new Intent(TERMUX_ACTIVITY.ACTION_RELOAD_STYLE);
+        intent.setPackage(context.getPackageName());
+        context.sendBroadcast(intent);
+    }
 
     public static void updateTermuxActivityStyling(Context context, boolean recreateActivity) {
         // Make sure that terminal styling is always applied.
