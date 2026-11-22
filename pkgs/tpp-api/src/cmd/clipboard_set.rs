@@ -10,6 +10,12 @@ pub fn run(args: &[String], io: &mut Io) -> i32 {
         Err(status) => return status,
     };
     let call = Call::new("Clipboard").e("api_version", 2).ez("set", true);
+    if rest.is_empty() && io.strict_usage {
+        return match io.read_message(NAME, "tpp clipboard set \"Text to copy\"") {
+            Ok(text) => io.run_call(call.stdin_bytes(text)),
+            Err(status) => status,
+        };
+    }
     if rest.is_empty() {
         io.run_call(call)
     } else {

@@ -18,8 +18,17 @@ pub fn show_usage(io: &mut Io, usage: &str) -> i32 {
 /// `?) echo "$SCRIPTNAME: illegal option -$OPTARG"; exit 1` (on standard
 /// output, as the scripts do).
 pub fn illegal_option(io: &mut Io, name: &str, opt: char) -> i32 {
-    io.outln(&format!("{name}: illegal option -{opt}"));
-    1
+    invalid_argument(io, &format!("{name}: illegal option -{opt}"))
+}
+
+pub(super) fn invalid_argument(io: &mut Io, message: &str) -> i32 {
+    if io.strict_usage {
+        io.errln(message);
+        2
+    } else {
+        io.outln(message);
+        1
+    }
 }
 
 /// The options of a script that only knows `-h`
@@ -50,8 +59,7 @@ pub fn no_operands(io: &mut Io, name: &str, rest: &[String]) -> Option<i32> {
     if rest.is_empty() {
         None
     } else {
-        io.outln(&format!("{name}: too many arguments"));
-        Some(1)
+        Some(invalid_argument(io, &format!("{name}: too many arguments")))
     }
 }
 

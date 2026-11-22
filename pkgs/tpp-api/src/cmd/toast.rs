@@ -1,7 +1,6 @@
 //! `toast`: `tpp toast [-b bgcolor] [-c color] [-g gravity] [-s] [text]`.
 use crate::getopts::{Getopts, Opt};
 use crate::{Call, Io};
-use std::io::IsTerminal;
 use std::time::Duration;
 
 pub const USAGE: &str = include_str!("../help/toast.txt");
@@ -29,13 +28,12 @@ pub fn run(args: &[String], io: &mut Io) -> i32 {
         }
     }
     let rest = g.rest();
-    if io.strict_usage && rest.is_empty() && std::io::stdin().is_terminal() {
-        io.errln("tpp toast: enter a message as an argument, or pipe text into the command.");
-        io.errln("Example: tpp toast \"Build finished\"");
-        return 2;
-    }
-    // The text comes from the arguments, else from standard input (3 s).
-    let mut text: Vec<u8> = if rest.is_empty() {
+    let mut text = if rest.is_empty() && io.strict_usage {
+        match io.read_message(NAME, "tpp toast \"Build finished\"") {
+            Ok(text) => text,
+            Err(status) => return status,
+        }
+    } else if rest.is_empty() {
         io.read_stdin_until_nul(Duration::from_secs(3))
     } else {
         rest.join(" ").into_bytes()

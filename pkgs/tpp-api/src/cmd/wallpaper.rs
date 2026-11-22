@@ -46,6 +46,7 @@ pub fn run(args: &[String], io: &mut Io) -> i32 {
         match o {
             Opt::Flag('h') => return super::show_usage(io, USAGE),
             Opt::Flag('l') => lockscreen = true,
+            Opt::Arg('f', v) if io.strict_usage => file = v,
             Opt::Arg('f', v) => {
                 // path="$(realpath "$OPTARG")" under set -e
                 let path = match io.realpath(&v) {
@@ -72,6 +73,10 @@ pub fn run(args: &[String], io: &mut Io) -> i32 {
             Opt::Flag(_) => {}
         }
     }
+    if io.strict_usage && file.is_empty() == url.is_empty() {
+        io.errln("tpp wallpaper: specify exactly one of --file or --url");
+        return 2;
+    }
     if file.is_empty() && url.is_empty() {
         io.outln(&format!("{NAME}: you must specify either -f or -u"));
         return 1;
@@ -83,6 +88,15 @@ pub fn run(args: &[String], io: &mut Io) -> i32 {
     }
     if let Some(status) = super::no_operands(io, NAME, g.rest()) {
         return status;
+    }
+    if io.strict_usage && !file.is_empty() {
+        file = match io.realpath(&file) {
+            Ok(path) if Path::new(&path).is_file() => path,
+            _ => {
+                io.errln(&format!("{NAME}: --file is not a readable file: {file}"));
+                return 2;
+            }
+        };
     }
     let mut call = Call::new("Wallpaper");
     if lockscreen {

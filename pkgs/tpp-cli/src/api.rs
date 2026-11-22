@@ -13,12 +13,21 @@ pub fn run(imp: &str, args: &[OsString]) -> i32 {
 
 /// Run `imp` with its standard output written to `stdout`.
 pub fn run_to(imp: &str, args: &[OsString], stdout: &mut dyn Write, human: bool) -> i32 {
-    let mut stderr = io::stderr();
+    run_with_streams(imp, args, stdout, &mut io::stderr(), human)
+}
+
+pub fn run_with_streams(
+    imp: &str,
+    args: &[OsString],
+    stdout: &mut dyn Write,
+    stderr: &mut dyn Write,
+    human: bool,
+) -> i32 {
     let transport = Progress { human };
     let mut io = Io {
         stdin: Some(Box::new(io::stdin())),
         stdout,
-        stderr: &mut stderr,
+        stderr,
         env: Env::process(),
         strict_usage: true,
         transport: &transport,

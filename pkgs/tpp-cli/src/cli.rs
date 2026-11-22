@@ -47,14 +47,88 @@ fn write_err(text: &str) {
 }
 
 fn write_usage_error(text: &str) {
-    write_err(&ctx::color_stderr_help(text));
+    write_err(&ctx::color_stderr_help(&compact_help(text, help_width())));
 }
 
 fn write_help(text: &str) {
-    write_out(ctx::color_help(text).as_bytes());
+    write_out(ctx::color_help(&compact_help(text, help_width())).as_bytes());
 }
 
 // ------------------------------------------------------------------ help
+
+fn help_width() -> usize {
+    if let Some(width) = env::var("COLUMNS")
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .filter(|width| *width > 0)
+    {
+        return width;
+    }
+    let width = || {
+        let terminal = File::open("/dev/tty").ok()?;
+        let output = Command::new("stty")
+            .arg("size")
+            .stdin(terminal)
+            .stderr(std::process::Stdio::null())
+            .output()
+            .ok()?;
+        if !output.status.success() {
+            return None;
+        }
+        std::str::from_utf8(&output.stdout)
+            .ok()?
+            .split_whitespace()
+            .nth(1)?
+            .parse::<usize>()
+            .ok()
+            .filter(|width| *width > 0)
+    };
+    width().unwrap_or(80)
+}
+
+fn compact_help(text: &str, width: usize) -> String {
+    if width >= 72 {
+        return text.to_owned();
+    }
+    let mut output = String::new();
+    for line in text.lines() {
+        let mut indent = line.len() - line.trim_start().len();
+        if let Some((label, description)) =
+            line.strip_prefix("  ").and_then(|row| row.split_once("  "))
+        {
+            if !label.starts_with(char::is_whitespace) && !description.trim().is_empty() {
+                output.push_str(&format!("  {label}\n"));
+                indent = 4;
+                wrap_help_line(&mut output, description.trim(), indent, width);
+                continue;
+            }
+        }
+        wrap_help_line(&mut output, line.trim(), indent, width);
+    }
+    output
+}
+
+fn wrap_help_line(output: &mut String, line: &str, indent: usize, width: usize) {
+    let padding = " ".repeat(indent.min(width / 4));
+    let mut length = 0;
+    for word in line.split_whitespace() {
+        let chars = word.chars().count();
+        if length > 0 && length + chars + 1 > width {
+            output.push('\n');
+            length = 0;
+        }
+        if length == 0 {
+            output.push_str(&padding);
+            length = padding.len();
+        } else {
+            output.push(' ');
+            length += 1;
+        }
+        output.push_str(word);
+        length += chars;
+    }
+    output.push('\n');
+}
 
 fn usage(app: &App) -> String {
     let mut s = String::from(
@@ -212,6 +286,18 @@ fn show_help(app: &App, args: &[OsString]) -> i32 {
         return native::run(group, &help, false);
     }
     if app.table.is_group(group) {
+        let max_words = if app.table.find(group, "-").is_some() {
+            1
+        } else {
+            2
+        };
+        if args.len() > max_words {
+            err!(
+                "help: unexpected argument '{}'",
+                args[max_words].to_string_lossy()
+            );
+            return 2;
+        }
         if let Some(e) = app.table.find(group, "-") {
             return run_entry(e, vec![OsString::from("-h")], false);
         }
@@ -245,7 +331,57 @@ fn exec(program: &Path, args: &[OsString]) -> i32 {
     }
 }
 
+pub(crate) fn expand_plugin_actions(
+    plugin: &Path,
+    args: &mut [OsString],
+) -> Result<Vec<String>, String> {
+    let Ok(manifest) = fs::read_to_string(plugin.with_extension("actions")) else {
+        return Ok(Vec::new());
+    };
+    let mut paths: Vec<_> = manifest
+        .lines()
+        .map(|line| line.split_whitespace().collect::<Vec<_>>())
+        .filter(|path| path.iter().all(|word| ctx::valid_plugin_name(word)))
+        .collect();
+    for (index, arg) in args.iter_mut().enumerate() {
+        let Some(word) = arg.to_str() else { break };
+        let action = match resolve_prefix(
+            word,
+            paths.iter().filter_map(|path| path.get(index).copied()),
+        ) {
+            Ok(Some(action)) => action,
+            Ok(None) => return Ok(Vec::new()),
+            Err(matches) => {
+                return Err(format!(
+                    "ambiguous action '{word}'. Matches: {}",
+                    matches.join(", ")
+                ))
+            }
+        };
+        *arg = OsString::from(action);
+        paths.retain(|path| path.get(index) == Some(&action));
+    }
+    let mut next: Vec<_> = paths
+        .iter()
+        .filter_map(|path| path.get(args.len()).map(|name| (*name).to_owned()))
+        .collect();
+    next.sort_unstable();
+    next.dedup();
+    Ok(next)
+}
+
+fn plugin_action_error(plugin: &Path, message: &str) -> i32 {
+    err!(
+        "{}: {message}",
+        plugin.file_name().unwrap_or_default().to_string_lossy()
+    );
+    2
+}
+
 fn plugin_help(plugin: &Path, mut args: Vec<OsString>) -> i32 {
+    if let Err(error) = expand_plugin_actions(plugin, &mut args) {
+        return plugin_action_error(plugin, &error);
+    }
     if !args.iter().any(|arg| is(arg, "--help") || is(arg, "-h")) {
         args.push(OsString::from("--help"));
     }
@@ -407,6 +543,27 @@ fn api_error(data: &[u8]) -> Option<String> {
     }
 }
 
+fn json_error(message: &str, status: i32) -> String {
+    use tpp_session::json::Value;
+    Value::Object(vec![(
+        "error".into(),
+        Value::Object(vec![
+            ("message".into(), Value::string(message)),
+            ("exit_code".into(), Value::Number(status.to_string())),
+        ]),
+    )])
+    .to_compact()
+}
+
+fn command_error(message: &str, status: i32, json: bool) -> i32 {
+    if json {
+        let _ = render_output("auto", json_error(message, status).as_bytes(), true);
+    } else {
+        report_api_error(message);
+    }
+    status
+}
+
 fn report_api_error(message: &str) {
     if ctx::use_color() {
         eprintln!("\x1b[31mtpp: error: {message}\x1b[0m");
@@ -427,6 +584,7 @@ struct StreamRenderer<W: Write> {
     color: bool,
     invalid_text: bool,
     api_failed: bool,
+    saw_data: bool,
     unwrap_array: bool,
     array_started: bool,
     array_has_value: bool,
@@ -445,6 +603,7 @@ impl<W: Write> StreamRenderer<W> {
             color,
             invalid_text: false,
             api_failed: false,
+            saw_data: false,
             unwrap_array: false,
             array_started: false,
             array_has_value: false,
@@ -452,21 +611,20 @@ impl<W: Write> StreamRenderer<W> {
     }
 
     fn emit(&mut self) -> io::Result<()> {
-        if self.structured {
-            if let Some(message) = api_error(&self.pending) {
-                self.api_failed = true;
-                if self.mode == Mode::Human {
-                    report_api_error(&message);
-                    self.pending.clear();
-                    self.depth = 0;
-                    self.quoted = false;
-                    self.escaped = false;
-                    self.structured = false;
-                    return Ok(());
-                }
+        let message = self.structured.then(|| api_error(&self.pending)).flatten();
+        if let Some(message) = message {
+            self.api_failed = true;
+            if self.mode == Mode::Json {
+                let output =
+                    render::render(Mode::Json, self.color, json_error(&message, 1).as_bytes())
+                        .map_err(|_| {
+                            io::Error::new(io::ErrorKind::InvalidData, "cannot encode API error")
+                        })?;
+                self.out.write_all(&output)?;
+            } else {
+                report_api_error(&message);
             }
-        }
-        if self.mode == Mode::Json
+        } else if self.mode == Mode::Json
             && (self.pending.contains(&0) || std::str::from_utf8(&self.pending).is_err())
         {
             self.invalid_text = true;
@@ -507,6 +665,7 @@ impl<W: Write> StreamRenderer<W> {
 
 impl<W: Write> Write for StreamRenderer<W> {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.saw_data |= buf.iter().any(|byte| !byte.is_ascii_whitespace());
         for &b in buf {
             if self.unwrap_array && self.pending.is_empty() {
                 if !self.array_started && b.is_ascii_whitespace() {
@@ -647,19 +806,39 @@ mod stream_tests {
     }
 }
 
-fn run_stream(imp: &str, args: &[OsString], json: bool) -> i32 {
+fn run_stream(imp: &str, args: &[OsString], json: bool, expects_reply: bool) -> i32 {
     let mode = if json { Mode::Json } else { Mode::Human };
     let mut output = StreamRenderer::new(io::stdout(), mode, ctx::use_color());
     output.unwrap_array = imp == "location" && !json;
-    let status = api::run_to(imp, args, &mut output, !json);
+    let mut diagnostics = Vec::new();
+    let status = if json {
+        api::run_with_streams(imp, args, &mut output, &mut diagnostics, false)
+    } else {
+        api::run_to(imp, args, &mut output, true)
+    };
     if let Err(e) = output.finish() {
         err!("cannot write output: {e}");
         if status == 0 {
             return 1;
         }
     }
-    if output.api_failed && status == 0 {
-        return 1;
+    if output.api_failed {
+        return if status == 0 { 1 } else { status };
+    }
+    if json && status != 0 {
+        let diagnostic = String::from_utf8_lossy(&diagnostics);
+        return command_error(
+            if diagnostic.trim().is_empty() {
+                "Command failed"
+            } else {
+                diagnostic.trim()
+            },
+            status,
+            true,
+        );
+    }
+    if status == 0 && expects_reply && !output.saw_data {
+        return command_error("No response from TermuxPP", 1, json);
     }
     if output.invalid_text {
         err!("refusing --json: the output is binary or not valid UTF-8");
@@ -689,7 +868,12 @@ fn run_captured(class: &str, imp: &str, args: &[OsString], json: bool, acknowled
     };
     catch_signals();
     let mut stdout = stdout;
-    let status = api::run_to(imp, args, &mut stdout, !json);
+    let mut diagnostics = Vec::new();
+    let status = if json {
+        api::run_with_streams(imp, args, &mut stdout, &mut diagnostics, false)
+    } else {
+        api::run_to(imp, args, &mut stdout, true)
+    };
     if let Some(code) = signal_status() {
         return code;
     }
@@ -702,10 +886,30 @@ fn run_captured(class: &str, imp: &str, args: &[OsString], json: bool, acknowled
         err!("cannot read the output of tpp-api {imp}: {e}");
         return if status != 0 { status } else { 1 };
     }
+    if class == "auto" {
+        if let Some(message) = api_error(&data) {
+            return command_error(&message, if status == 0 { 1 } else { status }, json);
+        }
+    }
+    if status != 0 && json {
+        let diagnostic = if diagnostics.is_empty() {
+            &data
+        } else {
+            &diagnostics
+        };
+        let diagnostic = String::from_utf8_lossy(diagnostic);
+        let message = if diagnostic.trim().is_empty() {
+            "Command failed"
+        } else {
+            diagnostic.trim()
+        };
+        return command_error(message, status, true);
+    }
     if status != 0 && data.is_empty() {
         return status;
     }
-    if status == 0 && data.is_empty() && acknowledge {
+    let no_response = data.iter().all(u8::is_ascii_whitespace);
+    if status == 0 && no_response && acknowledge {
         if json {
             return render_output("auto", br#"{"status":"request sent"}"#, true);
         }
@@ -721,23 +925,8 @@ fn run_captured(class: &str, imp: &str, args: &[OsString], json: bool, acknowled
         }
         return 0;
     }
-    if status == 0 && data.is_empty() && class == "auto" && !json {
-        if ctx::use_color() {
-            write_out(b"\x1b[2mNo output\x1b[0m\n");
-        } else {
-            write_out(b"No output\n");
-        }
-        return 0;
-    }
-    if class == "auto" {
-        if let Some(message) = api_error(&data) {
-            if json {
-                let _ = render_output(class, &data, true);
-            } else {
-                report_api_error(&message);
-            }
-            return if status == 0 { 1 } else { status };
-        }
+    if status == 0 && no_response && class == "auto" {
+        return command_error("No response from TermuxPP", 1, json);
     }
     let rc = render_output(class, &data, json);
     if let Some(code) = signal_status() {
@@ -772,7 +961,10 @@ fn public_help(entry: &Entry, text: &str) -> String {
         )
 }
 
-fn normalize_args(entry: &Entry, args: Vec<OsString>) -> Result<(Vec<OsString>, bool), String> {
+fn normalize_args(
+    entry: &Entry,
+    args: Vec<OsString>,
+) -> Result<(Vec<OsString>, bool, bool), (String, bool)> {
     let reserved: &[(&str, &str)] = match (entry.group.as_str(), entry.action.as_str()) {
         ("dialog", "show") => &[("-l", "list")],
         ("audio", "record") => &[("-i", "recording"), ("-q", "stop")],
@@ -796,6 +988,8 @@ fn normalize_args(entry: &Entry, args: Vec<OsString>) -> Result<(Vec<OsString>, 
         .find(|row| row.group == entry.group && row.action == entry.action)
         .map_or("", |row| row.words);
     let mut json = false;
+    let mut invalid = None;
+    let mut help = false;
     let mut normalized = Vec::with_capacity(args.len());
     let mut args = args.into_iter();
     while let Some(arg) = args.next() {
@@ -803,6 +997,10 @@ fn normalize_args(entry: &Entry, args: Vec<OsString>) -> Result<(Vec<OsString>, 
             normalized.push(arg);
             normalized.extend(args);
             break;
+        }
+        if is(&arg, "--help") || is(&arg, "-h") || (normalized.is_empty() && is(&arg, "help")) {
+            help = true;
+            continue;
         }
         if is(&arg, "--json") {
             json = true;
@@ -812,7 +1010,8 @@ fn normalize_args(entry: &Entry, args: Vec<OsString>) -> Result<(Vec<OsString>, 
         let equals = bytes.iter().position(|&byte| byte == b'=');
         let name = equals.map_or(bytes, |at| &bytes[..at]);
         if let Some((_, action)) = reserved.iter().find(|(flag, _)| flag.as_bytes() == name) {
-            return Err(format!("use 'tpp {} {action}'", entry.group));
+            invalid.get_or_insert_with(|| format!("use 'tpp {} {action}'", entry.group));
+            continue;
         }
         let alias = long_options(&entry.imp)
             .iter()
@@ -830,23 +1029,33 @@ fn normalize_args(entry: &Entry, args: Vec<OsString>) -> Result<(Vec<OsString>, 
         if let Some(at) = equals {
             if alias.is_some() {
                 if !takes_value {
-                    return Err(format!(
-                        "option '{}' does not take a value",
-                        String::from_utf8_lossy(name)
-                    ));
+                    invalid.get_or_insert_with(|| {
+                        format!(
+                            "option '{}' does not take a value",
+                            String::from_utf8_lossy(name)
+                        )
+                    });
+                    continue;
                 }
                 normalized.push(OsString::from_vec(bytes[at + 1..].to_vec()));
             }
         } else if takes_value {
-            normalized.push(args.next().ok_or_else(|| {
-                format!(
-                    "option '{}' requires a value",
-                    String::from_utf8_lossy(name)
-                )
-            })?);
+            if let Some(value) = args.next() {
+                normalized.push(value);
+            } else {
+                invalid.get_or_insert_with(|| {
+                    format!(
+                        "option '{}' requires a value",
+                        String::from_utf8_lossy(name)
+                    )
+                });
+            }
         }
     }
-    Ok((normalized, json))
+    match invalid {
+        Some(message) if !help => Err((message, json)),
+        _ => Ok((normalized, json, help)),
+    }
 }
 
 fn write_location_help(action: &str) -> i32 {
@@ -867,12 +1076,14 @@ fn run_entry(e: &Entry, args: Vec<OsString>, json: bool) -> i32 {
     } else {
         e.args.split_whitespace().map(OsString::from).collect()
     };
-    if args
-        .first()
-        .is_some_and(|arg| is(arg, "--help") || is(arg, "-h") || is(arg, "help"))
-    {
+    let (mut args, json_flag, help) = match normalize_args(e, args) {
+        Ok(parsed) => parsed,
+        Err((message, json_flag)) => return command_error(&message, 2, json || json_flag),
+    };
+    let json = json || json_flag;
+    if help {
         let text = match (e.group.as_str(), e.action.as_str()) {
-            ("toast", "-") => "Usage: tpp toast [OPTIONS] TEXT...\n       COMMAND | tpp toast [OPTIONS]\n\nShow a short popup with text from arguments or piped standard input.\nPiped input has a three-second read limit.\n\nOptions:\n  -b COLOR     Set the background color.\n  -c COLOR     Set the text color.\n  -g POSITION  Place the popup at top, middle, or bottom.\n  -s           Use the shorter display duration.\n\nExamples:\n  tpp toast \"Build finished\"\n  printf '%s\\n' \"Build finished\" | tpp toast\n",
+            ("toast", "-") => "Usage: tpp toast [OPTIONS] TEXT...\n       COMMAND | tpp toast [OPTIONS]\n\nShow a short popup with text from arguments or piped standard input.\nPiped input is read until EOF.\n\nOptions:\n  -b COLOR     Set the background color.\n  -c COLOR     Set the text color.\n  -g POSITION  Place the popup at top, middle, or bottom.\n  -s           Use the shorter display duration.\n\nExamples:\n  tpp toast \"Build finished\"\n  printf '%s\\n' \"Build finished\" | tpp toast\n",
             ("usb", "list") => "Usage: tpp usb list\nList USB devices.\n",
             ("usb", "permission") => "Usage: tpp usb permission DEVICE | VENDOR_ID PRODUCT_ID\nCheck USB device permission.\n",
             ("usb", "request") => "Usage: tpp usb request DEVICE | VENDOR_ID PRODUCT_ID\nRequest USB device permission.\n",
@@ -940,17 +1151,14 @@ fn run_entry(e: &Entry, args: Vec<OsString>, json: bool) -> i32 {
         } else {
             text
         };
+        let text = if e.imp == "notification" {
+            text.replace("Will take\n                           precedence over stdin. If content is not passed as\n                           an argument or with stdin, then there will be a 3s delay.", "Takes precedence over piped input.\n                           Piped input is read until EOF.")
+        } else {
+            text
+        };
         write_help(&public_help(e, &text));
         return 0;
     }
-    let (mut args, json_flag) = match normalize_args(e, args) {
-        Ok(parsed) => parsed,
-        Err(message) => {
-            err!("{message}");
-            return 2;
-        }
-    };
-    let json = json || json_flag;
     let expected = match (e.group.as_str(), e.action.as_str()) {
         ("dialog" | "job-scheduler" | "volume", "list")
         | ("audio", "recording" | "stop")
@@ -960,24 +1168,33 @@ fn run_entry(e: &Entry, args: Vec<OsString>, json: bool) -> i32 {
         _ => None,
     };
     if expected.is_some_and(|count| args.len() != count) {
-        err!(
-            "invalid arguments for 'tpp {}'. Try 'tpp help {}'.",
-            e.name(),
-            e.name()
+        return command_error(
+            &format!(
+                "invalid arguments for 'tpp {}'. Try 'tpp help {}'.",
+                e.name(),
+                e.name()
+            ),
+            2,
+            json,
         );
-        return 2;
     }
     if e.group == "sensor" && e.action == "read" && args.iter().any(|a| is(a, "-l") || is(a, "-c"))
     {
-        err!("sensor: use 'tpp sensor list' or 'tpp sensor cleanup'");
-        return 2;
+        return command_error(
+            "sensor: use 'tpp sensor list' or 'tpp sensor cleanup'",
+            2,
+            json,
+        );
     }
     if e.group == "usb"
         && matches!(e.action.as_str(), "permission" | "request")
         && args.first().is_some_and(|a| lossy(a).starts_with('-'))
     {
-        err!("usb: use 'tpp usb list', 'permission', 'request', or 'open'");
-        return 2;
+        return command_error(
+            "usb: use 'tpp usb list', 'permission', 'request', or 'open'",
+            2,
+            json,
+        );
     }
     let typed: Vec<String> = args.iter().map(lossy).collect();
     let class = e.effective_class(&typed);
@@ -999,8 +1216,7 @@ fn run_entry(e: &Entry, args: Vec<OsString>, json: bool) -> i32 {
             [] => args.push(OsString::from("short")),
             [mode] if is(mode, "short") || is(mode, "full") => {}
             _ => {
-                err!("usage: tpp nfc read [short | full]");
-                return 2;
+                return command_error("usage: tpp nfc read [short | full]", 2, json);
             }
         }
     }
@@ -1008,8 +1224,7 @@ fn run_entry(e: &Entry, args: Vec<OsString>, json: bool) -> i32 {
         && e.action == "write"
         && !matches!(args.as_slice(), [option, _] if is(option, "-t"))
     {
-        err!("usage: tpp nfc write --text TEXT");
-        return 2;
+        return command_error("usage: tpp nfc write --text TEXT", 2, json);
     }
     fixed.extend(args);
     if (e.imp == "notification" && fixed.first().is_some_and(|arg| is(arg, "--help-actions")))
@@ -1021,7 +1236,7 @@ fn run_entry(e: &Entry, args: Vec<OsString>, json: bool) -> i32 {
         return status;
     }
     if class == "stream" || (e.imp == "location" && !json) {
-        return run_stream(&e.imp, &fixed, json);
+        return run_stream(&e.imp, &fixed, json, e.action != "cleanup");
     }
     if e.imp == "speech-to-text" && !json {
         return api::run_to(&e.imp, &fixed, &mut io::stdout(), true);
@@ -1067,9 +1282,13 @@ fn run_entry(e: &Entry, args: Vec<OsString>, json: bool) -> i32 {
 /// passed on exactly as given. A leading "tpp --json" is added at the end, in
 /// front of a "--" if there is one.
 fn run_plugin(plugin: &Path, lead_json: bool, mut args: Vec<OsString>) -> i32 {
+    if let Err(error) = expand_plugin_actions(plugin, &mut args) {
+        return plugin_action_error(plugin, &error);
+    }
     if args
-        .first()
-        .is_some_and(|arg| is(arg, "--help") || is(arg, "-h"))
+        .iter()
+        .take_while(|arg| !is(arg, "--"))
+        .any(|arg| is(arg, "--help") || is(arg, "-h"))
     {
         return plugin_help(plugin, args);
     }

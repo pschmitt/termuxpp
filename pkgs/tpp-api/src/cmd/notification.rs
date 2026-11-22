@@ -246,11 +246,18 @@ pub fn run(args: &[String], io: &mut Io) -> i32 {
     //   IFS= read -t 3 -r -d '' OPT_CONTENT
     let mut text: Vec<u8> = if content_passed {
         content.into_bytes()
+    } else if io.strict_usage {
+        match io.read_message(NAME, "tpp notification send --content \"Build finished\"") {
+            Ok(text) => text,
+            Err(status) => return status,
+        }
     } else {
         io.read_stdin_until_nul(Duration::from_secs(3))
     };
     // OPT_CONTENT="$(echo "$OPT_CONTENT")"
-    text = echo_substituted(&text);
+    if !io.strict_usage {
+        text = echo_substituted(&text);
+    }
     // echo "$OPT_CONTENT" | termux-api Notification "$@"
     io.run_call(call.stdin_bytes(echo_line(&text)))
 }

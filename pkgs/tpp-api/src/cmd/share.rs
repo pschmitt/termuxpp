@@ -53,5 +53,15 @@ pub fn run(args: &[String], io: &mut Io) -> i32 {
         };
         call = call.es("file", path);
     }
+    if rest.is_empty() && io.strict_usage {
+        match io.read_message(NAME, "printf '%s' \"Text to share\" | tpp share") {
+            Ok(text) if !text.is_empty() => call = call.stdin_bytes(text),
+            Ok(_) => {
+                io.errln(&format!("{NAME}: no text received"));
+                return 2;
+            }
+            Err(status) => return status,
+        }
+    }
     io.run_call(call)
 }

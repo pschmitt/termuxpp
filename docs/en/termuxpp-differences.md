@@ -48,7 +48,7 @@ existing installs. Before pruning generations, `nixpp gc` tries to restore any
 missing bootstrap store paths from the public cache and checks both guest
 entry points. [Bootstrap preparation](../../pkgs/nixpp/source/src/bootstrap.rs)
 and [garbage collection](../../pkgs/nixpp/source/src/gc.rs) implement this
-TermuxPP runtime behavior. Bare `tpp toast` in a terminal shows how to supply a message. Toast text can be passed as arguments or piped to standard input, and empty input is rejected.
+TermuxPP runtime behavior. Bare `tpp toast` in a terminal shows how to supply a message. Text commands explain how to supply input when stdin is a terminal and read redirected or piped input to EOF. Toast rejects empty input. Narrow help stacks command descriptions beneath command names. Captured JSON failures use an error object with a message and exit code. An empty response from a read command is an error, while an empty list is a valid result. Bundled plugins can supply a neighboring `.actions` manifest for prefix matching.
 
 ## Session sidebar
 

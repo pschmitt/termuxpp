@@ -52,7 +52,16 @@ pub fn run(args: &[String], io: &mut Io) -> i32 {
         }
     }
     let rest = g.rest();
-    if !rest.is_empty() {
+    if rest.is_empty() && io.strict_usage {
+        match io.read_message(NAME, "tpp tts speak \"Hello\"") {
+            Ok(text) if !text.is_empty() => call = call.stdin_bytes(text),
+            Ok(_) => {
+                io.errln(&format!("{NAME}: no message received"));
+                return 2;
+            }
+            Err(status) => return status,
+        }
+    } else if !rest.is_empty() {
         call = call.stdin_bytes(super::sms_send::echo(rest));
     }
     io.run_call(call)

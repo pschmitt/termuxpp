@@ -25,6 +25,12 @@ pub fn run(args: &[String], io: &mut Io) -> i32 {
     if matches!(args.first().map(String::as_str), Some("-h" | "--help")) {
         return super::show_usage(io, USAGE);
     }
+    if io.strict_usage
+        && !matches!(args, [level] if level == "auto" || (!level.is_empty() && level.bytes().all(|byte| byte.is_ascii_digit()) && level.parse::<u8>().is_ok()))
+    {
+        io.errln("tpp brightness: specify auto or an integer from 0 to 255");
+        return 2;
+    }
     if args.len() != 1 {
         return super::show_usage(io, USAGE);
     }

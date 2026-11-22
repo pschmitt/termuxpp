@@ -13,15 +13,19 @@ pub fn run(args: &[String], io: &mut Io) -> i32 {
             Opt::Flag('h') => return super::show_usage(io, USAGE),
             Opt::Arg('r', v) => {
                 if !matches!(v.as_str(), "once" | "last" | "updates") {
-                    io.outln(&format!("{NAME}: Unsupported request: '{v}'"));
-                    return 1;
+                    return super::invalid_argument(
+                        io,
+                        &format!("{NAME}: Unsupported request: '{v}'"),
+                    );
                 }
                 call = call.es("request", v);
             }
             Opt::Arg('p', v) => {
                 if !matches!(v.as_str(), "gps" | "network" | "passive") {
-                    io.outln(&format!("{NAME}: Unsupported provider: '{v}'"));
-                    return 1;
+                    return super::invalid_argument(
+                        io,
+                        &format!("{NAME}: Unsupported provider: '{v}'"),
+                    );
                 }
                 call = call.es("provider", v);
             }

@@ -258,7 +258,7 @@ fn api_errors_fail_in_human_and_json_modes() {
         assert!(err(&human).contains("permission denied"), "{command}");
         let (json, _) = fx.app(&["--json", command], reply);
         assert_ne!(code(&json), 0, "{command}");
-        assert!(out(&json).contains("API_ERROR"), "{command}");
+        assert!(out(&json).contains("\"error\""), "{command}");
     }
 }
 
@@ -382,7 +382,6 @@ fn silent_actions_acknowledge_requests() {
         &["infrared", "transmit", "-f", "38000", "100,100"],
         &["tts", "speak", "example"],
         &["download", "https://example.invalid/file"],
-        &["share"],
         &["wallpaper", "-u", "https://example.invalid/image"],
     ];
     for command in commands {
@@ -405,7 +404,8 @@ fn silent_actions_acknowledge_requests() {
         );
     }
     let (info, _) = fx.app(&["media", "info"], b"");
-    assert_eq!(out(&info), "No output\n");
+    assert_eq!(code(&info), 1);
+    assert!(err(&info).contains("No response from TermuxPP"));
     let invalid = fx.run(&["torch", "invalid"]);
     assert_ne!(code(&invalid), 0);
     assert!(!out(&invalid).contains("Request sent"));
@@ -482,10 +482,11 @@ fn invalid_utf8_is_refused_with_json_only() {
 fn empty_output_and_exit_status() {
     let fx = Fixture::new("empty");
     let (o, _) = fx.app(&["battery"], b"");
-    assert_eq!(out(&o), "No output\n");
-    assert_eq!(code(&o), 0);
+    assert_eq!(code(&o), 1);
+    assert!(err(&o).contains("No response from TermuxPP"));
     let (o, _) = fx.app(&["--json", "battery"], b"");
-    assert_eq!(out(&o), "null\n");
+    assert_eq!(code(&o), 1);
+    assert!(out(&o).contains("No response from TermuxPP"));
 
     // saf remove exits with the number that the app answers
     let (o, call) = fx.app(&["saf", "remove", "content://x"], b"7\n");
@@ -931,4 +932,128 @@ fn toast_requires_a_message_and_keeps_piped_input_quiet() {
     let (output, call) = fx.app(&["toast", "--", "-n"], b"");
     assert_eq!(code(&output), 0);
     assert_eq!(call.stdin, b"-n\n");
+}
+
+#[test]
+fn public_help_and_input_errors_are_consistent() {
+    let fx = Fixture::new("public-usage");
+    let help = fx.run(&["toast", "--short", "--help"]);
+    assert_eq!(code(&help), 0);
+    assert!(out(&help).contains("Usage: tpp toast"));
+    assert!(err(&help).is_empty());
+
+    for args in [
+        &["help", "battery", "typo"][..],
+        &["brightness", "nonsense"],
+        &["brightness", "256"],
+        &["brightness", "2junk"],
+        &["wallpaper"],
+        &[
+            "wallpaper",
+            "--file",
+            "image",
+            "--url",
+            "https://example.invalid",
+        ],
+    ] {
+        let output = fx.run(args);
+        assert_eq!(code(&output), 2, "{args:?}");
+        assert!(out(&output).is_empty(), "{args:?}");
+        assert!(!err(&output).is_empty(), "{args:?}");
+    }
+}
+
+#[test]
+fn narrow_help_stacks_command_descriptions() {
+    let fx = Fixture::new("narrow-help");
+    let narrow = fx
+        .command(&["--help"])
+        .env("COLUMNS", "45")
+        .output_retry()
+        .unwrap();
+    let wide = fx
+        .command(&["--help"])
+        .env("COLUMNS", "120")
+        .output_retry()
+        .unwrap();
+    assert!(out(&narrow).lines().all(|line| line.chars().count() <= 45));
+    assert!(out(&narrow).contains("  battery\n    Show the battery status"));
+    assert!(out(&wide)
+        .lines()
+        .any(|line| line.contains("battery") && line.contains("Show the battery status")));
+}
+
+#[test]
+fn text_commands_read_redirected_input() {
+    let fx = Fixture::new("text-input");
+    let message = fx.dir.join("message");
+    fs::write(&message, b"First line\nSecond line\n").unwrap();
+    for (args, method) in [
+        (&["share"][..], "Share"),
+        (&["clipboard", "set"][..], "Clipboard"),
+        (&["tts", "speak"][..], "TextToSpeech"),
+        (&["sms", "send", "--number", "123"][..], "SmsSend"),
+        (&["notification", "send"][..], "Notification"),
+    ] {
+        let (output, call) = fx.app_with(args, b"", |command| {
+            command.stdin(Stdio::from(fs::File::open(&message).unwrap()));
+        });
+        assert_eq!(code(&output), 0, "{args:?}: {}", err(&output));
+        assert_eq!(call.method(), method);
+        assert!(call.stdin.starts_with(b"First line\nSecond line\n"));
+        assert!(err(&output).is_empty(), "{args:?}");
+    }
+}
+
+#[test]
+fn json_errors_are_structured() {
+    let fx = Fixture::new("json-errors");
+    let output = fx.run(&["location", "get", "--provider", "bogus", "--json"]);
+    assert_eq!(code(&output), 2);
+    let parsed = tpp_session::json::parse(&out(&output)).unwrap();
+    let error = parsed.get("error").unwrap();
+    assert_eq!(
+        error.get("exit_code"),
+        Some(&tpp_session::json::Value::Number("2".to_owned()))
+    );
+    assert!(error.get("message").unwrap().display().contains("bogus"));
+}
+
+#[test]
+fn plugin_action_manifest_resolves_nested_prefixes() {
+    let fx = Fixture::new("plugin-actions");
+    fx.plugin("app", "printf '%s\\n' \"$@\"");
+    fs::write(
+        fx.libexec().join("plugins/app.actions"),
+        "update\nupdate check\nupdate cancel\nrestart\n",
+    )
+    .unwrap();
+    let output = fx.run(&["app", "u", "ch"]);
+    assert_eq!(out(&output), "update\ncheck\n");
+    assert_eq!(out(&fx.run(&["help", "app", "re"])), "restart\n--help\n");
+    let ambiguous = fx.run(&["app", "u", "c"]);
+    assert_eq!(code(&ambiguous), 2);
+    assert!(err(&ambiguous).contains("cancel, check"));
+    let (_, nested_help) = complete(&fx, &["help", "app", "u", ""]);
+    assert_eq!(nested_help, ["cancel", "check"]);
+    let (_, candidates) = complete(&fx, &["app", "u", "ch", "--"]);
+    assert_eq!(candidates, ["__complete", "update", "check", "--"]);
+}
+
+#[test]
+fn toast_waits_for_eof_on_a_slow_pipe() {
+    use std::os::fd::OwnedFd;
+    let fx = Fixture::new("slow-toast");
+    let (output, call) = fx.app_with(&["toast"], b"", |command| {
+        let (mut writer, reader) = UnixStream::pair().unwrap();
+        command.stdin(Stdio::from(OwnedFd::from(reader)));
+        std::thread::spawn(move || {
+            if writer.write_all(b"first ").is_ok() {
+                std::thread::sleep(Duration::from_millis(3100));
+                let _ = writer.write_all(b"second");
+            }
+        });
+    });
+    assert_eq!(code(&output), 0);
+    assert_eq!(call.stdin, b"first second\n");
 }

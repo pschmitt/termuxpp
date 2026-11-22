@@ -109,6 +109,47 @@ impl<'a> Io<'a> {
         v
     }
 
+    /// Read a public CLI text operand from a pipe or redirected file.
+    /// A terminal receives guidance immediately instead of an implicit read.
+    pub fn read_message(&mut self, command: &str, example: &str) -> Result<Vec<u8>, i32> {
+        use std::io::IsTerminal;
+        use std::sync::mpsc;
+        use std::time::Duration;
+
+        if io::stdin().is_terminal() {
+            self.errln(&format!(
+                "{command}: enter a message as an argument, or pipe text into the command."
+            ));
+            self.errln(&format!("Example: {example}"));
+            return Err(2);
+        }
+
+        let _guard = sys::InterruptGuard::install();
+        let mut stdin = self.take_stdin();
+        let (sender, receiver) = mpsc::channel();
+        std::thread::spawn(move || {
+            let mut text = Vec::new();
+            let result = stdin.read_to_end(&mut text).map(|_| text);
+            let _ = sender.send(result);
+        });
+        loop {
+            if let Some(signal) = sys::interrupted() {
+                return Err(128 + signal);
+            }
+            match receiver.recv_timeout(Duration::from_millis(50)) {
+                Ok(Ok(text)) => return Ok(text),
+                Err(mpsc::RecvTimeoutError::Timeout) => continue,
+                Ok(Err(error)) => {
+                    self.errln(&format!("{command}: cannot read standard input: {error}"))
+                }
+                Err(mpsc::RecvTimeoutError::Disconnected) => self.errln(&format!(
+                    "{command}: standard input reader stopped unexpectedly"
+                )),
+            }
+            return Err(1);
+        }
+    }
+
     /// `IFS= read -t SECS -r -d '' VAR`: standard input up to the first NUL,
     /// the end of input or the timeout, whichever comes first (what was read
     /// until then is kept, as `read` does).

@@ -9,7 +9,7 @@ use std::ffi::OsString;
 use std::io::{self, Write};
 use std::process::{Command, Stdio};
 
-use crate::cli::{group_names, resolve_prefix, App};
+use crate::cli::{expand_plugin_actions, group_names, resolve_prefix, App};
 use crate::native;
 
 /// The names that start with `cur`.
@@ -173,6 +173,16 @@ fn complete_words(app: &App, words: &[String]) -> Answer {
         if rest.len() == 1 {
             return (0, matching(cur, &names));
         }
+        if let Ok(Some(group)) = resolve_prefix(&rest[0], names.iter().map(String::as_str)) {
+            if let Some(plugin) = app.ctx.find_plugin(group) {
+                let mut actions: Vec<OsString> =
+                    rest[1..rest.len() - 1].iter().map(OsString::from).collect();
+                return match expand_plugin_actions(&plugin, &mut actions) {
+                    Ok(names) => (0, matching(cur, &names)),
+                    Err(_) => NOTHING,
+                };
+            }
+        }
         if let [typed, _] = rest {
             if let Ok(Some(group)) = resolve_prefix(typed, names.iter().map(String::as_str)) {
                 if native::is_native(group) {
@@ -192,9 +202,14 @@ fn complete_words(app: &App, words: &[String]) -> Answer {
     if let Some(plugin) = app.ctx.find_plugin(group) {
         // The plugin completes its own words: PLUGIN __complete WORD...
         // Its output is ours and so is its status.
+        let mut args: Vec<OsString> = rest.iter().map(OsString::from).collect();
+        let preceding = args.len().saturating_sub(1);
+        if expand_plugin_actions(&plugin, &mut args[..preceding]).is_err() {
+            return NOTHING;
+        }
         let status = Command::new(plugin)
             .arg("__complete")
-            .args(rest)
+            .args(args)
             .stdin(Stdio::null())
             .stderr(Stdio::null())
             .status();
