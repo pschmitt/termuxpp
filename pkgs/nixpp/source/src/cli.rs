@@ -389,13 +389,27 @@ impl Exit {
 
 /// Entry point of the binary.
 pub fn run() -> ExitCode {
-    let cli = Cli::parse();
+    let cli = parse_cli(std::env::args_os()).unwrap_or_else(|error| error.exit());
     let ui = Ui::detect(cli.color, cli.json, cli.quiet);
     let exit = execute(&cli, &ui);
     if let Some(message) = &exit.message {
         ui.error(message);
     }
     ExitCode::from(exit.code)
+}
+
+fn parse_cli<I, T>(args: I) -> std::result::Result<Cli, clap::Error>
+where
+    I: IntoIterator<Item = T>,
+    T: Into<std::ffi::OsString> + Clone,
+{
+    Cli::try_parse_from(args).map_err(|mut error| {
+        if error.kind() == clap::error::ErrorKind::MissingSubcommand {
+            // Clap includes hidden commands in this error's subcommand list.
+            error.remove(clap::error::ContextKind::ValidSubcommand);
+        }
+        error
+    })
 }
 
 fn non_empty(path: &Option<PathBuf>) -> Option<PathBuf> {
@@ -1038,12 +1052,23 @@ mod tests {
     use clap::CommandFactory;
 
     fn parse(arguments: &[&str]) -> std::result::Result<Cli, clap::Error> {
-        Cli::try_parse_from(std::iter::once("nixpp").chain(arguments.iter().copied()))
+        parse_cli(std::iter::once("nixpp").chain(arguments.iter().copied()))
     }
 
     #[test]
     fn command_definition_is_consistent() {
         Cli::command().debug_assert();
+    }
+
+    #[test]
+    fn missing_command_does_not_list_internal_commands() {
+        let output = parse(&[]).unwrap_err().to_string();
+        assert!(output.contains("Commands:"));
+        assert!(output.contains("upgrade"));
+        assert!(!output.contains("__"));
+        let output = parse(&["--quiet"]).unwrap_err().to_string();
+        assert!(output.contains("requires a subcommand"));
+        assert!(!output.contains("__"));
     }
 
     #[test]
