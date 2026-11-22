@@ -45,7 +45,7 @@ public class TermuxApiPermissionActivity extends Activity {
                             + (permissionsToRequest.size() > 1 ? "s" : "")
                             + " to use this command: "
                             + TextUtils.join(" ,", permissionsToRequest);
-                    out.beginObject().name("error").value(errorMessage).endObject();
+                    out.beginObject().name("API_ERROR").value(errorMessage).endObject();
                 }
             });
 

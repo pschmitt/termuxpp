@@ -44,6 +44,10 @@ fn write_err(text: &str) {
     let _ = io::stderr().write_all(text.as_bytes());
 }
 
+fn write_help(text: &str) {
+    write_out(ctx::color_help(text).as_bytes());
+}
+
 // ------------------------------------------------------------------ help
 
 fn usage(app: &App) -> String {
@@ -137,7 +141,7 @@ fn list_commands(app: &App) -> String {
 
 fn show_help(app: &App, args: &[OsString]) -> i32 {
     let Some(group) = args.first().map(lossy) else {
-        write_out(usage(app).as_bytes());
+        write_help(&usage(app));
         return 0;
     };
     let action = args.get(1).map(lossy);
@@ -156,7 +160,7 @@ fn show_help(app: &App, args: &[OsString]) -> i32 {
             write_err(&group_usage(app, &group));
             return 2;
         }
-        write_out(group_usage(app, &group).as_bytes());
+        write_help(&group_usage(app, &group));
         return 0;
     }
     if let Some(plugin) = app.ctx.find_plugin(&group) {
@@ -676,6 +680,32 @@ fn run_entry(e: &Entry, mut args: Vec<OsString>, json: bool) -> i32 {
         help = true;
         args[0] = OsString::from("-h");
     }
+    if help {
+        let text = match (e.group.as_str(), e.action.as_str()) {
+            ("usb", "list") => "Usage: tpp usb list\nList USB devices.\n",
+            ("usb", "permission") => "Usage: tpp usb permission DEVICE | VENDOR_ID PRODUCT_ID\nCheck USB device permission.\n",
+            ("usb", "request") => "Usage: tpp usb request DEVICE | VENDOR_ID PRODUCT_ID\nRequest USB device permission.\n",
+            ("usb", "open") => "Usage: tpp usb open COMMAND DEVICE | COMMAND VENDOR_ID PRODUCT_ID\nOpen a device and run COMMAND with its file descriptor.\n  -E  Export the descriptor in TERMUX_USB_FD.\n",
+            ("sensor", "list") => "Usage: tpp sensor list\nList available sensors.\n",
+            ("sensor", "cleanup") => "Usage: tpp sensor cleanup\nStop sensor listeners.\n",
+            ("sensor", "read") => "Usage: tpp sensor read [-a | -s SENSORS] [-d MS] [-n COUNT]\nRead sensor values.\n  -a  Read all sensors.\n  -s SENSORS  Read selected sensors.\n  -d MS  Set the delay.\n  -n COUNT  Limit readings.\n",
+            _ => tpp_api::usage(&e.imp).unwrap_or("Help unavailable.\n"),
+        };
+        write_help(text);
+        return 0;
+    }
+    if e.group == "sensor" && e.action == "read" && args.iter().any(|a| is(a, "-l") || is(a, "-c"))
+    {
+        err!("sensor: use 'tpp sensor list' or 'tpp sensor cleanup'");
+        return 2;
+    }
+    if e.group == "usb"
+        && matches!(e.action.as_str(), "permission" | "request")
+        && args.first().is_some_and(|a| lossy(a).starts_with('-'))
+    {
+        err!("usb: use 'tpp usb list', 'permission', 'request', or 'open'");
+        return 2;
+    }
     let typed: Vec<String> = args.iter().map(lossy).collect();
     let class = e.effective_class(&typed);
 
@@ -687,6 +717,9 @@ fn run_entry(e: &Entry, mut args: Vec<OsString>, json: bool) -> i32 {
         }
         err!("--json is not supported by 'tpp {name}': it prints binary or streamed data");
         return 2;
+    }
+    if e.group == "usb" && e.action == "open" && args.first().is_some_and(|a| is(a, "-E")) {
+        fixed.insert(0, args.remove(0));
     }
     fixed.extend(args);
     if (class == "stream" || (e.imp == "location" && !json)) && !help {
@@ -775,7 +808,7 @@ pub fn run(mut args: Vec<OsString>) -> i32 {
         let arg = lossy(&args[i]);
         match arg.as_str() {
             "-h" | "--help" => {
-                write_out(usage(&app).as_bytes());
+                write_help(&usage(&app));
                 return 0;
             }
             "--json" => {
@@ -837,7 +870,7 @@ pub fn run(mut args: Vec<OsString>) -> i32 {
         }
         let first = lossy(&argv[0]);
         if matches!(first.as_str(), "-h" | "--help" | "help") {
-            write_out(group_usage(&app, &group).as_bytes());
+            write_help(&group_usage(&app, &group));
             return 0;
         }
         if let Some(e) = app.table.find(&group, &first) {

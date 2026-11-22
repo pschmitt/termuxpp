@@ -236,12 +236,59 @@ fn groups_default_to_list_or_get() {
         ("contacts", "list", b"[]".as_slice()),
         ("notification", "list", b"[]".as_slice()),
         ("sms", "list", b"[]".as_slice()),
+        ("usb", "list", b"[]".as_slice()),
+        ("sensor", "list", b"[]".as_slice()),
     ] {
         let (default, default_call) = fx.app(&[group], reply);
         let (explicit, explicit_call) = fx.app(&[group, action], reply);
         assert_eq!(code(&default), code(&explicit), "{group}");
         assert_eq!(default.stdout, explicit.stdout, "{group}");
         assert_eq!(default_call.method(), explicit_call.method(), "{group}");
+    }
+}
+
+#[test]
+fn api_errors_fail_in_human_and_json_modes() {
+    let fx = Fixture::new("api-errors");
+    for command in ["battery", "location"] {
+        let reply = br#"{"API_ERROR":"permission denied"}"#;
+        let (human, _) = fx.app(&[command], reply);
+        assert_ne!(code(&human), 0, "{command}");
+        assert!(out(&human).is_empty(), "{command}");
+        assert!(err(&human).contains("permission denied"), "{command}");
+        let (json, _) = fx.app(&["--json", command], reply);
+        assert_ne!(code(&json), 0, "{command}");
+        assert!(out(&json).contains("API_ERROR"), "{command}");
+    }
+}
+
+#[test]
+fn help_respects_color_controls() {
+    let fx = Fixture::new("help-color");
+    for args in [
+        &["--help"][..],
+        &["contacts", "list", "--help"][..],
+        &["settings", "--help"][..],
+        &["session", "--help"][..],
+    ] {
+        let colored = fx
+            .command(args)
+            .env("CLICOLOR_FORCE", "1")
+            .output_retry()
+            .unwrap();
+        assert_eq!(code(&colored), 0, "{args:?}");
+        assert!(
+            out(&colored).contains("\x1b["),
+            "{args:?}: {}",
+            out(&colored)
+        );
+        let plain = fx
+            .command(args)
+            .env("CLICOLOR_FORCE", "1")
+            .env("NO_COLOR", "1")
+            .output_retry()
+            .unwrap();
+        assert!(!out(&plain).contains("\x1b["), "{args:?}");
     }
 }
 
@@ -257,13 +304,13 @@ fn structured_read_commands_render_human_and_json_results() {
         &["location"],
         &["keystore", "list"],
         &["saf", "dirs"],
-        &["sensor", "-l"],
+        &["sensor", "list"],
         &["sms", "list"],
         &["notification", "list"],
         &["tts", "engines"],
         &["telephony", "cell-info"],
         &["telephony", "device-info"],
-        &["usb", "-l"],
+        &["usb", "list"],
         &["volume"],
         &["wifi", "connection"],
         &["wifi", "scan"],
@@ -432,7 +479,7 @@ fn raw_commands_pass_bytes_and_refuse_json() {
     let o = fx.run(&["--json", "keystore", "sign", "x", "y"]);
     assert_eq!(code(&o), 2);
     assert!(err(&o).contains("--json is not supported"), "{}", err(&o));
-    let (o, call) = fx.app(&["sensor", "-l"], b"x\0y");
+    let (o, call) = fx.app(&["sensor", "list"], b"x\0y");
     assert_eq!(o.stdout, b"x\0y");
     assert_eq!(call.method(), "Sensor");
     // help is never refused, and the other actions are auto
@@ -448,11 +495,11 @@ fn sensor_renders_each_reading_and_supports_json() {
     let fx = Fixture::new("sensor-render");
     let reply =
         b"{\"accelerometer\":{\"values\":[1,2,3]}}\n{\"accelerometer\":{\"values\":[4,5,6]}}\n";
-    let (human, _) = fx.app(&["sensor", "-a", "-n", "2"], reply);
+    let (human, _) = fx.app(&["sensor", "read", "-a", "-n", "2"], reply);
     assert_eq!(code(&human), 0);
     assert!(out(&human).contains("accelerometer:"), "{}", out(&human));
     assert!(!out(&human).contains("\"accelerometer\""));
-    let (json, _) = fx.app(&["sensor", "-l", "--json"], b"{\"sensors\":[\"gyro\"]}\n");
+    let (json, _) = fx.app(&["sensor", "list", "--json"], b"{\"sensors\":[\"gyro\"]}\n");
     assert_eq!(code(&json), 0);
     assert!(out(&json).contains("\"sensors\": ["), "{}", out(&json));
 }

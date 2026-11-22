@@ -55,6 +55,26 @@ pub fn valid_plugin_name(name: &str) -> bool {
 
 /// Whether to color the output: NO_COLOR switches it off, CLICOLOR_FORCE on,
 /// else it is on for a terminal.
+pub fn color_help(text: &str) -> String {
+    if !use_color() {
+        return text.to_owned();
+    }
+    let mut result = String::new();
+    for line in text.split_inclusive('\n') {
+        let content = line.trim_end_matches('\n');
+        let newline = if line.ends_with('\n') { "\n" } else { "" };
+        if content.starts_with("Usage:")
+            || content.starts_with("usage:")
+            || content.ends_with(':') && !content.starts_with(' ')
+        {
+            result.push_str(&format!("\x1b[1;36m{content}\x1b[0m{newline}"));
+        } else {
+            result.push_str(line);
+        }
+    }
+    result
+}
+
 pub fn use_color() -> bool {
     if env_nonempty("NO_COLOR").is_some() {
         return false;

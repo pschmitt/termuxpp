@@ -38,7 +38,12 @@ pub fn run(name: &str, args: &[OsString], lead_json: bool) -> i32 {
     if name == "settings" {
         let words = strings(args);
         if words.is_empty() || matches!(words[0].as_str(), "-h" | "--help" | "help") {
-            println!("Usage: tpp settings reload [--json]\nReload app properties and styling.");
+            print!(
+                "{}",
+                crate::ctx::color_help(
+                    "Usage: tpp settings reload [--json]\nReload app properties and styling.\n"
+                )
+            );
             return 0;
         }
         if words[0] != "reload" {
@@ -68,6 +73,15 @@ fn run_session(args: &[String]) -> i32 {
     let exchange = SocketExchange::from_environment();
     let mut out = stdout.lock();
     let mut err = std::io::stderr().lock();
+    if args
+        .iter()
+        .any(|arg| matches!(arg.as_str(), "-h" | "--help"))
+    {
+        let mut help = Vec::new();
+        let status = cli::run(args, &exchange, &environment, &mut help, &mut err);
+        let _ = out.write_all(crate::ctx::color_help(&String::from_utf8_lossy(&help)).as_bytes());
+        return i32::from(status);
+    }
     let status = cli::run(args, &exchange, &environment, &mut out, &mut err);
     let _ = out.flush();
     let _ = err.flush();

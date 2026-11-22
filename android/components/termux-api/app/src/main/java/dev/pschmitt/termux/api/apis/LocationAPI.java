@@ -120,10 +120,11 @@ public class LocationAPI {
                             public void onLocationChanged(Location location) {
                                 try {
                                     synchronized (out) {
+                                        if (locationMonitorStore.finished) return;
                                         if (REQUEST_UPDATES.equals(request) && !locationMonitorStore.responseReceived) {
-                                            locationMonitorStore.responseReceived = true;
                                             out.beginArray();
                                         }
+                                        locationMonitorStore.responseReceived = true;
 
                                         locationToJson(location, out);
                                         out.flush();
@@ -166,6 +167,12 @@ public class LocationAPI {
                         } catch (InterruptedException e) {
                         } finally {
                             synchronized (out) {
+                                locationMonitorStore.finished = true;
+                                if (REQUEST_ONCE.equals(request) && !locationMonitorStore.responseReceived) {
+                                    out.beginObject().name("API_ERROR")
+                                        .value("No location received within 30 seconds. Check location access and the selected provider.")
+                                        .endObject();
+                                }
                                 if (REQUEST_UPDATES.equals(request) && locationMonitorStore.responseReceived) {
                                     try {
                                         out.endArray();
@@ -200,6 +207,7 @@ public class LocationAPI {
         public class LocationMonitorStore {
             public LocationListener locationListener;
             public boolean responseReceived;
+            public boolean finished;
         }
 
         protected void cleanUpLocationUpdates(LocationManager manager, LocationMonitorStore locationMonitorStore) {
