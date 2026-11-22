@@ -511,7 +511,7 @@ fn run_stream(imp: &str, args: &[OsString], json: bool) -> i32 {
 }
 
 /// Run a command with its standard output captured, then print it rendered.
-fn run_captured(class: &str, imp: &str, args: &[OsString], json: bool) -> i32 {
+fn run_captured(class: &str, imp: &str, args: &[OsString], json: bool, acknowledge: bool) -> i32 {
     let dir = temp_dir();
     let mut tmp = match make_temp(&dir) {
         Ok(t) => t,
@@ -544,6 +544,16 @@ fn run_captured(class: &str, imp: &str, args: &[OsString], json: bool) -> i32 {
     }
     if status != 0 && data.is_empty() {
         return status;
+    }
+    if status == 0 && data.is_empty() && acknowledge {
+        if json {
+            return render_output("auto", br#"{"status":"request sent"}"#, true);
+        } else if ctx::use_color() {
+            write_out(b"\x1b[32mRequest sent\x1b[0m\n");
+        } else {
+            write_out(b"Request sent\n");
+        }
+        return 0;
     }
     let rc = render_output(class, &data, json);
     if let Some(code) = signal_status() {
@@ -590,7 +600,12 @@ fn run_entry(e: &Entry, mut args: Vec<OsString>, json: bool) -> i32 {
     if class == "raw" || (class == "text" && !json) {
         return api::run(&e.imp, &fixed);
     }
-    run_captured(&class, &e.imp, &fixed, json)
+    let acknowledge = !help
+        && matches!(
+            e.imp.as_str(),
+            "vibrate" | "toast" | "torch" | "notification" | "notification-remove"
+        );
+    run_captured(&class, &e.imp, &fixed, json, acknowledge)
 }
 
 /// Run a plugin. The plugin owns its arguments, --json included, so they are

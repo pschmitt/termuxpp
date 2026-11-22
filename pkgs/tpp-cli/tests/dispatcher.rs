@@ -273,6 +273,38 @@ fn structured_read_commands_render_human_and_json_results() {
 }
 
 #[test]
+fn silent_actions_acknowledge_requests() {
+    let fx = Fixture::new("silent-actions");
+    let commands: &[&[&str]] = &[
+        &["vibrate", "-d", "100"],
+        &["toast", "hello"],
+        &["torch", "on"],
+        &["notification", "send", "-t", "hello"],
+        &["notification", "remove", "example"],
+    ];
+    for command in commands {
+        let (human, _) = fx.app(command, b"");
+        assert_eq!(code(&human), 0, "{command:?}: {}", err(&human));
+        assert_eq!(out(&human), "Request sent\n", "{command:?}");
+        let mut args = vec!["--json"];
+        args.extend_from_slice(command);
+        let (json, _) = fx.app(&args, b"");
+        assert_eq!(code(&json), 0, "{command:?}: {}", err(&json));
+        assert_eq!(
+            out(&json),
+            "{\n  \"status\": \"request sent\"\n}\n",
+            "{command:?}"
+        );
+    }
+    let invalid = fx.run(&["torch", "invalid"]);
+    assert_ne!(code(&invalid), 0);
+    assert!(!out(&invalid).contains("Request sent"));
+    let help = fx.run(&["vibrate", "--help"]);
+    assert_eq!(code(&help), 0);
+    assert!(!out(&help).contains("Request sent"));
+}
+
+#[test]
 fn human_and_json_output() {
     let fx = Fixture::new("json");
     let (human, call) = fx.app(&["battery"], BATTERY);
@@ -339,10 +371,10 @@ fn invalid_utf8_is_refused_with_json_only() {
 #[test]
 fn empty_output_and_exit_status() {
     let fx = Fixture::new("empty");
-    let (o, _) = fx.app(&["toast", "hi"], b"");
+    let (o, _) = fx.app(&["battery"], b"");
     assert_eq!(out(&o), "");
     assert_eq!(code(&o), 0);
-    let (o, _) = fx.app(&["--json", "toast", "hi"], b"");
+    let (o, _) = fx.app(&["--json", "battery"], b"");
     assert_eq!(out(&o), "null\n");
 
     // saf rm exits with the number that the app answers
