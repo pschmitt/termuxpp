@@ -17,6 +17,8 @@ import com.termux.app.TermuxActivity;
 import com.termux.app.settings.GroupedPreferencesFragment;
 import com.termux.app.settings.TermuxPropertiesEditor;
 import com.termux.app.settings.PropertyInputSpec;
+import com.termux.app.settings.SettingsSearchIndex;
+import dev.pschmitt.termux.shared.interact.DialogUtils;
 import dev.pschmitt.termux.shared.termux.TermuxConstants;
 import dev.pschmitt.termux.shared.termux.settings.properties.TerminalGestureAction;
 import dev.pschmitt.termux.shared.termux.settings.properties.TermuxPropertyConstants;
@@ -39,19 +41,28 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
         editor = new TermuxPropertiesEditor();
         PreferenceScreen screen = getPreferenceManager().createPreferenceScreen(requireContext());
         setPreferenceScreen(screen);
-        Preference explanation = new Preference(requireContext());
-        explanation.setIcon(R.drawable.ui_ic_info);
-        explanation.setTitle(R.string.properties_title);
-        explanation.setSummary(R.string.properties_explanation);
-        explanation.setSelectable(false);
-        screen.addPreference(explanation);
         Properties values;
         try {
             values = editor.read();
         } catch (IOException | IllegalArgumentException e) {
-            explanation.setSummary(R.string.properties_read_error);
+            Preference error = new Preference(requireContext());
+            error.setIcon(R.drawable.ui_ic_info);
+            error.setTitle(R.string.properties_read_error);
+            error.setSelectable(false);
+            screen.addPreference(error);
             return;
         }
+
+        Preference help = new Preference(requireContext());
+        help.setIcon(R.drawable.ui_ic_info);
+        help.setTitle(R.string.properties_help);
+        help.setOnPreferenceClickListener(clicked -> {
+            DialogUtils.builder(requireContext()).setTitle(R.string.properties_help)
+                .setMessage(R.string.properties_explanation)
+                .setPositiveButton(android.R.string.ok, null).show();
+            return true;
+        });
+        screen.addPreference(help);
         Map<Integer, PreferenceCategory> categories = new LinkedHashMap<>();
         for (int title : new int[]{R.string.properties_appearance, R.string.properties_keyboard,
                 R.string.properties_gestures, R.string.properties_advanced}) {
@@ -95,8 +106,10 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
                     entryValues.add("true");
                     entryValues.add("false");
                 } else {
-                    entries.addAll(options);
-                    entryValues.addAll(options);
+                    for (String option : options) {
+                        entries.add(choiceLabel(key, option));
+                        entryValues.add(option);
+                    }
                 }
                 if (!entryValues.contains(current)) {
                     entries.add(current);
@@ -124,10 +137,16 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
             }
             preference.setKey(key);
             preference.setIcon(iconFor(key));
-            preference.setTitle(key.replace('-', ' '));
-            if (preference instanceof DialogPreference) ((DialogPreference) preference).setDialogTitle(key);
+            preference.setTitle(SettingsSearchIndex.propertyTitle(key));
+            if (preference instanceof DialogPreference)
+                ((DialogPreference) preference).setDialogTitle(preference.getTitle());
             preference.setOnPreferenceChangeListener((p, value) -> save(key, value.toString()));
-            categories.get(categoryFor(key)).addPreference(preference);
+            if ("extra-keys".equals(key)) {
+                preference.setOrder(-1);
+                screen.addPreference(preference);
+            } else {
+                categories.get(categoryFor(key)).addPreference(preference);
+            }
         }
     }
 
@@ -170,6 +189,13 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
         if (key.equals("bell-character") || key.contains("toast")) return R.drawable.ui_ic_info;
         if (categoryFor(key) == R.string.properties_appearance) return R.drawable.ui_ic_terminal;
         return R.drawable.ui_ic_settings;
+    }
+
+    private String choiceLabel(String key, String value) {
+        if (!key.endsWith("-action")) return value;
+        TerminalGestureAction action = TerminalGestureAction.parse(value);
+        if (action == TerminalGestureAction.OPEN_SIDEBAR) return getString(R.string.properties_open_session_shelf);
+        return action == null ? value : action.getLabel();
     }
 
     private Set<String> choices(String key) {

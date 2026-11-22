@@ -392,7 +392,7 @@ public class TermuxContextMenuSheetTest {
         TextView label = expander.findViewById(R.id.context_row_title);
 
         Assert.assertEquals(View.GONE, folded.getVisibility());
-        Assert.assertEquals("More", label.getText().toString());
+        Assert.assertEquals("More commands", label.getText().toString());
         Assert.assertEquals(View.VISIBLE, expander.findViewById(R.id.context_row_chevron).getVisibility());
         Assert.assertEquals("Collapsed", String.valueOf(ViewCompat.getStateDescription(expander)));
         Assert.assertTrue(expander.isClickable() && expander.isFocusable());
@@ -405,7 +405,7 @@ public class TermuxContextMenuSheetTest {
 
         Assert.assertTrue(expander.performClick());
         Assert.assertEquals(View.VISIBLE, folded.getVisibility());
-        Assert.assertEquals("Fewer actions", label.getText().toString());
+        Assert.assertEquals("Fewer commands", label.getText().toString());
         Assert.assertEquals("Expanded", String.valueOf(ViewCompat.getStateDescription(expander)));
         info = AccessibilityNodeInfoCompat.obtain();
         ViewCompat.onInitializeAccessibilityNodeInfo(expander, info);
@@ -418,7 +418,7 @@ public class TermuxContextMenuSheetTest {
 
         Assert.assertTrue(expander.performClick());
         Assert.assertEquals(View.GONE, folded.getVisibility());
-        Assert.assertEquals("More", label.getText().toString());
+        Assert.assertEquals("More commands", label.getText().toString());
     }
 
     @Test

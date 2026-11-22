@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/ui_surface"
-    android:clipChildren="false"
+    android:focusableInTouchMode="true"
     android:fitsSystemWindows="true">
 
     <com.google.android.material.appbar.AppBarLayout
@@ -12,7 +12,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@color/ui_surface"
-        android:clipChildren="false"
         app:elevation="0dp"
         app:liftOnScroll="false">
 
@@ -21,10 +20,10 @@
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             android:background="@color/ui_surface"
-            android:clipChildren="false"
             app:titleTextAppearance="@style/TextAppearance.TermuxPP.ToolbarTitle"
             app:titleTextColor="@color/ui_on_surface"
             app:navigationIconTint="@color/ui_on_surface" />
+
         <LinearLayout
             android:id="@+id/settings_intro"
             android:layout_width="match_parent"
@@ -37,24 +36,60 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="12dp"
+                android:layout_marginBottom="4dp"
                 android:accessibilityHeading="true"
                 android:text="@string/action_open_settings"
                 android:textAppearance="@style/TextAppearance.TermuxPP.SettingsHeadline" />
+        </LinearLayout>
 
-            <com.google.android.material.button.MaterialButton
+        <LinearLayout
+            android:id="@+id/settings_search_bar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="20dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="20dp"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/ui_settings_search_field"
+            android:gravity="center_vertical"
+            android:minHeight="60dp"
+            android:orientation="horizontal">
+
+            <ImageButton
                 android:id="@+id/settings_search_button"
-                android:layout_width="match_parent"
+                style="@style/Widget.TermuxPP.IconButton"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:contentDescription="@string/settings_search"
+                android:src="@drawable/ui_ic_search"
+                app:tint="@color/ui_on_surface" />
+
+            <androidx.appcompat.widget.AppCompatEditText
+                android:id="@+id/settings_search_query"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:gravity="start|center_vertical"
-                android:minHeight="52dp"
-                android:text="@string/settings_search"
-                android:textAllCaps="false"
+                android:layout_weight="1"
+                android:background="@null"
+                android:hint="@string/settings_search"
+                android:imeOptions="actionSearch"
+                android:inputType="text"
+                android:minHeight="60dp"
+                android:padding="0dp"
+                android:saveEnabled="false"
+                android:singleLine="true"
                 android:textColor="@color/ui_on_surface"
-                app:backgroundTint="?attr/termuxUiSearch"
-                app:cornerRadius="26dp"
-                app:icon="@drawable/ui_ic_search"
-                app:iconTint="@color/ui_on_surface" />
+                android:textColorHint="@color/ui_on_surface_variant"
+                android:textSize="17sp" />
+
+            <ImageButton
+                android:id="@+id/settings_search_clear"
+                style="@style/Widget.TermuxPP.IconButton"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:contentDescription="@string/settings_clear_search"
+                android:src="@drawable/ui_ic_search_clear"
+                android:visibility="invisible"
+                app:tint="@color/ui_on_surface" />
         </LinearLayout>
     </com.google.android.material.appbar.AppBarLayout>
 

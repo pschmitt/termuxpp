@@ -29,6 +29,7 @@ import androidx.core.view.accessibility.AccessibilityNodeInfoCompat;
 
 import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.android.material.color.MaterialColors;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.termux.R;
 
@@ -304,13 +305,7 @@ public class TermuxContextMenuSheet {
 
     /** Add a setting to the current group of the grouped presentation; a pill at its end says On or Off. */
     public TermuxContextMenuSheet addStateRow(int id, CharSequence title, @DrawableRes int icon, boolean checked) {
-        return addStateRow(id, title, icon, checked, false);
-    }
-
-    public TermuxContextMenuSheet addStateRow(int id, CharSequence title, @DrawableRes int icon,
-                                              boolean checked, boolean secondary) {
-        mRows.add(new Action(secondary ? Placement.SECONDARY : Placement.ROW,
-            id, title, null, icon, true, false, -1, null, checked));
+        mRows.add(new Action(Placement.ROW, id, title, null, icon, true, false, -1, null, checked));
         return this;
     }
 
@@ -339,7 +334,7 @@ public class TermuxContextMenuSheet {
         return this;
     }
 
-    /** Start a new group of the grouped presentation, so that the next rows are set apart from the last. */
+    /** Start a new group of the grouped presentation. */
     public TermuxContextMenuSheet addGroupBreak() {
         mRows.add(GROUP_BREAK);
         return this;
@@ -542,19 +537,16 @@ public class TermuxContextMenuSheet {
             LinearLayout.LayoutParams headerParams = (LinearLayout.LayoutParams) view.getLayoutParams();
             headerParams.setMargins(gutter, (int) (8 * density), gutter, (int) (8 * density));
             view.setLayoutParams(headerParams);
-            view.setBackgroundResource(R.drawable.ui_sheet_group_bg);
-            view.setPaddingRelative((int) (16 * density), (int) (12 * density),
-                (int) (16 * density), (int) (12 * density));
+            view.setPaddingRelative((int) (4 * density), (int) (4 * density),
+                (int) (4 * density), (int) (4 * density));
             ImageView icon = view.findViewById(R.id.context_header_icon);
-            icon.setBackground(null);
-            icon.getLayoutParams().width = (int) (24 * density);
-            icon.getLayoutParams().height = (int) (24 * density);
-            icon.setImageTintList(ColorStateList.valueOf(
-                ContextCompat.getColor(dialog.getContext(), R.color.ui_on_surface_variant)));
+            icon.getLayoutParams().width = (int) (40 * density);
+            icon.getLayoutParams().height = (int) (40 * density);
+            icon.setImageTintList(ColorStateList.valueOf(MaterialColors.getColor(icon, R.attr.termuxUiOnContainer)));
             TextView title = view.findViewById(R.id.context_header_title);
-            title.setTextSize(16);
+            title.setTextSize(18);
             TextView subtitle = view.findViewById(R.id.context_header_subtitle);
-            subtitle.setTextSize(11);
+            subtitle.setTextSize(12);
             subtitle.setVisibility(TextUtils.isEmpty(header.detail) ? View.GONE : View.VISIBLE);
         }
         if (header.actionId < 0) return;
@@ -699,7 +691,6 @@ public class TermuxContextMenuSheet {
                 if (mStrip == null) {
                     View scroll = LayoutInflater.from(mDialog.getContext())
                         .inflate(R.layout.ui_context_sheet_strip, mContainer, false);
-                    scroll.setClipToOutline(true);
                     mContainer.addView(scroll);
                     mStrip = scroll.findViewById(R.id.context_strip);
                 }
@@ -710,8 +701,6 @@ public class TermuxContextMenuSheet {
             if (mCard == null) {
                 mCard = (LinearLayout) LayoutInflater.from(mDialog.getContext())
                     .inflate(R.layout.ui_context_sheet_group_card, mContainer, false);
-                // The XML clipToOutline attribute is unavailable before API 31.
-                mCard.setClipToOutline(true);
                 LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) mCard.getLayoutParams();
                 int gutter = mContainer.getResources().getDimensionPixelSize(R.dimen.ui_gutter);
                 params.setMargins(gutter, mGap, gutter, 0);
@@ -757,12 +746,12 @@ public class TermuxContextMenuSheet {
                 detail.setText(action.detail);
                 detail.setVisibility(View.VISIBLE);
             }
-            int colorRes = !action.enabled ? R.color.ui_outline : R.color.ui_on_container;
-            icon.setImageTintList(ColorStateList.valueOf(ContextCompat.getColor(mDialog.getContext(), colorRes)));
+            int tint = action.enabled ? MaterialColors.getColor(icon, R.attr.termuxUiPrimary)
+                : ContextCompat.getColor(mDialog.getContext(), R.color.ui_outline);
+            icon.setImageTintList(ColorStateList.valueOf(tint));
             if (!action.enabled) {
-                title.setTextColor(ContextCompat.getColor(mDialog.getContext(), colorRes));
-                detail.setTextColor(ContextCompat.getColor(mDialog.getContext(), colorRes));
-                icon.setBackgroundResource(R.drawable.ui_sheet_pill_off);
+                title.setTextColor(tint);
+                detail.setTextColor(tint);
             }
             view.setEnabled(action.enabled);
             title.setEnabled(action.enabled);
@@ -793,10 +782,16 @@ public class TermuxContextMenuSheet {
                 boolean on = action.checked;
                 state.setText(on ? R.string.ui_menu_state_on : R.string.ui_menu_state_off);
                 state.setBackgroundResource(on ? R.drawable.ui_sheet_pill_on : R.drawable.ui_sheet_pill_off);
-                state.setTextColor(ContextCompat.getColor(mDialog.getContext(),
-                    on ? R.color.ui_on_active : R.color.ui_on_surface_variant));
+                state.setTextColor(on ? MaterialColors.getColor(state, R.attr.termuxUiOnPrimary)
+                    : ContextCompat.getColor(mDialog.getContext(), R.color.ui_on_surface_variant));
                 state.setVisibility(View.VISIBLE);
                 markAsSwitch(view, on);
+            } else if (action.id == TerminalContextMenu.SETTINGS) {
+                ImageView chevron = view.findViewById(R.id.context_row_chevron);
+                chevron.setImageResource(R.drawable.ui_ic_chevron_end);
+                chevron.setImageTintList(ColorStateList.valueOf(
+                    ContextCompat.getColor(mDialog.getContext(), R.color.ui_on_surface_variant)));
+                chevron.setVisibility(View.VISIBLE);
             }
 
             view.setEnabled(action.enabled);

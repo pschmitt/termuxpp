@@ -1,17 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <Preference
+    <com.termux.app.settings.GuestServicesOverviewPreference
+        android:widgetLayout="@layout/ui_guest_services_refresh"
         app:key="services_status"
-        app:title="@string/nix_services_title"
+        app:title="@string/nix_services_guest_status"
         app:summary="@string/nix_services_loading"
         app:selectable="false"
-        app:icon="@drawable/ui_ic_settings" />
-
-    <Preference
-        app:key="services_refresh"
-        app:title="@string/nix_services_refresh"
-        app:icon="@drawable/ui_ic_refresh" />
+        app:icon="@drawable/ui_ic_terminal" />
 
     <PreferenceCategory
         app:key="services_list"

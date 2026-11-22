@@ -5,6 +5,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
+import android.view.LayoutInflater;
+import android.view.View;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -17,6 +19,7 @@ import androidx.preference.PreferenceCategory;
 
 import com.termux.R;
 import com.termux.app.settings.GroupedPreferencesFragment;
+import com.termux.app.settings.GuestServicesOverviewPreference;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -47,22 +50,16 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
-    private Preference statusPreference;
+    private GuestServicesOverviewPreference statusPreference;
     private PreferenceCategory servicesCategory;
-    private Preference refreshPreference;
+    private boolean busy;
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         setPreferencesFromResource(R.xml.termux_services_preferences, rootKey);
         statusPreference = findPreference("services_status");
         servicesCategory = findPreference("services_list");
-        refreshPreference = findPreference("services_refresh");
-        if (refreshPreference != null) {
-            refreshPreference.setOnPreferenceClickListener(preference -> {
-                refreshServices();
-                return true;
-            });
-        }
+        if (statusPreference != null) statusPreference.setRefreshAction(this::refreshServices);
     }
 
     @Override
@@ -78,16 +75,20 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
     }
 
     private void refreshServices() {
-        if (statusPreference == null || servicesCategory == null) return;
-        servicesCategory.removeAll();
+        if (busy || statusPreference == null || servicesCategory == null) return;
         if (!TermuxNix.isProvisioned()) {
+            servicesCategory.removeAll();
+            servicesCategory.setVisible(false);
             setStatus(R.string.nix_services_not_available);
             return;
         }
         if (!TermuxNix.isReady()) {
+            servicesCategory.removeAll();
+            servicesCategory.setVisible(false);
             setStatus(R.string.nix_services_guest_not_ready);
             return;
         }
+        setBusy(true);
         setStatus(R.string.nix_services_loading);
         executor.execute(() -> {
             CommandResult result = runGuestCommand("svc", "--json", "list");
@@ -104,12 +105,15 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
             String failure = error;
             mainHandler.post(() -> {
                 if (!isAdded() || servicesCategory == null) return;
+                setBusy(false);
                 if (loaded == null) {
                     setStatus(getString(R.string.nix_services_load_error, concise(failure)));
                     return;
                 }
-                setStatus(getResources().getQuantityString(R.plurals.nix_services_count,
-                    loaded.size(), loaded.size()));
+                servicesCategory.removeAll();
+                servicesCategory.setVisible(!loaded.isEmpty());
+                setStatus(loaded.isEmpty() ? getString(R.string.nix_services_empty)
+                    : getResources().getQuantityString(R.plurals.nix_services_count, loaded.size(), loaded.size()));
                 for (Service service : loaded) addServicePreference(service);
             });
         });
@@ -118,9 +122,7 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
     private void addServicePreference(@NonNull Service service) {
         Preference preference = new Preference(requireContext());
         preference.setTitle(service.name);
-        String boot = getString(service.enabled ? R.string.nix_services_boot_on : R.string.nix_services_boot_off);
-        preference.setSummary(service.status + " · " + boot + "\n" + wifiSummary(service));
-        preference.setIcon(R.drawable.ui_ic_settings);
+        preference.setSummary(serviceStatus(service));
         preference.setOnPreferenceClickListener(clicked -> {
             showServiceActions(service);
             return true;
@@ -137,8 +139,13 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
             getString(R.string.nix_services_logs),
             getString(R.string.nix_services_settings)
         };
+        View header = LayoutInflater.from(context).inflate(R.layout.ui_guest_service_details, null);
+        ((TextView) header.findViewById(R.id.service_detail_title)).setText(service.name);
+        String boot = getString(service.enabled ? R.string.nix_services_boot_on : R.string.nix_services_boot_off);
+        ((TextView) header.findViewById(R.id.service_detail_summary))
+            .setText(getString(R.string.nix_services_service_summary, serviceStatus(service), boot) + "\n" + wifiSummary(service));
         DialogUtils.builder(context)
-            .setTitle(service.name)
+            .setCustomTitle(header)
             .setItems(actions, (dialog, which) -> {
                 if (which == 4) {
                     editSettings(service);
@@ -152,11 +159,14 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
     }
 
     private void runServiceAction(@NonNull Service service, @NonNull String action) {
+        if (busy) return;
+        setBusy(true);
         setStatus(getString(R.string.nix_services_action_running, action, service.name));
         executor.execute(() -> {
             CommandResult result = runGuestCommand("svc", action, service.name);
             mainHandler.post(() -> {
                 if (!isAdded()) return;
+                setBusy(false);
                 if (result.exitCode != 0) {
                     showTextDialog(getString(R.string.nix_services_action_failed, action),
                         concise(result.output));
@@ -261,6 +271,20 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
             .setView(scrollView)
             .setPositiveButton(android.R.string.ok, null)
             .show();
+    }
+
+    private String serviceStatus(Service service) {
+        if (service.waitingForNetwork)
+            return getString(R.string.nix_services_waiting_for_wifi);
+        if (service.status.isEmpty()) return service.status;
+        return Character.toUpperCase(service.status.charAt(0)) + service.status.substring(1);
+    }
+
+    private void setBusy(boolean value) {
+        busy = value;
+        statusPreference.setBusy(value);
+        for (int i = 0; i < servicesCategory.getPreferenceCount(); i++)
+            servicesCategory.getPreference(i).setEnabled(!value);
     }
 
     @NonNull

@@ -1,7 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- A group of full-width rows of the grouped terminal menu. It clips its rows to the rounded outline. -->
+<!-- The full-width action rows on the sheet surface. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/ui_sheet_group_bg"
-    android:orientation="vertical" />
+    android:orientation="vertical">
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginBottom="4dp"
+        android:background="@color/ui_divider"
+        android:importantForAccessibility="no" />
+</LinearLayout>

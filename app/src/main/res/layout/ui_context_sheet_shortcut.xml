@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- One frequent action: an icon badge over its label, and an optional small detail such as a count. -->
+<!-- One frequent action: an icon over its label, and an optional small detail such as a count. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/context_shortcut"
     android:layout_width="0dp"
@@ -21,7 +21,6 @@
         android:id="@+id/context_shortcut_icon"
         android:layout_width="@dimen/ui_menu_shortcut_badge"
         android:layout_height="@dimen/ui_menu_shortcut_badge"
-        android:background="@drawable/ui_sheet_shortcut_icon_bg"
         android:importantForAccessibility="no"
         android:scaleType="center" />
 

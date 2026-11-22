@@ -31,7 +31,8 @@ public class ServicesPreferencesFragmentUiTest {
             .replace(R.id.settings, services)
             .commitNow();
         assertNotNull(services.findPreference("services_status"));
-        assertNotNull(services.findPreference("services_refresh"));
+        assertEquals(R.layout.ui_guest_services_refresh,
+            services.findPreference("services_status").getWidgetLayoutResource());
         assertNotNull(services.findPreference("services_list"));
     }
 }

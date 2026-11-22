@@ -218,24 +218,25 @@ public class ExtraKeysSwipeViewPagerTest {
         drag(800, 100);
         ShadowLooper.idleMainLooper(500, TimeUnit.MILLISECONDS);
         assertEquals(0, mSwipes);
-        assertFalse(mPager.isStripShown());
+        assertFalse(mPager.isPreviewActive());
         assertEquals(0, mPager.getCurrentItem());
         assertEquals(MotionEvent.ACTION_DOWN, (int) mAdapter.views[0].actions.get(0));
     }
 
     @Test
-    public void theStripTellsWhatReleasingRuns() {
+    public void thePreviewTellsWhatReleasingRuns() {
         useLongSwipes();
         send(MotionEvent.ACTION_DOWN, 50, 75);
         send(MotionEvent.ACTION_MOVE, 80, 75);
-        assertTrue(mPager.isStripShown());
-        assertSame(ExtraKeysSwipeDetector.Result.NONE, mPager.getStripPending());
+        assertTrue(mPager.isPreviewActive());
+        assertSame(ExtraKeysSwipeDetector.Result.NONE, mPager.getPreviewPending());
         send(MotionEvent.ACTION_MOVE, 50 + swipe() + 10, 75);
-        assertSame(ExtraKeysSwipeDetector.Result.SWIPE, mPager.getStripPending());
+        assertSame(ExtraKeysSwipeDetector.Result.SWIPE, mPager.getPreviewPending());
         send(MotionEvent.ACTION_MOVE, 50 + longSwipe() + 10, 75);
-        assertSame(ExtraKeysSwipeDetector.Result.LONG_SWIPE, mPager.getStripPending());
-        assertEquals("the row follows the finger one to one",
-            longSwipe() + 10, mAdapter.views[0].getTranslationX(), 1f);
+        assertSame(ExtraKeysSwipeDetector.Result.LONG_SWIPE, mPager.getPreviewPending());
+        assertEquals("the row moves only as far as the action cue needs",
+            ExtraKeysSwipeViewPager.MAX_FOLLOW_DP * mPager.getResources().getDisplayMetrics().density,
+            mAdapter.views[0].getTranslationX(), 1f);
         send(MotionEvent.ACTION_UP, 50 + longSwipe() + 10, 75);
         assertEquals(List.of("long-left"), mEvents);
     }
@@ -258,7 +259,7 @@ public class ExtraKeysSwipeViewPagerTest {
         android.animation.ValueAnimator animator = mPager.getReleaseAnimator();
         assertTrue("snapping back", animator != null);
         animator.end();
-        assertFalse(mPager.isStripShown());
+        assertFalse(mPager.isPreviewActive());
         assertRestingAtZero();
     }
 
@@ -276,7 +277,7 @@ public class ExtraKeysSwipeViewPagerTest {
         Settings.Global.putFloat(mPager.getContext().getContentResolver(), Settings.Global.ANIMATOR_DURATION_SCALE, 0f);
         drag(100, 100 + swipe() + 10);
         assertEquals("the action still runs", 1, mSwipes);
-        assertFalse(mPager.isStripShown());
+        assertFalse(mPager.isPreviewActive());
         assertRestingAtZero();
     }
 
@@ -286,7 +287,7 @@ public class ExtraKeysSwipeViewPagerTest {
         send(MotionEvent.ACTION_MOVE, 130, 75);
         send(MotionEvent.ACTION_MOVE, 100 + swipe(), 75);
         ((ViewGroup) mPager.getParent()).removeView(mPager);
-        assertFalse(mPager.isStripShown());
+        assertFalse(mPager.isPreviewActive());
         assertRestingAtZero();
     }
 

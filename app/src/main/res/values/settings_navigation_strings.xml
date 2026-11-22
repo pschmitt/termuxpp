@@ -7,6 +7,7 @@
     <string name="settings_input">Keyboard and input</string>
     <string name="settings_search">Search settings</string>
     <string name="settings_search_properties">Search properties</string>
+    <string name="settings_clear_search">Clear search</string>
     <string name="settings_search_results">Search results</string>
     <string name="settings_search_empty">No matching settings</string>
     <string name="settings_integration_api_title">API</string>

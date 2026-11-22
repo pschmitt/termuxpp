@@ -121,9 +121,9 @@ public final class SettingsSearchIndex {
         List<String> keys = new ArrayList<>(TermuxPropertyConstants.TERMUX_APP_PROPERTIES_LIST);
         Collections.sort(keys);
         for (String key : keys) {
-            String category = context.getString(PropertiesPreferencesFragment.categoryFor(key));
-            results.add(new Result(humanize(key), join(join(breadcrumb,
-                context.getString(R.string.properties_title)), category), path, key, PropertyInputSpec.help(key)));
+            String parent = "extra-keys".equals(key) ? breadcrumb
+                : join(breadcrumb, context.getString(PropertiesPreferencesFragment.categoryFor(key)));
+            results.add(new Result(propertyTitle(key), parent, path, key, PropertyInputSpec.help(key)));
         }
     }
 
@@ -198,7 +198,7 @@ public final class SettingsSearchIndex {
         return screens;
     }
 
-    private static String humanize(String key) {
+    public static String propertyTitle(String key) {
         String words = key.replace('-', ' ').replace('_', ' ');
         if (words.isEmpty()) return words;
         return Character.toUpperCase(words.charAt(0)) + words.substring(1);

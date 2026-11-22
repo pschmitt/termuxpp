@@ -140,10 +140,10 @@ session. If the current session matches, it stays selected. If no active
 session matches, the configured action runs. For example, combine a title
 pattern with `send-keys` and a shell shortcut that starts the desired program.
 
-A recognized custom tap or volume-button action briefly pulses a colored
-outline inside the terminal. An extra-keys swipe slides the row and snaps
-it back. The ordinary single tap to show the keyboard skips the pulse.
-Both effects follow Android's animator duration scale.
+A recognized custom tap, volume-button action, or extra-keys swipe briefly
+shows the action in a pill above the keys. The ordinary single tap to show
+the keyboard skips confirmation. Motion follows Android's animator duration
+scale.
 
 ## Sending keys
 
@@ -258,25 +258,21 @@ named after the toolbar page the swipe would go to: the text input is the page t
 | `extra-keys-swipe-left-action` | left to right | `none` |
 | `extra-keys-swipe-right-action` | right to left | `next-session` |
 
-Swipes work like swipe actions on list items in Gmail or Todoist: once the finger has moved a
-little, clearly more horizontally than vertically, the row follows it, and the strip it uncovers at
-the edge the finger comes from shows what releasing runs. Release past the swipe distance (a fifth
-of the row's width, at least 64 dp) to run the action; release short of it, or move back, and
-nothing happens. The keys under the finger are released without being pressed. Tapping, holding
+Once a horizontal swipe is detected, the row follows it slightly and a pill above the keys names
+the pending action. The pill highlights when the swipe reaches the activation distance (a fifth
+of the row's width, at least 64 dp). Release to run the highlighted action, or move back below
+the threshold to cancel. The keys under the finger are released without being pressed. Tapping, holding
 and repeating keys, the swipe-up popup and vertical scrolling of the row keep working.
 
 ### Long swipes
 
 `extra-keys-long-swipe-left-action` and `extra-keys-long-swipe-right-action` add a second action to
 a direction, run by a swipe further than the long swipe distance: half of the row's width, and at
-least twice the swipe distance. Both are unset by default. The strip shows which action releasing
-runs:
+least twice the swipe distance. Both are unset by default. The pill changes to the long-swipe
+action and gives a tick when it reaches that threshold.
 
-- dimmed, with the action's name: not far enough yet, releasing does nothing;
-- plum, with the swipe's action (and `further:` the long swipe's action below it);
-- lavender, with the long swipe's action, and a tick when it is reached.
-
-The row only stays still when `gesture-animations` is off; the strip is shown either way. Example:
+The preview is available with `gesture-animations` off. The row stays still and successful
+gestures skip confirmation in that mode. Example:
 
 ```properties
 # A long swipe with the finger moving left to right opens a new session

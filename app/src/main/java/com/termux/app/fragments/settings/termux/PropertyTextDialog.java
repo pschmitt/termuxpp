@@ -3,7 +3,10 @@ package com.termux.app.fragments.settings.termux;
 import dev.pschmitt.termux.shared.interact.DialogUtils;
 import android.os.Bundle;
 import android.widget.EditText;
-import android.widget.ScrollView;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.TextView;
+import com.termux.app.settings.SettingsSearchIndex;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
@@ -28,13 +31,14 @@ public class PropertyTextDialog extends DialogFragment {
 
     @NonNull @Override public android.app.Dialog onCreateDialog(Bundle state) {
         String key = requireArguments().getString("key");
-        text = new EditText(requireContext());
+        View editor = LayoutInflater.from(requireContext()).inflate(R.layout.ui_property_editor, null);
+        text = editor.findViewById(R.id.property_value);
         text.setInputType(PropertyInputSpec.inputType(key));
         text.setText(state == null ? requireArguments().getString("value", "") : state.getString("value"));
-        ScrollView scroll = new ScrollView(requireContext());
-        scroll.addView(text);
-        return DialogUtils.builder(requireContext()).setTitle(key.replace('-', ' '))
-            .setMessage(PropertyInputSpec.help(key)).setView(scroll)
+        ((TextView) editor.findViewById(R.id.property_help)).setText(PropertyInputSpec.help(key));
+        ((TextView) editor.findViewById(R.id.property_key)).setText(key);
+        return DialogUtils.builder(requireContext()).setTitle(SettingsSearchIndex.propertyTitle(key))
+            .setView(editor)
             .setPositiveButton(R.string.extra_save, null)
             .setNeutralButton(R.string.properties_default, null)
             .setNegativeButton(android.R.string.cancel, null).create();

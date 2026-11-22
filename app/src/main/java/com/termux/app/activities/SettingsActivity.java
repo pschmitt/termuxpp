@@ -7,17 +7,18 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.view.Menu;
-import android.view.MenuItem;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
+import android.widget.EditText;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.appcompat.widget.SearchView;
-import androidx.core.view.OneShotPreDrawListener;
-import androidx.dynamicanimation.animation.SpringAnimation;
-import androidx.dynamicanimation.animation.SpringForce;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.Observer;
@@ -47,9 +48,14 @@ public class SettingsActivity extends AppCompatActivity
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private View settingsIntro;
-    private View searchButton;
-    private MenuItem searchAction;
-    private SpringAnimation searchMotion;
+    private View searchBar;
+    private EditText searchQuery;
+    private View clearSearchButton;
+    private final OnBackPressedCallback searchBack = new OnBackPressedCallback(false) {
+        @Override public void handleOnBackPressed() {
+            resetSearch();
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,13 +66,7 @@ public class SettingsActivity extends AppCompatActivity
         AppAccent.apply(this, AppAccent.get(this));
         setContentView(R.layout.activity_settings);
         settingsIntro = findViewById(R.id.settings_intro);
-        searchButton = findViewById(R.id.settings_search_button);
-        searchButton.setOnClickListener(view -> {
-            if (searchAction != null) {
-                searchAction.setVisible(true);
-                if (!searchAction.expandActionView()) searchAction.setVisible(false);
-            }
-        });
+        configureSearch();
         if (savedInstanceState == null) {
             getSupportFragmentManager()
                 .beginTransaction()
@@ -106,8 +106,7 @@ public class SettingsActivity extends AppCompatActivity
     }
 
     private void updateNavigation() {
-        cancelSearchMotion();
-        clearSearch();
+        resetSearch();
         Fragment screen = getSupportFragmentManager().findFragmentById(R.id.settings);
         CharSequence title = null;
         if (screen instanceof PreferenceFragmentCompat) {
@@ -117,89 +116,53 @@ public class SettingsActivity extends AppCompatActivity
         if (title == null && screen != null) title = screen.getTag();
         boolean home = screen instanceof RootPreferencesFragment;
         settingsIntro.setVisibility(home ? View.VISIBLE : View.GONE);
+        searchBar.setVisibility(screen instanceof PreferenceFragmentCompat ? View.VISIBLE : View.GONE);
         ActionBar actionBar = getSupportActionBar();
         if (actionBar != null) actionBar.setDisplayShowTitleEnabled(!home);
         setTitle(title == null ? getString(R.string.title_activity_termux_settings) : title);
-        invalidateOptionsMenu();
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        Fragment screen = getSupportFragmentManager().findFragmentById(R.id.settings);
-        searchAction = null;
-        if (!(screen instanceof PreferenceFragmentCompat))
-            return super.onCreateOptionsMenu(menu);
-
-        int label = R.string.settings_search;
-        SearchView search = new SearchView(this);
-        search.setQueryHint(getString(label));
-        MenuItem item = menu.add(label).setIcon(R.drawable.ui_ic_search).setActionView(search);
-        boolean home = screen instanceof RootPreferencesFragment;
-        searchAction = item;
-        item.setShowAsAction((home ? MenuItem.SHOW_AS_ACTION_ALWAYS : MenuItem.SHOW_AS_ACTION_IF_ROOM)
-            | MenuItem.SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW);
-        if (home) item.setVisible(false);
-        search.setMaxWidth(Integer.MAX_VALUE);
-        search.setBackgroundResource(R.drawable.ui_settings_search_field);
-        item.setOnActionExpandListener(new MenuItem.OnActionExpandListener() {
-            @Override public boolean onMenuItemActionExpand(MenuItem action) {
-                if (home) enterHomeSearch(search);
-                startSearch((PreferenceFragmentCompat) screen);
-                return true;
-            }
-
-            @Override public boolean onMenuItemActionCollapse(MenuItem action) {
-                clearSearch();
-                cancelSearchMotion();
-                search.setTranslationY(0f);
-                if (home) {
-                    action.setVisible(false);
-                    if (getSupportFragmentManager().findFragmentById(R.id.settings) == screen)
-                        settingsIntro.setVisibility(View.VISIBLE);
-                }
-                return true;
-            }
+    private void configureSearch() {
+        searchBar = findViewById(R.id.settings_search_bar);
+        searchQuery = findViewById(R.id.settings_search_query);
+        clearSearchButton = findViewById(R.id.settings_search_clear);
+        getOnBackPressedDispatcher().addCallback(this, searchBack);
+        findViewById(R.id.settings_search_button).setOnClickListener(view -> {
+            searchQuery.requestFocus();
+            WindowCompat.getInsetsController(getWindow(), searchQuery).show(WindowInsetsCompat.Type.ime());
         });
-        search.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
-            @Override public boolean onQueryTextSubmit(String query) {
-                search.clearFocus();
-                return true;
-            }
-
-            @Override public boolean onQueryTextChange(String query) {
-                filterSearch(query);
-                return true;
-            }
+        clearSearchButton.setOnClickListener(view -> searchQuery.setText(""));
+        searchQuery.setOnFocusChangeListener((view, focused) ->
+            searchBack.setEnabled(focused || searchQuery.length() > 0));
+        searchQuery.setOnEditorActionListener((view, action, event) -> {
+            if (action != EditorInfo.IME_ACTION_SEARCH) return false;
+            hideSearchKeyboard();
+            return true;
         });
-        return true;
-    }
-
-    private void enterHomeSearch(SearchView search) {
-        int[] origin = new int[2];
-        searchButton.getLocationInWindow(origin);
-        settingsIntro.setVisibility(View.GONE);
-        OneShotPreDrawListener.add(search, () -> {
-            if (!search.isAttachedToWindow() || search.isIconified() || !animationsEnabled()) return;
-            int[] destination = new int[2];
-            search.getLocationInWindow(destination);
-            search.setTranslationY(origin[1] - destination[1]);
-            searchMotion = new SpringAnimation(search, SpringAnimation.TRANSLATION_Y, 0f);
-            searchMotion.getSpring().setDampingRatio(SpringForce.DAMPING_RATIO_NO_BOUNCY)
-                .setStiffness(SpringForce.STIFFNESS_MEDIUM);
-            searchMotion.start();
+        searchQuery.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence text, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence text, int start, int before, int count) {
+                clearSearchButton.setVisibility(text.length() == 0 ? View.INVISIBLE : View.VISIBLE);
+                searchBack.setEnabled(searchQuery.hasFocus() || text.length() > 0);
+                Fragment screen = getSupportFragmentManager().findFragmentById(R.id.settings);
+                if (searchScreen == null && text.length() > 0 && screen instanceof PreferenceFragmentCompat)
+                    startSearch((PreferenceFragmentCompat) screen);
+                filterSearch(text.toString());
+            }
+            @Override public void afterTextChanged(Editable text) {}
         });
     }
 
-    private void cancelSearchMotion() {
-        if (searchMotion == null) return;
-        searchMotion.cancel();
-        searchMotion = null;
+    private void resetSearch() {
+        if (searchQuery.hasFocus()) hideSearchKeyboard();
+        searchQuery.clearFocus();
+        if (searchQuery.length() > 0) searchQuery.setText("");
+        clearSearch();
+        searchBack.setEnabled(false);
     }
 
-    @Override
-    protected void onDestroy() {
-        cancelSearchMotion();
-        super.onDestroy();
+    private void hideSearchKeyboard() {
+        WindowCompat.getInsetsController(getWindow(), searchQuery).hide(WindowInsetsCompat.Type.ime());
     }
 
     private static boolean animationsEnabled() {
@@ -287,7 +250,7 @@ public class SettingsActivity extends AppCompatActivity
     private void navigateToSearchResult(@NonNull SettingsSearchIndex.Result result) {
         Fragment caller = getSupportFragmentManager().findFragmentById(R.id.settings);
         if (caller == null) return;
-        if (searchAction != null) searchAction.collapseActionView();
+        resetSearch();
         Fragment destination = caller;
         for (int i = 0; i < result.fragmentPath.size(); i++) {
             String fragmentClass = result.fragmentPath.get(i);
@@ -307,8 +270,7 @@ public class SettingsActivity extends AppCompatActivity
         }
         if (result.preferenceKey != null && destination instanceof PreferenceFragmentCompat)
             focusPreference((PreferenceFragmentCompat) destination, result.preferenceKey);
-        clearSearch();
-        invalidateOptionsMenu();
+
     }
 
     private static final String SEARCH_FOCUS_KEY_ARGUMENT = "termuxpp.settings.search.focus-key";

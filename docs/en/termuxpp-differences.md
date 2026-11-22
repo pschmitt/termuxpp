@@ -70,12 +70,11 @@ and [TermuxPP session list](../../app/src/main/java/com/termux/app/terminal/Term
 ## Terminal More menu
 
 Upstream uses Android's context menu for terminal actions. TermuxPP uses a
-rounded bottom sheet with a compact session card, an Autofill / Open URL / Share
-shortcut card, and grouped icon-led rows. Open URL is disabled when the terminal
+rounded bottom sheet with a compact session header, a flat Autofill / Open URL /
+Share shortcut strip, and grouped icon-led rows. Open URL is disabled when the terminal
 contains no URLs. Autofill remains conditional on Android support. Keep screen on
-and Wake lock have an On/Off state pill: each stays visible while On and moves
-under **More** while Off. Reset and Kill are also under **More**.
-Settings remains visible in its own group at the bottom. Tapping Kill retains its
+and Wake lock remain visible with On/Off states. Settings sits above
+**More commands**, which opens Reset and Kill. Tapping Kill retains its
 confirmation, and holding it retains the immediate-kill action. Share and
 Autofill choices retain their existing preview cards. The presentation is an
 intentional fork difference; action dispatch and authorization are unchanged.
@@ -372,18 +371,18 @@ Command strings are redacted from property and execution logs. Sources: [gesture
 [properties editor](../../app/src/main/java/com/termux/app/fragments/settings/termux/PropertiesPreferencesFragment.java),
 and [gesture documentation](terminal-settings.md#tap-and-swipe-actions).
 
-Configured tap and volume-button actions briefly pulse an outline inside the
-terminal. The extra-keys swipe gives feedback by sliding the key row. Both
-respect Android's animation setting. [Gesture feedback implementation](../../app/src/main/java/com/termux/app/terminal/GestureFeedback.java).
+Configured tap, volume-button and extra-key swipe actions briefly confirm the
+chosen action in a pill above the keys. Motion respects Android's animation
+setting. [Gesture feedback implementation](../../app/src/main/java/com/termux/app/terminal/GestureFeedback.java).
 
 Upstream Termux opens the toolbar's text input by dragging the extra keys row
 from right to left. In TermuxPP both swipe directions over the extra keys row
 are configurable actions, and the right-to-left swipe switches to the next
 session by default. Opening the text input is the `toggle-text-input` action,
 which any gesture can run. Set `extra-keys-swipe-right-action = toggle-text-input`
-for the upstream behavior. Swipes follow the finger like list swipe actions
-(Gmail, Todoist), and each direction can also have a long swipe; the strip the row
-uncovers shows which action releasing runs. Sources: [swipe pager](../../app/src/main/java/com/termux/app/terminal/io/ExtraKeysSwipeViewPager.java),
+for the upstream behavior. The key row follows the finger slightly and a pill
+previews the action. The label updates when the gesture reaches the
+long-swipe threshold. Sources: [swipe pager](../../app/src/main/java/com/termux/app/terminal/io/ExtraKeysSwipeViewPager.java),
 [swipe detector](../../app/src/main/java/com/termux/app/terminal/io/ExtraKeysSwipeDetector.java)
 and [extra keys swipe documentation](terminal-settings.md#extra-keys-swipe).
 
@@ -399,12 +398,15 @@ terminal menu can toggle it. `termux-wake-lock` and `termux-wake-unlock` work as
 ## Settings and search
 
 TermuxPP groups the Settings home into Terminal, Automation and services, and
-App and support. Search starts from a field above those groups and moves into the
-toolbar when activated. Results show their location in Settings. Display offers
+App and support. The full-width search field stays in place while editing the
+query. Results show their location in Settings. Display offers
 the default purple accent, fixed colors, and an adaptive accent that uses
 Android wallpaper colors on Android 12 and later. Settings subpages group related
 controls. Debugging puts ADB shell access and Wi-Fi status above Logging, with
-the full instructions available from Setup and security.
+the full instructions available from Setup and security. Properties uses readable
+labels, a quick entry point for Extra keys, and an outlined value editor. Nix
+guest services shows a guest status row with refresh and keeps service policy
+details with the service actions.
 [Upstream Settings home](https://github.com/termux/termux-app/blob/master/app/src/main/res/xml/root_preferences.xml) ·
 [TermuxPP Settings layout](../../app/src/main/res/layout/activity_settings.xml)
 

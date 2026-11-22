@@ -589,6 +589,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 }
 
                 @Override
+                public void onSwipePreview(@Nullable String label, boolean armed) {
+                    if (mTermuxTerminalViewClient != null) mTermuxTerminalViewClient.previewGesture(label, armed);
+                }
+
+                @Override
                 public boolean isFeedbackEnabled() {
                     return mProperties != null && mProperties.areGestureAnimationsEnabled();
                 }
@@ -599,7 +604,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                     boolean right = direction == ExtraKeysSwipeDetector.Direction.RIGHT;
                     TerminalGestureAction action = mProperties.getExtraKeysSwipeAction(right, longSwipe);
                     if (action == TerminalGestureAction.NONE) return;
-                    mTermuxTerminalViewClient.showGestureFeedback();
+                    mTermuxTerminalViewClient.showGestureFeedback(action.getLabel());
                     mTermuxTerminalViewClient.performGestureAction(action,
                         mProperties.getExtraKeysSwipeKeys(right, longSwipe), mProperties.getExtraKeysSwipeCommand(right, longSwipe),
                         mProperties.getGestureCommandContext());

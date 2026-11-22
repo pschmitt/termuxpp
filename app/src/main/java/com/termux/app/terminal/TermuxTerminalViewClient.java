@@ -341,21 +341,25 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
     @Override
     public void onTapCount(int tapCount) {
         if (tapCount == 3 && focusTripleTapSession()) {
-            showGestureFeedback();
+            showGestureFeedback(mActivity.getString(R.string.ui_gesture_focus_session));
             return;
         }
         performTerminalTapAction(tapCount, mActivity.getProperties().getTerminalTapAction(tapCount));
     }
 
-    public void showGestureFeedback() {
+    public void showGestureFeedback(String label) {
         if (mActivity.getProperties().areGestureAnimationsEnabled())
-            mGestureFeedback.pulse(mActivity.getTerminalView());
+            mGestureFeedback.confirm(mActivity.getTerminalView(), label);
+    }
+
+    public void previewGesture(@Nullable String label, boolean armed) {
+        mGestureFeedback.preview(mActivity.getTerminalView(), label, armed);
     }
 
     private void performTerminalTapAction(int tapCount, TerminalGestureAction action) {
         if (action != TerminalGestureAction.NONE
             && (tapCount != 1 || action != TermuxPropertyConstants.DEFAULT_TERMINAL_SINGLE_TAP_ACTION))
-            showGestureFeedback();
+            showGestureFeedback(action.getLabel());
         performGestureAction(action,
             mActivity.getProperties().getTerminalTapKeys(tapCount),
             mActivity.getProperties().getTerminalTapCommand(tapCount),
@@ -663,7 +667,7 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
                 if (volumeUp) mVirtualFnKeyDown = down; else mVirtualControlKeyDown = down;
                 return true;
             case PERFORM:
-                showGestureFeedback();
+                showGestureFeedback(action.getLabel());
                 performGestureAction(action, volumeUp ? properties.getVolumeUpKeys() : properties.getVolumeDownKeys());
                 return true;
             case CONSUME:

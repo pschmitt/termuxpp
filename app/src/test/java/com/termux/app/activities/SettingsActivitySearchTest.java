@@ -1,5 +1,8 @@
 package com.termux.app.activities;
 
+import android.view.View;
+import android.widget.EditText;
+
 import androidx.fragment.app.Fragment;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
@@ -21,6 +24,27 @@ import static org.junit.Assert.assertTrue;
 
 @RunWith(RobolectricTestRunner.class)
 public class SettingsActivitySearchTest {
+
+    @Test
+    public void focusAndTypingKeepTheSearchFieldInItsHeader() {
+        SettingsActivity activity = Robolectric.buildActivity(SettingsActivity.class).setup().get();
+        PreferenceFragmentCompat root = (PreferenceFragmentCompat)
+            activity.getSupportFragmentManager().findFragmentById(R.id.settings);
+        View bar = activity.findViewById(R.id.settings_search_bar);
+        EditText field = activity.findViewById(R.id.settings_search_query);
+        assertEquals(bar, field.getParent());
+
+        field.requestFocus();
+        field.setText("triple tap action");
+        assertNotNull(root.findPreference("settings-search-result-0"));
+        assertEquals(bar, field.getParent());
+        assertEquals(View.VISIBLE, bar.getVisibility());
+
+        activity.getOnBackPressedDispatcher().onBackPressed();
+        assertEquals("", field.getText().toString());
+        assertNull(root.findPreference("settings-search-result-0"));
+        assertEquals(root, activity.getSupportFragmentManager().findFragmentById(R.id.settings));
+    }
 
     @Test
     public void rootSearchNavigatesToAndFocusesTheExactDynamicProperty() {

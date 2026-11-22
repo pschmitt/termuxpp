@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- State pill of a setting that is on: the amber of the Keep screen on glow. -->
+<!-- State pill of an enabled sheet action. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
-    <solid android:color="@color/ui_active" />
+    <solid android:color="?attr/termuxUiPrimary" />
     <corners android:radius="12dp" />
 </shape>
