@@ -460,7 +460,14 @@ impl Renderer {
         } else if self.pend.take().is_some() {
             let empty: &[u8] = if c == b'}' { b"{}" } else { b"[]" };
             if p == 0 {
-                self.emit(empty.to_vec());
+                self.emit(self.paint(
+                    if c == b'}' {
+                        b"No fields"
+                    } else {
+                        b"No results"
+                    },
+                    NULL,
+                ));
             } else {
                 self.human_value(p, empty);
             }
@@ -860,8 +867,9 @@ mod tests {
 
     #[test]
     fn human_mode_top_level_empty_containers() {
-        assert_eq!(human("{}"), "{}\n");
-        assert_eq!(human("[]"), "[]\n");
+        assert_eq!(human("{}"), "No fields\n");
+        assert_eq!(human("[]"), "No results\n");
+        assert_eq!(json("[]"), "[]\n");
     }
 
     #[test]
