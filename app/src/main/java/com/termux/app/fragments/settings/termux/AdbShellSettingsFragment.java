@@ -4,15 +4,16 @@ import android.app.Activity;
 import android.view.WindowManager;
 
 import androidx.annotation.Keep;
+
+import com.termux.app.settings.GroupedPreferencesFragment;
 import androidx.annotation.StringRes;
-import androidx.preference.PreferenceFragmentCompat;
 
 /**
  * Base for the ADB shell authorization screens. Client names and certificate fingerprints stay out of
  * screenshots and the recents thumbnail while one of these screens is visible, like the enrollment approval.
  */
 @Keep
-abstract class AdbShellSettingsFragment extends PreferenceFragmentCompat {
+abstract class AdbShellSettingsFragment extends GroupedPreferencesFragment {
     private static int secureScreens;
     private static final int[] TITLES = {
         com.termux.R.string.adb_shell_authorizations_title,

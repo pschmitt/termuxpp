@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="TermuxPPAccentAdaptive" parent="">
+        <item name="termuxUiPrimary">@android:color/system_accent1_200</item>
+        <item name="termuxUiOnPrimary">@android:color/system_accent1_800</item>
+        <item name="termuxUiContainer">@android:color/system_accent1_700</item>
+        <item name="termuxUiOnContainer">@android:color/system_accent1_100</item>
+        <item name="termuxUiRipple">#33FFFFFF</item>
+        <item name="termuxUiShelf">@android:color/system_neutral2_900</item>
+        <item name="termuxUiSearch">@android:color/system_accent1_800</item>
+        <item name="termuxUiGroup">@android:color/system_neutral2_900</item>
+    </style>
+</resources>

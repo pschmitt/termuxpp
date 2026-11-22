@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Session row: transparent, filled container when it is the current session (activated). -->
 <ripple xmlns:android="http://schemas.android.com/apk/res/android"
-    android:color="@color/ui_ripple">
+    android:color="?attr/termuxUiRipple">
     <item android:id="@android:id/mask">
         <inset
             android:insetLeft="12dp"
@@ -23,7 +23,7 @@
                     android:insetTop="2dp"
                     android:insetBottom="2dp">
                     <shape android:shape="rectangle">
-                        <solid android:color="@color/ui_primary" />
+                        <solid android:color="?attr/termuxUiPrimary" />
                         <corners android:radius="28dp" />
                     </shape>
                 </inset>
@@ -35,7 +35,7 @@
                     android:insetTop="2dp"
                     android:insetBottom="2dp">
                     <shape android:shape="rectangle">
-                        <solid android:color="@color/ui_settings_group" />
+                        <solid android:color="?attr/termuxUiGroup" />
                         <corners android:radius="18dp" />
                     </shape>
                 </inset>

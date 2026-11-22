@@ -10,9 +10,9 @@ import androidx.annotation.Keep;
 import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.preference.Preference;
-import androidx.preference.PreferenceFragmentCompat;
 
 import com.termux.R;
+import com.termux.app.settings.GroupedPreferencesFragment;
 import com.termux.app.terminal.StylingApp;
 import dev.pschmitt.termux.shared.termux.TermuxConstants;
 import dev.pschmitt.termux.shared.termux.settings.preferences.TermuxAPIAppSharedPreferences;
@@ -22,7 +22,7 @@ import dev.pschmitt.termux.shared.termux.settings.preferences.TermuxWidgetAppSha
 import dev.pschmitt.termux.shared.interact.DialogUtils;
 
 @Keep
-public class CompanionAppsPreferencesFragment extends PreferenceFragmentCompat {
+public class CompanionAppsPreferencesFragment extends GroupedPreferencesFragment {
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {

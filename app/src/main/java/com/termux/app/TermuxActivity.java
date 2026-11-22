@@ -2,6 +2,7 @@ package com.termux.app;
 
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
+import android.text.TextUtils;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -27,6 +28,7 @@ import android.widget.Toast;
 
 import com.termux.R;
 import com.termux.app.api.file.FileReceiverActivity;
+import com.termux.app.settings.AppAccent;
 import com.termux.app.terminal.ProcessInfo;
 import com.termux.app.terminal.ReportIssueRequest;
 import com.termux.app.terminal.TerminalContextMenu;
@@ -48,6 +50,7 @@ import dev.pschmitt.termux.shared.termux.TermuxConstants.TERMUX_APP.TERMUX_ACTIV
 import com.termux.app.activities.SettingsActivity;
 import dev.pschmitt.termux.shared.termux.crash.TermuxCrashUtils;
 import dev.pschmitt.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
+import dev.pschmitt.termux.shared.termux.shell.command.runner.terminal.TermuxSession;
 import com.termux.app.terminal.SessionsListView;
 import com.termux.app.terminal.TermuxSessionsListViewController;
 import com.termux.app.terminal.io.TerminalToolbarViewPager;
@@ -68,12 +71,15 @@ import com.termux.view.TerminalViewClient;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.viewpager.widget.ViewPager;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -193,6 +199,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     /** The terminal context menu bottom sheet while it is showing. */
     private android.app.Dialog mContextSheetDialog;
 
+    private AlertDialog sessionSwitcher;
+    private String appAccent;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         Logger.logDebug(LOG_TAG, "onCreate");
@@ -212,6 +221,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         super.onCreate(savedInstanceState);
 
+        appAccent = AppAccent.get(this);
+        AppAccent.apply(this, appAccent);
         setContentView(R.layout.activity_termux);
         configureSessionShelf();
 
@@ -309,6 +320,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         Logger.logVerbose(LOG_TAG, "onResume");
 
         if (mIsInvalidState) return;
+        if (!AppAccent.get(this).equals(appAccent)) {
+            recreate();
+            return;
+        }
 
         // Returning from a permission prompt or settings page: let the guest see the result.
         if (mTermuxService != null) mTermuxService.refreshPermissionState();
@@ -947,6 +962,45 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     public void setExtraKeysView(ExtraKeysView extraKeysView) {
         mExtraKeysView = extraKeysView;
+    }
+
+    public void showSessionSwitcher() {
+        if (mTermuxService == null || isFinishing() || (sessionSwitcher != null && sessionSwitcher.isShowing())
+            || getDrawer().getDrawerLockMode(Gravity.START) == DrawerLayout.LOCK_MODE_LOCKED_CLOSED) return;
+
+        List<TerminalSession> sessions = new ArrayList<>();
+        List<CharSequence> titles = new ArrayList<>();
+        int selected = -1;
+        for (int index = 0; index < mTermuxService.getTermuxSessionsSize(); index++) {
+            TermuxSession termuxSession = mTermuxService.getTermuxSession(index);
+            TerminalSession session = termuxSession == null ? null : termuxSession.getTerminalSession();
+            if (session == null) continue;
+            if (session == getCurrentSession()) selected = sessions.size();
+            sessions.add(session);
+            String title = session.mSessionName;
+            if (TextUtils.isEmpty(title)) title = session.getTitle();
+            titles.add(TextUtils.isEmpty(title) ? getString(R.string.ui_session_unnamed, index + 1) : title);
+        }
+
+        sessionSwitcher = DialogUtils.builder(this)
+            .setTitle(R.string.ui_session_switcher_title)
+            .setSingleChoiceItems(titles.toArray(new CharSequence[0]), selected, (dialog, which) -> {
+                TerminalSession session = sessions.get(which);
+                if (mTermuxService != null && mTermuxService.getTermuxSessionForTerminalSession(session) != null)
+                    mTermuxTerminalSessionActivityClient.setCurrentSession(session);
+                dialog.dismiss();
+            })
+            .setPositiveButton(R.string.action_new_session, (dialog, which) ->
+                mTermuxTerminalSessionActivityClient.addNewSession(false, null))
+            .setNegativeButton(R.string.action_open_settings, (dialog, which) ->
+                ActivityUtils.startActivity(this, new Intent(this, SettingsActivity.class)))
+            .setNeutralButton(R.string.action_toggle_soft_keyboard, (dialog, which) -> {
+                dialog.dismiss();
+                getWindow().getDecorView().post(() -> mTermuxTerminalViewClient.onToggleSoftKeyboardRequest());
+            })
+            .create();
+        sessionSwitcher.setOnDismissListener(dialog -> sessionSwitcher = null);
+        sessionSwitcher.show();
     }
 
     private void configureSessionShelf() {

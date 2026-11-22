@@ -126,7 +126,7 @@ public class TerminalGestureActionTest {
 
     @Test
     public void validValuesListsEveryValue() {
-        assertEquals("none, show-keyboard, toggle-keyboard, toggle-text-input, next-session, previous-session, new-session, open-sidebar, open-menu, font-size-up, font-size-down, run-command, send-keys",
+        assertEquals("none, show-keyboard, toggle-keyboard, toggle-text-input, next-session, previous-session, new-session, open-sidebar, open-session-switcher, open-menu, font-size-up, font-size-down, run-command, send-keys",
             TerminalGestureAction.getValidValues());
     }
 

@@ -11,10 +11,10 @@ import androidx.preference.EditTextPreference;
 import androidx.preference.ListPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceCategory;
-import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceScreen;
 
 import com.termux.R;
+import com.termux.app.settings.GroupedPreferencesFragment;
 import com.termux.app.settings.TermuxPropertiesEditor;
 import com.termux.app.settings.PropertyInputSpec;
 import dev.pschmitt.termux.shared.termux.TermuxConstants;
@@ -31,7 +31,7 @@ import java.util.Properties;
 import java.util.Set;
 
 @Keep
-public class PropertiesPreferencesFragment extends PreferenceFragmentCompat {
+public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
     private TermuxPropertiesEditor editor;
 
     @Override

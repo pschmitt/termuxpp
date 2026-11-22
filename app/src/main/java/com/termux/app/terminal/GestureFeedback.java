@@ -8,7 +8,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.provider.Settings;
 import android.view.View;
 
-import androidx.core.content.ContextCompat;
+import com.google.android.material.color.MaterialColors;
 
 import com.termux.R;
 
@@ -28,7 +28,7 @@ final class GestureFeedback {
         outline.setColor(Color.TRANSPARENT);
         outline.setCornerRadius(8 * density);
         outline.setStroke(Math.max(1, Math.round(2 * density)),
-            ContextCompat.getColor(terminal.getContext(), R.color.ui_primary));
+            MaterialColors.getColor(terminal, R.attr.termuxUiPrimary));
         outline.setBounds(inset, inset, terminal.getWidth() - inset, terminal.getHeight() - inset);
         outline.setAlpha(0);
         terminal.getOverlay().add(outline);

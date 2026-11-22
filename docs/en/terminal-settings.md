@@ -123,6 +123,7 @@ The gesture keys are independent and active at the same time. Valid values, case
 | `new-session` | Open a new terminal session and switch to it, like the **New** button. |
 | `toggle-text-input` | Switch the extra keys toolbar to its text input, or back to the extra keys. Does nothing while the toolbar is hidden. |
 | `open-sidebar` | Open the sidebar with the session list. It is not opened while it is locked closed in copy mode. |
+| `open-session-switcher` | Open a compact picker with the current session selected, plus New session, Keyboard and Settings actions. |
 | `open-menu` | Open the terminal menu, the bottom sheet that a long press on the terminal and then "More..." opens (Extract URL, Share transcript, Autofill, Reset, Kill process, Style, Settings and so on). It never touches the soft keyboard. |
 | `font-size-up` | Increase the terminal font size by one step, like pinching out. It never touches the soft keyboard. |
 | `font-size-down` | Decrease the terminal font size by one step, like pinching in. It never touches the soft keyboard. |
@@ -296,7 +297,7 @@ same file:
 
 The two buttons are independent. Valid values of the action keys, case-insensitive, are `modifier`
 and every action of the table above except `run-command` (`none`, `show-keyboard`, `toggle-keyboard`,
-`next-session`, `previous-session`, `open-sidebar`, `open-menu`, `font-size-up`, `font-size-down`,
+`next-session`, `previous-session`, `open-sidebar`, `open-session-switcher`, `open-menu`, `font-size-up`, `font-size-down`,
 `send-keys`).
 The `*-keys` keys are written as described in "Sending keys".
 

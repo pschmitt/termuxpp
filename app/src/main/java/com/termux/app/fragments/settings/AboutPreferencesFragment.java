@@ -10,9 +10,9 @@ import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.preference.Preference;
-import androidx.preference.PreferenceFragmentCompat;
 
 import com.termux.R;
+import com.termux.app.settings.GroupedPreferencesFragment;
 import com.termux.app.TermuxActivity;
 import com.termux.app.models.UserAction;
 import com.termux.app.terminal.ReportIssueRequest;
@@ -26,7 +26,7 @@ import dev.pschmitt.termux.shared.termux.TermuxConstants;
 import dev.pschmitt.termux.shared.termux.TermuxUtils;
 
 @Keep
-public class AboutPreferencesFragment extends PreferenceFragmentCompat {
+public class AboutPreferencesFragment extends GroupedPreferencesFragment {
 
     @Nullable private CharSequence previousTitle;
 

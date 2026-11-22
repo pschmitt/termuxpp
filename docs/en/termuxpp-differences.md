@@ -54,7 +54,8 @@ TermuxPP runtime behavior. Bare `tpp toast` in a terminal shows how to supply a 
 
 Both apps use an edge drawer for switching sessions. TermuxPP presents it as a
 rounded session shelf with a highlighted current row and a lighter scrim over
-the terminal. The session list settles into place as the drawer opens.
+the terminal. The session list settles into place as the drawer opens. The
+optional `open-session-switcher` gesture action opens a compact session picker.
 [Upstream drawer](https://github.com/termux/termux-app/blob/master/app/src/main/res/layout/activity_termux.xml) ·
 [TermuxPP shelf](../../app/src/main/res/layout/activity_termux.xml)
 
@@ -399,7 +400,11 @@ terminal menu can toggle it. `termux-wake-lock` and `termux-wake-unlock` work as
 
 TermuxPP groups the Settings home into Terminal, Automation and services, and
 App and support. Search starts from a field above those groups and moves into the
-toolbar when activated. Results show their location in Settings.
+toolbar when activated. Results show their location in Settings. Display offers
+the default purple accent, fixed colors, and an adaptive accent that uses
+Android wallpaper colors on Android 12 and later. Settings subpages group related
+controls. Debugging puts ADB shell access and Wi-Fi status above Logging, with
+the full instructions available from Setup and security.
 [Upstream Settings home](https://github.com/termux/termux-app/blob/master/app/src/main/res/xml/root_preferences.xml) ·
 [TermuxPP Settings layout](../../app/src/main/res/layout/activity_settings.xml)
 

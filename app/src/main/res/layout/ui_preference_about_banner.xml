@@ -25,7 +25,7 @@
         android:layout_marginEnd="16dp"
         android:importantForAccessibility="no"
         android:scaleType="fitCenter"
-        android:tint="@color/ui_on_primary" />
+        android:tint="?attr/termuxUiOnPrimary" />
 
     <LinearLayout
         android:layout_width="0dp"
@@ -38,7 +38,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textAppearance="@style/TextAppearance.TermuxPP.Title"
-            android:textColor="@color/ui_on_primary" />
+            android:textColor="?attr/termuxUiOnPrimary" />
 
         <TextView
             android:id="@android:id/summary"
@@ -46,6 +46,6 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:textAppearance="@style/TextAppearance.TermuxPP.Body"
-            android:textColor="@color/ui_on_primary" />
+            android:textColor="?attr/termuxUiOnPrimary" />
     </LinearLayout>
 </LinearLayout>

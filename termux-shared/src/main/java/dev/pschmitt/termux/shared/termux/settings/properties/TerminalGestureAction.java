@@ -50,6 +50,9 @@ public enum TerminalGestureAction {
     /** Open the sidebar (the drawer) with the list of sessions. */
     OPEN_SIDEBAR("open-sidebar"),
 
+    /** Open the compact session picker. */
+    OPEN_SESSION_SWITCHER("open-session-switcher"),
+
     /**
      * Open the terminal menu, the same bottom sheet that a long press on the terminal and then
      * "More" opens.
@@ -126,6 +129,7 @@ public enum TerminalGestureAction {
             case PREVIOUS_SESSION: return "Previous session";
             case NEW_SESSION: return "New session";
             case OPEN_SIDEBAR: return "Sessions";
+            case OPEN_SESSION_SWITCHER: return "Session switcher";
             case OPEN_MENU: return "Menu";
             case FONT_SIZE_UP: return "Larger text";
             case FONT_SIZE_DOWN: return "Smaller text";

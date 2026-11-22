@@ -4,15 +4,18 @@ import android.content.Context;
 import android.os.Bundle;
 
 import androidx.annotation.Keep;
+import androidx.fragment.app.FragmentActivity;
+import androidx.preference.ListPreference;
 import androidx.preference.PreferenceDataStore;
-import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceManager;
 
 import com.termux.R;
+import com.termux.app.settings.GroupedPreferencesFragment;
+import com.termux.app.settings.AppAccent;
 import dev.pschmitt.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 
 @Keep
-public class TerminalViewPreferencesFragment extends PreferenceFragmentCompat {
+public class TerminalViewPreferencesFragment extends GroupedPreferencesFragment {
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
@@ -23,6 +26,14 @@ public class TerminalViewPreferencesFragment extends PreferenceFragmentCompat {
         preferenceManager.setPreferenceDataStore(TerminalViewPreferencesDataStore.getInstance(context));
 
         setPreferencesFromResource(R.xml.termux_terminal_view_preferences, rootKey);
+        ListPreference accent = findPreference(AppAccent.KEY);
+        if (accent != null) accent.setOnPreferenceChangeListener((preference, value) -> {
+            if (!value.equals(accent.getValue())) {
+                FragmentActivity activity = requireActivity();
+                activity.getWindow().getDecorView().post(activity::recreate);
+            }
+            return true;
+        });
     }
 
 }
@@ -47,6 +58,16 @@ class TerminalViewPreferencesDataStore extends PreferenceDataStore {
     }
 
 
+
+    @Override
+    public void putString(String key, String value) {
+        if (AppAccent.KEY.equals(key)) AppAccent.set(mContext, value);
+    }
+
+    @Override
+    public String getString(String key, String defaultValue) {
+        return AppAccent.KEY.equals(key) ? AppAccent.get(mContext) : defaultValue;
+    }
 
     @Override
     public void putBoolean(String key, boolean value) {

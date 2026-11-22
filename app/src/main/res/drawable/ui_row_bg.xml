@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Rounded tonal row inside a full-width list item. The inset provides the gutter and the gap. -->
 <ripple xmlns:android="http://schemas.android.com/apk/res/android"
-    android:color="@color/ui_ripple">
+    android:color="?attr/termuxUiRipple">
     <item android:id="@android:id/mask">
         <inset
             android:insetLeft="@dimen/ui_gutter"

@@ -18,7 +18,7 @@
         android:importantForAccessibility="no"
         android:scaleType="center"
         android:src="@drawable/ui_ic_menu_terminal"
-        android:tint="@color/ui_on_container" />
+        android:tint="?attr/termuxUiOnContainer" />
 
     <LinearLayout
         android:id="@+id/context_header_text"

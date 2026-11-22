@@ -30,6 +30,9 @@ public final class GestureActionDispatcher {
         /** Open the sidebar, if it may be opened now. */
         void openSidebar();
 
+        /** Open the compact session picker. */
+        void openSessionSwitcher();
+
         /** Open the terminal menu (the bottom sheet), the same one that the long press opens. */
         void openMenu();
 
@@ -109,6 +112,10 @@ public final class GestureActionDispatcher {
 
             case OPEN_SIDEBAR:
                 target.openSidebar();
+                break;
+
+            case OPEN_SESSION_SWITCHER:
+                target.openSessionSwitcher();
                 break;
 
             case OPEN_MENU:

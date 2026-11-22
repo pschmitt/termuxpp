@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="TermuxPPAccentBlue" parent="">
+        <item name="termuxUiPrimary">#265DA9</item>
+        <item name="termuxUiOnPrimary">#FFFFFF</item>
+        <item name="termuxUiContainer">#D9E7FF</item>
+        <item name="termuxUiOnContainer">#122E57</item>
+        <item name="termuxUiRipple">#1F265DA9</item>
+        <item name="termuxUiShelf">#EAF1FD</item>
+        <item name="termuxUiSearch">#E3ECFB</item>
+        <item name="termuxUiGroup">#F0F4FC</item>
+    </style>
+    <style name="TermuxPPAccentTeal" parent="">
+        <item name="termuxUiPrimary">#006B5F</item>
+        <item name="termuxUiOnPrimary">#FFFFFF</item>
+        <item name="termuxUiContainer">#BFECE3</item>
+        <item name="termuxUiOnContainer">#003830</item>
+        <item name="termuxUiRipple">#1F006B5F</item>
+        <item name="termuxUiShelf">#E5F4F0</item>
+        <item name="termuxUiSearch">#DDF0EA</item>
+        <item name="termuxUiGroup">#EDF7F3</item>
+    </style>
+    <style name="TermuxPPAccentRose" parent="">
+        <item name="termuxUiPrimary">#9D355D</item>
+        <item name="termuxUiOnPrimary">#FFFFFF</item>
+        <item name="termuxUiContainer">#F9DBE7</item>
+        <item name="termuxUiOnContainer">#55142E</item>
+        <item name="termuxUiRipple">#1F9D355D</item>
+        <item name="termuxUiShelf">#FAECF1</item>
+        <item name="termuxUiSearch">#F5E3EC</item>
+        <item name="termuxUiGroup">#FCF0F5</item>
+    </style>
+    <style name="TermuxPPAccentAdaptive" parent="">
+    </style>
+</resources>

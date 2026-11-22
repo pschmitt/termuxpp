@@ -21,10 +21,11 @@ import androidx.core.content.ContextCompat;
 import androidx.core.graphics.drawable.DrawableCompat;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.preference.Preference;
-import androidx.preference.PreferenceFragmentCompat;
 
 import com.termux.BuildConfig;
+import com.google.android.material.color.MaterialColors;
 import com.termux.R;
+import com.termux.app.settings.GroupedPreferencesFragment;
 import com.termux.app.update.InstalledBuild;
 import com.termux.app.update.ShizukuInstaller;
 import com.termux.app.update.ShizukuState;
@@ -42,7 +43,7 @@ import rikka.shizuku.Shizuku;
  * Updates the integrated TermuxPP APK. Opening this screen only reads local state.
  */
 @Keep
-public class UpdatesPreferencesFragment extends PreferenceFragmentCompat implements UpdateController.Listener {
+public class UpdatesPreferencesFragment extends GroupedPreferencesFragment implements UpdateController.Listener {
 
     private static final String LOG_TAG = "UpdatesPreferencesFragment";
     private static final UpdateTarget APP = UpdateTarget.CORE;
@@ -87,7 +88,7 @@ public class UpdatesPreferencesFragment extends PreferenceFragmentCompat impleme
         if (context == null || !(view.getParent() instanceof android.view.ViewGroup)) return;
 
         SwipeRefreshLayout refresh = new SwipeRefreshLayout(context);
-        refresh.setColorSchemeColors(ContextCompat.getColor(context, R.color.ui_primary));
+        refresh.setColorSchemeColors(MaterialColors.getColor(context, R.attr.termuxUiPrimary, ContextCompat.getColor(context, R.color.ui_primary)));
         refresh.setOnRefreshListener(() -> {
             if (controller == null || controller.isBusy()) {
                 refresh.setRefreshing(false);
@@ -312,7 +313,7 @@ public class UpdatesPreferencesFragment extends PreferenceFragmentCompat impleme
         Drawable glyph = ContextCompat.getDrawable(context, glyphRes);
         if (container == null || glyph == null) throw new IllegalStateException("Missing bundled icon");
         glyph = DrawableCompat.wrap(glyph.mutate());
-        DrawableCompat.setTint(glyph, ContextCompat.getColor(context, R.color.ui_on_container));
+        DrawableCompat.setTint(glyph, MaterialColors.getColor(context, R.attr.termuxUiOnContainer, ContextCompat.getColor(context, R.color.ui_on_container)));
         LayerDrawable layers = new LayerDrawable(new Drawable[]{container.mutate(), glyph});
         int inset = Math.round(8 * context.getResources().getDisplayMetrics().density);
         layers.setLayerInset(1, inset, inset, inset, inset);

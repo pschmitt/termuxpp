@@ -14,9 +14,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceCategory;
-import androidx.preference.PreferenceFragmentCompat;
 
 import com.termux.R;
+import com.termux.app.settings.GroupedPreferencesFragment;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -40,7 +40,7 @@ import dev.pschmitt.termux.shared.termux.shell.command.environment.TermuxShellEn
 
 /** Controls services supervised by the managed Nix guest. */
 @Keep
-public class ServicesPreferencesFragment extends PreferenceFragmentCompat {
+public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
 
     private static final int OUTPUT_LIMIT = 64 * 1024;
     private static final String SERVICE_NAME_PATTERN = "[A-Za-z0-9_.@-]+";

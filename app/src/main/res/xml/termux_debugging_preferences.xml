@@ -1,4 +1,47 @@
-<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory
+        android:layout="@layout/ui_preference_group_spacing"
+        app:key="adb_shell">
+
+        <com.termux.app.settings.AdbShellStatusPreference
+            app:icon="@drawable/ui_ic_terminal"
+            app:key="adb_shell_enabled"
+            app:summary="@string/adb_shell_enabled_summary"
+            app:summaryOff="@string/settings_adb_status_off"
+            app:summaryOn="@string/settings_adb_status_on"
+            app:title="@string/adb_shell_enabled_title" />
+
+        <Preference
+            app:icon="@drawable/ui_ic_info"
+            app:key="adb_shell_current_network"
+            app:persistent="false"
+            app:title="@string/adb_shell_current_network_title" />
+
+        <EditTextPreference
+            app:icon="@drawable/ui_ic_link"
+            app:key="adb_shell_allowed_ssids"
+            app:dialogTitle="@string/adb_shell_allowed_ssids_title"
+            app:dialogMessage="@string/adb_shell_allowed_ssids_dialog"
+            app:title="@string/adb_shell_allowed_ssids_title"
+            app:useSimpleSummaryProvider="false" />
+
+        <Preference
+            app:icon="@drawable/ui_ic_info"
+            app:key="adb_shell_setup"
+            app:persistent="false"
+            app:title="@string/settings_adb_setup_title" />
+
+        <Preference
+            app:icon="@drawable/ui_ic_lock"
+            app:fragment="com.termux.app.fragments.settings.termux.AdbShellAuthorizationsPreferencesFragment"
+            app:key="adb_shell_authorizations"
+            app:persistent="false"
+            app:title="@string/adb_shell_authorizations_title"
+            app:summary="@string/adb_shell_authorizations_summary" />
+
+    </PreferenceCategory>
 
     <PreferenceCategory
         app:key="logging"
@@ -14,51 +57,17 @@
         <SwitchPreferenceCompat
             app:icon="@drawable/ui_ic_keyboard"
             app:key="terminal_view_key_logging_enabled"
-            app:summaryOff="@string/termux_terminal_view_key_logging_enabled_off"
-            app:summaryOn="@string/termux_terminal_view_key_logging_enabled_on"
             app:title="@string/termux_terminal_view_key_logging_enabled_title" />
 
         <SwitchPreferenceCompat
             app:icon="@drawable/ui_ic_warning"
             app:key="plugin_error_notifications_enabled"
-            app:summaryOff="@string/termux_plugin_error_notifications_enabled_off"
-            app:summaryOn="@string/termux_plugin_error_notifications_enabled_on"
             app:title="@string/termux_plugin_error_notifications_enabled_title" />
 
         <SwitchPreferenceCompat
             app:icon="@drawable/ui_ic_bug"
             app:key="crash_report_notifications_enabled"
-            app:summaryOff="@string/termux_crash_report_notifications_enabled_off"
-            app:summaryOn="@string/termux_crash_report_notifications_enabled_on"
             app:title="@string/termux_crash_report_notifications_enabled_title" />
-
-        <SwitchPreferenceCompat
-            app:icon="@drawable/ui_ic_terminal"
-            app:key="adb_shell_enabled"
-            app:summary="@string/adb_shell_enabled_summary"
-            app:title="@string/adb_shell_enabled_title" />
-
-        <EditTextPreference
-            app:icon="@drawable/ui_ic_link"
-            app:key="adb_shell_allowed_ssids"
-            app:dialogTitle="@string/adb_shell_allowed_ssids_title"
-            app:dialogMessage="@string/adb_shell_allowed_ssids_dialog"
-            app:title="@string/adb_shell_allowed_ssids_title"
-            app:useSimpleSummaryProvider="false" />
-
-        <Preference
-            app:icon="@drawable/ui_ic_info"
-            app:key="adb_shell_current_network"
-            app:persistent="false"
-            app:title="@string/adb_shell_current_network_title" />
-
-        <Preference
-            app:icon="@drawable/ui_ic_lock"
-            app:fragment="com.termux.app.fragments.settings.termux.AdbShellAuthorizationsPreferencesFragment"
-            app:key="adb_shell_authorizations"
-            app:persistent="false"
-            app:title="@string/adb_shell_authorizations_title"
-            app:summary="@string/adb_shell_authorizations_summary" />
 
     </PreferenceCategory>
 

@@ -51,7 +51,7 @@
                 android:text="@string/settings_search"
                 android:textAllCaps="false"
                 android:textColor="@color/ui_on_surface"
-                app:backgroundTint="@color/ui_settings_search"
+                app:backgroundTint="?attr/termuxUiSearch"
                 app:cornerRadius="26dp"
                 app:icon="@drawable/ui_ic_search"
                 app:iconTint="@color/ui_on_surface" />

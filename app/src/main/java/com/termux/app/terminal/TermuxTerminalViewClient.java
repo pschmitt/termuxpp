@@ -444,6 +444,11 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
             }
 
             @Override
+            public void openSessionSwitcher() {
+                mActivity.showSessionSwitcher();
+            }
+
+            @Override
             public void openMenu() {
                 // The one funnel that the long press uses too, so that the same sheet (or the system
                 // menu as its fallback) is shown and a selection is never duplicated.

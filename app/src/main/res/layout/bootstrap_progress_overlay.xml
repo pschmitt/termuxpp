@@ -95,8 +95,8 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="14dp"
                 android:indeterminate="true"
-                app:indicatorColor="@color/ui_primary"
-                app:trackColor="@color/ui_container"
+                app:indicatorColor="?attr/termuxUiPrimary"
+                app:trackColor="?attr/termuxUiContainer"
                 app:trackCornerRadius="4dp"
                 app:trackThickness="6dp" />
 

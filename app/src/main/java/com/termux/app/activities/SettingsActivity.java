@@ -27,6 +27,7 @@ import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceGroup;
 
 import com.termux.R;
+import com.termux.app.settings.AppAccent;
 import com.termux.app.settings.SettingsNavigationPreference;
 import com.termux.app.settings.SettingsSearchIndex;
 
@@ -56,6 +57,7 @@ public class SettingsActivity extends AppCompatActivity
 
         AppCompatActivityUtils.setNightMode(this, NightMode.getAppNightMode().getName(), true);
 
+        AppAccent.apply(this, AppAccent.get(this));
         setContentView(R.layout.activity_settings);
         settingsIntro = findViewById(R.id.settings_intro);
         searchButton = findViewById(R.id.settings_search_button);

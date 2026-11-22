@@ -13,9 +13,9 @@ import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.preference.ListPreference;
+import androidx.preference.Preference;
 import androidx.preference.PreferenceCategory;
 import androidx.preference.PreferenceDataStore;
-import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceManager;
 import androidx.preference.SwitchPreferenceCompat;
 
@@ -25,11 +25,12 @@ import dev.pschmitt.termux.shared.termux.TermuxConstants;
 import dev.pschmitt.termux.shared.termux.settings.properties.TermuxPropertyConstants;
 
 import com.termux.R;
+import com.termux.app.settings.GroupedPreferencesFragment;
 import dev.pschmitt.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import dev.pschmitt.termux.shared.logger.Logger;
 
 @Keep
-public class DebuggingPreferencesFragment extends PreferenceFragmentCompat {
+public class DebuggingPreferencesFragment extends GroupedPreferencesFragment {
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
@@ -43,25 +44,44 @@ public class DebuggingPreferencesFragment extends PreferenceFragmentCompat {
 
         configureLoggingPreferences(context);
         configureAdbShellPreference(context);
-        configureAllowedSsidsPreference(context);
+        configureAllowedSsidsPreference();
         configureCurrentNetworkPreference(context);
+        configureSetupPreference(context);
+
+        for (String key : new String[] {"log_level", "terminal_view_key_logging_enabled",
+            "plugin_error_notifications_enabled", "crash_report_notifications_enabled",
+            "adb_shell_current_network", "adb_shell_allowed_ssids", "adb_shell_setup", "adb_shell_authorizations"}) {
+            Preference row = findPreference(key);
+            if (row != null) row.setIcon(null);
+        }
     }
 
-    private void configureAllowedSsidsPreference(@NonNull Context context) {
+    private void configureSetupPreference(@NonNull Context context) {
+        Preference setup = findPreference("adb_shell_setup");
+        if (setup == null) return;
+        setup.setOnPreferenceClickListener(preference -> {
+            String details = getString(R.string.adb_shell_enabled_summary) + "\n\n"
+                + getString(R.string.adb_shell_allowed_ssids_dialog) + "\n\n"
+                + getString(R.string.adb_shell_current_network_background);
+            DialogUtils.builder(context).setTitle(R.string.settings_adb_setup_title)
+                .setMessage(details).setPositiveButton(android.R.string.ok, null).show();
+            return true;
+        });
+    }
+
+    private void configureAllowedSsidsPreference() {
         androidx.preference.EditTextPreference edit = findPreference("adb_shell_allowed_ssids");
         if (edit == null) return;
-        // Show the configured networks; the help text only while there are none.
         edit.setSummaryProvider(preference -> {
             String text = ((androidx.preference.EditTextPreference) preference).getText();
-            String list = text == null ? "" : text.trim();
-            if (list.isEmpty()) return getString(R.string.adb_shell_allowed_ssids_summary);
-            StringBuilder names = new StringBuilder();
-            for (String name : list.split(",")) {
-                if (name.trim().isEmpty()) continue;
-                if (names.length() > 0) names.append(", ");
-                names.append(name.trim());
+            int count = 0;
+            if (text != null) {
+                for (String name : text.split(",")) {
+                    if (!name.trim().isEmpty()) count++;
+                }
             }
-            return names.toString();
+            return count == 0 ? getString(R.string.settings_adb_network_any)
+                : getResources().getQuantityString(R.plurals.settings_adb_network_count, count, count);
         });
         edit.setOnPreferenceChangeListener((preference, value) -> {
             postNetworkRefresh();
@@ -179,23 +199,18 @@ public class DebuggingPreferencesFragment extends PreferenceFragmentCompat {
         if (network == null) return;
         if (androidx.core.content.ContextCompat.checkSelfPermission(context,
             android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            network.setSummary(R.string.adb_shell_current_network_permission);
+            network.setSummary(R.string.settings_adb_network_permission);
             return;
         }
         String ssid = AdbShellService.currentSsid(context);
         String list = currentAllowedSsids();
-        if (ssid == null) {
-            network.setSummary(R.string.adb_shell_current_network_none);
-        } else if (list.isEmpty()) {
-            network.setSummary(getString(R.string.adb_shell_current_network_unrestricted, ssid));
-        } else if (AdbShellService.permitsSsid(list, "\"" + ssid + "\"")) {
-            network.setSummary(getString(R.string.adb_shell_current_network_trusted, ssid));
-        } else {
-            network.setSummary(getString(R.string.adb_shell_current_network_untrusted, ssid));
-        }
-        if (!hasBackgroundLocation(context)) {
-            network.setSummary(network.getSummary() + "\n\n" + getString(R.string.adb_shell_current_network_background));
-        }
+        int state;
+        if (ssid == null) state = R.string.settings_adb_network_none;
+        else if (list.isEmpty()) state = R.string.settings_adb_network_any;
+        else if (AdbShellService.permitsSsid(list, "\"" + ssid + "\"")) state = R.string.settings_adb_network_trusted;
+        else state = R.string.settings_adb_network_untrusted;
+        network.setSummary(hasBackgroundLocation(context) ? getString(state)
+            : getString(R.string.settings_adb_network_background, getString(state)));
     }
 
     private void configureAdbShellPreference(@NonNull Context context) {

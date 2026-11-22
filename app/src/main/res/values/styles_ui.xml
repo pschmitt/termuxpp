@@ -14,7 +14,7 @@
     <style name="TextAppearance.TermuxPP.Section" parent="TextAppearance.MaterialComponents.Subtitle2">
         <item name="android:textSize">14sp</item>
         <item name="android:fontFamily">sans-serif-medium</item>
-        <item name="android:textColor">@color/ui_primary</item>
+        <item name="android:textColor">?attr/termuxUiPrimary</item>
     </style>
     <style name="TextAppearance.TermuxPP.SheetItem" parent="TextAppearance.MaterialComponents.Body1">
         <item name="android:textSize">16sp</item>
@@ -75,7 +75,7 @@
         <item name="dropdownPreferenceStyle">@style/Preference.TermuxPP.Dropdown</item>
         <item name="preferenceFragmentCompatStyle">@style/PreferenceFragment.TermuxPP</item>
         <item name="preferenceFragmentStyle">@style/PreferenceFragment.TermuxPP</item>
-        <item name="preferenceCategoryTitleTextColor">@color/ui_primary</item>
+        <item name="preferenceCategoryTitleTextColor">?attr/termuxUiPrimary</item>
         <item name="preferenceCategoryTitleTextAppearance">@style/TextAppearance.TermuxPP.Section</item>
     </style>
 
@@ -86,11 +86,11 @@
       also styles the androidx.preference dialogs.
     -->
     <style name="ThemeOverlay.TermuxPP.Dialog" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
-        <item name="colorPrimary">@color/ui_primary</item>
-        <item name="colorPrimaryVariant">@color/ui_primary</item>
-        <item name="colorOnPrimary">@color/ui_on_primary</item>
-        <item name="colorSecondary">@color/ui_primary</item>
-        <item name="colorOnSecondary">@color/ui_on_primary</item>
+        <item name="colorPrimary">?attr/termuxUiPrimary</item>
+        <item name="colorPrimaryVariant">?attr/termuxUiPrimary</item>
+        <item name="colorOnPrimary">?attr/termuxUiOnPrimary</item>
+        <item name="colorSecondary">?attr/termuxUiPrimary</item>
+        <item name="colorOnSecondary">?attr/termuxUiOnPrimary</item>
         <item name="colorSurface">@color/ui_row</item>
         <item name="colorOnSurface">@color/ui_on_surface</item>
         <item name="colorError">@color/ui_danger</item>
@@ -98,11 +98,11 @@
         <item name="android:windowBackground">@drawable/ui_dialog_background</item>
         <item name="android:textColorPrimary">@color/ui_on_surface</item>
         <item name="android:textColorSecondary">@color/ui_on_surface_variant</item>
-        <item name="android:textColorLink">@color/ui_primary</item>
+        <item name="android:textColorLink">?attr/termuxUiPrimary</item>
         <item name="android:textColorAlertDialogListItem">@color/ui_on_surface</item>
         <item name="textColorAlertDialogListItem">@color/ui_on_surface</item>
-        <item name="colorControlActivated">@color/ui_primary</item>
-        <item name="colorControlHighlight">@color/ui_ripple</item>
+        <item name="colorControlActivated">?attr/termuxUiPrimary</item>
+        <item name="colorControlHighlight">?attr/termuxUiRipple</item>
         <item name="elevationOverlayEnabled">false</item>
         <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.TermuxPP.Dialog</item>
         <item name="alertDialogStyle">@style/MaterialAlertDialog.TermuxPP</item>
@@ -135,23 +135,23 @@
         <item name="android:textSize">14sp</item>
         <item name="android:lineSpacingMultiplier">1.15</item>
         <item name="android:textColor">@color/ui_on_surface_variant</item>
-        <item name="android:textColorLink">@color/ui_primary</item>
+        <item name="android:textColorLink">?attr/termuxUiPrimary</item>
     </style>
     <style name="Widget.TermuxPP.Button.Dialog" parent="Widget.MaterialComponents.Button.TextButton.Dialog">
-        <item name="android:textColor">@color/ui_primary</item>
+        <item name="android:textColor">?attr/termuxUiPrimary</item>
         <item name="android:textSize">14sp</item>
         <item name="android:textAllCaps">false</item>
         <item name="android:letterSpacing">0</item>
         <item name="android:minHeight">@dimen/ui_touch_target</item>
         <item name="cornerRadius">20dp</item>
-        <item name="rippleColor">@color/ui_ripple</item>
+        <item name="rippleColor">?attr/termuxUiRipple</item>
     </style>
 
     <!-- Context menu bottom sheet. -->
     <style name="ThemeOverlay.TermuxPP.BottomSheetDialog" parent="ThemeOverlay.MaterialComponents.BottomSheetDialog">
-        <item name="colorPrimary">@color/ui_primary</item>
-        <item name="colorOnPrimary">@color/ui_on_primary</item>
-        <item name="colorSecondary">@color/ui_primary</item>
+        <item name="colorPrimary">?attr/termuxUiPrimary</item>
+        <item name="colorOnPrimary">?attr/termuxUiOnPrimary</item>
+        <item name="colorSecondary">?attr/termuxUiPrimary</item>
         <item name="colorSurface">@color/ui_surface</item>
         <item name="colorOnSurface">@color/ui_on_surface</item>
         <item name="android:colorBackground">@color/ui_surface</item>
@@ -174,26 +174,26 @@
 
     <!-- Drawer buttons. -->
     <style name="Widget.TermuxPP.Button.Filled" parent="Widget.MaterialComponents.Button">
-        <item name="backgroundTint">@color/ui_primary</item>
-        <item name="android:textColor">@color/ui_on_primary</item>
-        <item name="iconTint">@color/ui_on_primary</item>
+        <item name="backgroundTint">?attr/termuxUiPrimary</item>
+        <item name="android:textColor">?attr/termuxUiOnPrimary</item>
+        <item name="iconTint">?attr/termuxUiOnPrimary</item>
         <item name="android:minHeight">@dimen/ui_touch_target</item>
         <item name="cornerRadius">24dp</item>
         <item name="android:textSize">14sp</item>
         <item name="android:textAllCaps">false</item>
         <item name="android:letterSpacing">0</item>
-        <item name="rippleColor">@color/ui_ripple</item>
+        <item name="rippleColor">?attr/termuxUiRipple</item>
     </style>
     <style name="Widget.TermuxPP.Button.Tonal" parent="Widget.MaterialComponents.Button.TextButton">
-        <item name="backgroundTint">@color/ui_container</item>
-        <item name="android:textColor">@color/ui_on_container</item>
-        <item name="iconTint">@color/ui_on_container</item>
+        <item name="backgroundTint">?attr/termuxUiContainer</item>
+        <item name="android:textColor">?attr/termuxUiOnContainer</item>
+        <item name="iconTint">?attr/termuxUiOnContainer</item>
         <item name="android:minHeight">@dimen/ui_touch_target</item>
         <item name="cornerRadius">24dp</item>
         <item name="android:textSize">14sp</item>
         <item name="android:textAllCaps">false</item>
         <item name="android:letterSpacing">0</item>
-        <item name="rippleColor">@color/ui_ripple</item>
+        <item name="rippleColor">?attr/termuxUiRipple</item>
     </style>
     <style name="Widget.TermuxPP.IconButton" parent="Widget.AppCompat.ImageButton">
         <item name="android:background">@drawable/ui_icon_button_bg</item>

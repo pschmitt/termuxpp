@@ -21,4 +21,33 @@
     <string name="settings_integration_boot_summary">Run scripts when the device starts</string>
     <string name="settings_integration_styling_title">Colors and fonts</string>
     <string name="settings_integration_styling_summary">Change the terminal palette and typeface</string>
+    <string name="settings_accent_color">Accent color</string>
+    <string name="settings_accent_color_summary">Choose the app accent or use the Android wallpaper colors</string>
+    <string-array name="settings_accent_entries">
+        <item>Default</item>
+        <item>Adaptive</item>
+        <item>Blue</item>
+        <item>Teal</item>
+        <item>Rose</item>
+    </string-array>
+    <string-array name="settings_accent_values" translatable="false">
+        <item>default</item>
+        <item>adaptive</item>
+        <item>blue</item>
+        <item>teal</item>
+        <item>rose</item>
+    </string-array>
+    <string name="settings_adb_setup_title">Setup and security</string>
+    <string name="settings_adb_status_on">On</string>
+    <string name="settings_adb_status_off">Off</string>
+    <string name="settings_adb_network_any">Any network</string>
+    <string name="settings_adb_network_permission">Location permission needed</string>
+    <string name="settings_adb_network_none">No readable Wi-Fi network</string>
+    <string name="settings_adb_network_trusted">Trusted network</string>
+    <string name="settings_adb_network_untrusted">Untrusted network</string>
+    <string name="settings_adb_network_background">%1$s · Background location needed</string>
+    <plurals name="settings_adb_network_count">
+        <item quantity="one">%d network</item>
+        <item quantity="other">%d networks</item>
+    </plurals>
 </resources>

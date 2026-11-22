@@ -2,4 +2,12 @@
 <resources>
     <attr name="termuxActivityDrawerBackground" format="reference" />
     <attr name="termuxActivityDrawerImageTint" format="reference" />
+    <attr name="termuxUiPrimary" format="color|reference" />
+    <attr name="termuxUiOnPrimary" format="color|reference" />
+    <attr name="termuxUiContainer" format="color|reference" />
+    <attr name="termuxUiOnContainer" format="color|reference" />
+    <attr name="termuxUiRipple" format="color|reference" />
+    <attr name="termuxUiShelf" format="color|reference" />
+    <attr name="termuxUiSearch" format="color|reference" />
+    <attr name="termuxUiGroup" format="color|reference" />
 </resources>

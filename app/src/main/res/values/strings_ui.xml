@@ -2,6 +2,7 @@
 <resources>
     <!-- Drawer -->
     <string name="ui_drawer_title">Sessions</string>
+    <string name="ui_session_switcher_title">Session switcher</string>
     <string name="ui_session_unnamed">Session %1$d</string>
     <string name="ui_session_exited">Exited (%1$d)</string>
     <string name="ui_session_null">No session</string>
