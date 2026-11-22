@@ -93,7 +93,7 @@ fn execute(
         if parsed.json {
             print_json(out, sessions, environment);
         } else {
-            let table = table(sessions).ok_or_else(|| unexpected(&reply))?;
+            let table = table(sessions, environment.color).ok_or_else(|| unexpected(&reply))?;
             let _ = out.write_all(table.as_bytes());
         }
     } else if parsed.json {
@@ -158,9 +158,13 @@ fn outcome(command: &Command) -> Value {
 }
 
 /// The session table, or `None` when the reply is not a list of sessions.
-fn table(sessions: &Value) -> Option<String> {
-    let mut text =
-        String::from("  POS  ID                                    STATE    NAME / TITLE\n");
+fn table(sessions: &Value, color: bool) -> Option<String> {
+    let header = "  POS  ID                                    STATE    NAME / TITLE";
+    let mut text = if color {
+        format!("\x1b[1;34m{header}\x1b[0m\n")
+    } else {
+        format!("{header}\n")
+    };
     for session in sessions.as_array()? {
         let current = if session.get("current")?.truthy() {
             '*'
@@ -187,8 +191,14 @@ fn table(sessions: &Value) -> Option<String> {
             .collect();
         let position = session.get("position")?.display();
         let id = session.get("id")?.display();
+        let state = if color {
+            let code = if state == "running" { "32" } else { "33" };
+            format!("\x1b[{code}m{state:<7}\x1b[0m")
+        } else {
+            format!("{state:<7}")
+        };
         text.push_str(&format!(
-            "{current} {position:>3}  {id}  {state:<7}  {label}\n"
+            "{current} {position:>3}  {id}  {state}  {label}\n"
         ));
     }
     Some(text)
@@ -296,6 +306,14 @@ mod tests {
              \x20\x20 10  22222222-2222-2222-2222-222222222222  exited   Build ?bell\n"
         );
         assert_eq!(result.err, "");
+    }
+
+    #[test]
+    fn list_colors_header_and_states_when_enabled() {
+        let result = run_with(&Fake::replying(SESSIONS), true, "list");
+        assert!(result.out.contains("\x1b[1;34m"));
+        assert!(result.out.contains("\x1b[32mrunning\x1b[0m"));
+        assert!(result.out.contains("\x1b[33mexited \x1b[0m"));
     }
 
     #[test]

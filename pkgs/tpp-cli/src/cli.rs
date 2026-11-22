@@ -114,6 +114,10 @@ fn list_names(app: &App) -> String {
         s.push_str(name);
         s.push('\n');
     }
+    for name in app.ctx.list_plugins(&app.table) {
+        s.push_str(&name);
+        s.push('\n');
+    }
     s
 }
 
@@ -124,6 +128,9 @@ fn list_commands(app: &App) -> String {
     }
     for (name, summary) in native::GROUPS {
         s.push_str(&format!("{:<28} {}\n", format!("tpp {name}"), summary));
+    }
+    for name in app.ctx.list_plugins(&app.table) {
+        s.push_str(&format!("{:<28} Plugin\n", format!("tpp {name}")));
     }
     s
 }
@@ -308,6 +315,201 @@ fn render_output(class: &str, data: &[u8], json: bool) -> i32 {
     }
 }
 
+/// Render complete JSON objects from a live stream without waiting for EOF.
+struct StreamRenderer<W: Write> {
+    out: W,
+    pending: Vec<u8>,
+    depth: usize,
+    quoted: bool,
+    escaped: bool,
+    structured: bool,
+    mode: Mode,
+    color: bool,
+    invalid_text: bool,
+    unwrap_array: bool,
+    array_started: bool,
+}
+
+impl<W: Write> StreamRenderer<W> {
+    fn new(out: W, mode: Mode, color: bool) -> Self {
+        Self {
+            out,
+            pending: Vec::new(),
+            depth: 0,
+            quoted: false,
+            escaped: false,
+            structured: false,
+            mode,
+            color,
+            invalid_text: false,
+            unwrap_array: false,
+            array_started: false,
+        }
+    }
+
+    fn emit(&mut self) -> io::Result<()> {
+        if self.mode == Mode::Json
+            && (self.pending.contains(&0) || std::str::from_utf8(&self.pending).is_err())
+        {
+            self.invalid_text = true;
+        } else if self.structured {
+            match render::render(self.mode, self.color, &self.pending) {
+                Ok(rendered) => self.out.write_all(&rendered)?,
+                Err(_) if self.mode == Mode::Json => {
+                    let wrapped =
+                        render::render(Mode::Wrap, self.color, &self.pending).map_err(|_| {
+                            io::Error::new(io::ErrorKind::InvalidData, "invalid output")
+                        })?;
+                    self.out.write_all(&wrapped)?;
+                }
+                Err(_) => self.out.write_all(&self.pending)?,
+            }
+        } else if self.mode == Mode::Json && !self.pending.iter().all(u8::is_ascii_whitespace) {
+            let wrapped = render::render(Mode::Wrap, self.color, &self.pending)
+                .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "invalid output"))?;
+            self.out.write_all(&wrapped)?;
+        } else {
+            self.out.write_all(&self.pending)?;
+        }
+        self.pending.clear();
+        self.depth = 0;
+        self.quoted = false;
+        self.escaped = false;
+        self.structured = false;
+        self.out.flush()
+    }
+
+    fn finish(&mut self) -> io::Result<()> {
+        if !self.pending.is_empty() {
+            self.emit()?;
+        }
+        self.out.flush()
+    }
+}
+
+impl<W: Write> Write for StreamRenderer<W> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        for &b in buf {
+            if self.unwrap_array && self.pending.is_empty() {
+                if !self.array_started && b.is_ascii_whitespace() {
+                    continue;
+                }
+                if !self.array_started && b == b'[' {
+                    self.array_started = true;
+                    continue;
+                }
+                if self.array_started && (b.is_ascii_whitespace() || b == b',' || b == b']') {
+                    continue;
+                }
+            }
+            if !self.structured && self.pending.iter().all(u8::is_ascii_whitespace) {
+                self.structured = matches!(b, b'{' | b'[');
+            }
+            self.pending.push(b);
+            if self.structured {
+                if self.quoted {
+                    if self.escaped {
+                        self.escaped = false;
+                    } else if b == b'\\' {
+                        self.escaped = true;
+                    } else if b == b'"' {
+                        self.quoted = false;
+                    }
+                } else {
+                    match b {
+                        b'"' => self.quoted = true,
+                        b'{' | b'[' => self.depth += 1,
+                        b'}' | b']' => self.depth = self.depth.saturating_sub(1),
+                        _ => {}
+                    }
+                    if self.depth == 0 {
+                        self.emit()?;
+                    }
+                }
+            } else if b == b'\n' {
+                self.emit()?;
+            }
+            // A malformed or unbounded record must not consume unlimited memory.
+            if self.pending.len() >= 1024 * 1024 {
+                self.structured = false;
+                self.emit()?;
+            }
+        }
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        self.out.flush()
+    }
+}
+
+#[cfg(test)]
+mod stream_tests {
+    use super::*;
+
+    #[test]
+    fn complete_records_are_emitted_without_waiting_for_eof() {
+        let mut stream = StreamRenderer::new(Vec::new(), Mode::Human, false);
+        stream
+            .write_all(b"{\"name\":\"brace } and \\\"quote\\\"\",\"values\":[1,")
+            .unwrap();
+        assert!(stream.out.is_empty());
+        stream.write_all(b"2]}\n").unwrap();
+        let text = std::str::from_utf8(&stream.out).unwrap();
+        assert!(text.contains("name: brace } and \"quote\""), "{text}");
+        stream.write_all(b"  {\"next\":3}").unwrap();
+        assert!(std::str::from_utf8(&stream.out)
+            .unwrap()
+            .contains("next: 3"));
+    }
+
+    #[test]
+    fn location_array_emits_updates_before_array_closes() {
+        let mut stream = StreamRenderer::new(Vec::new(), Mode::Human, false);
+        stream.unwrap_array = true;
+        stream.write_all(b"[\n {\"latitude\":1},\n").unwrap();
+        assert!(std::str::from_utf8(&stream.out)
+            .unwrap()
+            .contains("latitude: 1"));
+        stream.write_all(b"{\"latitude\":2}\n]").unwrap();
+        let output = std::str::from_utf8(&stream.out).unwrap();
+        assert!(output.contains("latitude: 2"));
+        assert!(!output.contains('['));
+    }
+
+    #[test]
+    fn json_stream_wraps_text_and_rejects_binary() {
+        let mut stream = StreamRenderer::new(Vec::new(), Mode::Json, false);
+        stream.write_all(b"message\n").unwrap();
+        assert!(std::str::from_utf8(&stream.out)
+            .unwrap()
+            .contains("\"output\": \"message\""));
+        stream.write_all(b"bad\0data\n").unwrap();
+        assert!(stream.invalid_text);
+        assert!(!stream.out.contains(&0));
+    }
+}
+
+fn run_stream(imp: &str, args: &[OsString], json: bool) -> i32 {
+    let mode = if json { Mode::Json } else { Mode::Human };
+    let mut output = StreamRenderer::new(io::stdout(), mode, ctx::use_color());
+    output.unwrap_array = imp == "location" && !json;
+    let status = api::run_to(imp, args, &mut output);
+    if let Err(e) = output.finish() {
+        err!("cannot write output: {e}");
+        if status == 0 {
+            return 1;
+        }
+    }
+    if output.invalid_text {
+        err!("refusing --json: the output is binary or not valid UTF-8");
+        if status == 0 {
+            return 3;
+        }
+    }
+    status
+}
+
 /// Run a command with its standard output captured, then print it rendered.
 fn run_captured(class: &str, imp: &str, args: &[OsString], json: bool) -> i32 {
     let dir = temp_dir();
@@ -382,6 +584,9 @@ fn run_entry(e: &Entry, mut args: Vec<OsString>, json: bool) -> i32 {
         return 2;
     }
     fixed.extend(args);
+    if (class == "stream" || (e.imp == "location" && !json)) && !help {
+        return run_stream(&e.imp, &fixed, json);
+    }
     if class == "raw" || (class == "text" && !json) {
         return api::run(&e.imp, &fixed);
     }

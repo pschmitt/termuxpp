@@ -129,7 +129,7 @@ let
     name = "tpp";
     text = ''
       export LD_PRELOAD=${signalStack}/lib/stack.so''${LD_PRELOAD:+:$LD_PRELOAD}
-      export TPP_PLUGIN_DIR=${tppPlugins}
+      export TPP_PLUGIN_DIR="${tppPlugins}:''${HOME}/.local/libexec/tpp/plugins''${TPP_PLUGIN_DIR:+:$TPP_PLUGIN_DIR}"
       # The API commands reach the app through TermuxAm, and guest paths
       # (/home, /nix, /android/...) are converted to the Android paths that the
       # app can open.

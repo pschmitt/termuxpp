@@ -323,13 +323,39 @@ fn raw_commands_pass_bytes_and_refuse_json() {
     let (o, call) = fx.app(&["sensor", "-l"], b"x\0y");
     assert_eq!(o.stdout, b"x\0y");
     assert_eq!(call.method(), "Sensor");
-    assert_eq!(code(&fx.run(&["--json", "sensor", "-l"])), 2);
     // help is never refused, and the other actions are auto
     let o = fx.run(&["--json", "keystore", "--help"]);
     assert_eq!(code(&o), 0);
     assert!(out(&o).contains("keystore"), "{}", out(&o));
     let (o, _) = fx.app(&["--json", "keystore", "list"], b"{\"keys\": []}\n");
     assert_eq!(out(&o), "{\n  \"keys\": []\n}\n");
+}
+
+#[test]
+fn sensor_renders_each_reading_and_supports_json() {
+    let fx = Fixture::new("sensor-render");
+    let reply =
+        b"{\"accelerometer\":{\"values\":[1,2,3]}}\n{\"accelerometer\":{\"values\":[4,5,6]}}\n";
+    let (human, _) = fx.app(&["sensor", "-a", "-n", "2"], reply);
+    assert_eq!(code(&human), 0);
+    assert!(out(&human).contains("accelerometer:"), "{}", out(&human));
+    assert!(!out(&human).contains("\"accelerometer\""));
+    let (json, _) = fx.app(&["sensor", "-l", "--json"], b"{\"sensors\":[\"gyro\"]}\n");
+    assert_eq!(code(&json), 0);
+    assert!(out(&json).contains("\"sensors\": ["), "{}", out(&json));
+}
+
+#[test]
+fn location_updates_render_for_people_and_remain_an_array_in_json() {
+    let fx = Fixture::new("location-render");
+    let reply = b"[\n{\"latitude\":1},\n{\"latitude\":2}\n]\n";
+    let (human, _) = fx.app(&["location", "-r", "updates"], reply);
+    assert_eq!(code(&human), 0);
+    assert!(out(&human).contains("latitude: 1"), "{}", out(&human));
+    assert!(out(&human).contains("latitude: 2"), "{}", out(&human));
+    let (json, _) = fx.app(&["location", "-r", "updates", "--json"], reply);
+    assert_eq!(code(&json), 0);
+    assert!(out(&json).starts_with("[\n"), "{}", out(&json));
 }
 
 #[test]

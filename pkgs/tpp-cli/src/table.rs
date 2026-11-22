@@ -203,12 +203,12 @@ mod tests {
             }
             let mut parts = e.class.split(',');
             assert!(
-                ["auto", "text", "raw"].contains(&parts.next().unwrap()),
+                ["auto", "text", "stream", "raw"].contains(&parts.next().unwrap()),
                 "{e:?}"
             );
             for o in parts {
                 let (sel, value) = o.split_once('=').expect("override is SEL=CLASS");
-                assert!(["auto", "text", "raw"].contains(&value), "{e:?}");
+                assert!(["auto", "text", "stream", "raw"].contains(&value), "{e:?}");
                 let ok = match sel.strip_prefix('-') {
                     Some(l) => l.len() == 1 && l.chars().all(|c| c.is_ascii_alphabetic()),
                     None => sel

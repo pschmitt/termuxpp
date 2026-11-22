@@ -5,7 +5,7 @@
 //! leading arguments and the description for `tpp list`. An action of `-`
 //! stands for a command without one.
 //!
-//! `class` is `auto`, `text` or `raw`, optionally followed by overrides for
+//! `class` is `auto`, `text`, `stream` or `raw`, optionally followed by overrides for
 //! some arguments, as in "auto,sign=raw" (raw if the first argument is `sign`)
 //! and "auto,-e=raw" (raw if the leading options contain -e):
 //!   auto: JSON is rendered (human text by default, pretty JSON with --json),
@@ -13,6 +13,7 @@
 //!         {"output": TEXT} with --json
 //!   text: plain text, never parsed as JSON: passed through unchanged and
 //!         streamed, or wrapped as {"output": TEXT} with --json
+//!   stream: render each structured response as it arrives
 //!   raw:  binary or streamed data, always passed through unchanged: --json is
 //!         refused (but not for --help)
 //!
@@ -79,7 +80,7 @@ pub const COMMANDS: &[Command] = &[
     Command { group: "saf", action: "rm", imp: "saf-rm", class: "auto", args: "-", desc: "Remove a file or directory" },
     Command { group: "saf", action: "stat", imp: "saf-stat", class: "auto", args: "-", desc: "Show information about a file or directory" },
     Command { group: "saf", action: "write", imp: "saf-write", class: "auto", args: "-", desc: "Write standard input to a file" },
-    Command { group: "sensor", action: "-", imp: "sensor", class: "raw", args: "-", desc: "List sensors or read sensor values" },
+    Command { group: "sensor", action: "-", imp: "sensor", class: "stream", args: "-", desc: "List sensors or read sensor values" },
     Command { group: "share", action: "-", imp: "share", class: "auto", args: "-", desc: "Share a file or text with another app" },
     Command { group: "sms", action: "list", imp: "sms-list", class: "auto", args: "-", desc: "List text messages" },
     Command { group: "sms", action: "send", imp: "sms-send", class: "auto", args: "-", desc: "Send a text message" },
