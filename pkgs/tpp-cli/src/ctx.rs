@@ -56,7 +56,15 @@ pub fn valid_plugin_name(name: &str) -> bool {
 /// Whether to color the output: NO_COLOR switches it off, CLICOLOR_FORCE on,
 /// else it is on for a terminal.
 pub fn color_help(text: &str) -> String {
-    if !use_color() {
+    style_help(text, use_color())
+}
+
+pub fn color_stderr_help(text: &str) -> String {
+    style_help(text, color_enabled(std::io::stderr().is_terminal()))
+}
+
+fn style_help(text: &str, color: bool) -> String {
+    if !color {
         return text.to_owned();
     }
     let mut result = String::new();
@@ -96,13 +104,17 @@ pub fn color_help(text: &str) -> String {
 }
 
 pub fn use_color() -> bool {
+    color_enabled(std::io::stdout().is_terminal())
+}
+
+fn color_enabled(is_terminal: bool) -> bool {
     if env_nonempty("NO_COLOR").is_some() {
         return false;
     }
     if env_nonempty("CLICOLOR_FORCE").is_some_and(|v| v != "0") {
         return true;
     }
-    std::io::stdout().is_terminal() && env::var_os("TERM").is_none_or(|t| t != "dumb")
+    is_terminal && env::var_os("TERM").is_none_or(|t| t != "dumb")
 }
 
 impl Ctx {

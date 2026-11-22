@@ -46,6 +46,10 @@ fn write_err(text: &str) {
     let _ = io::stderr().write_all(text.as_bytes());
 }
 
+fn write_usage_error(text: &str) {
+    write_err(&ctx::color_stderr_help(text));
+}
+
 fn write_help(text: &str) {
     write_out(ctx::color_help(text).as_bytes());
 }
@@ -91,8 +95,7 @@ fn usage(app: &App) -> String {
     }
     s.push_str(
         "\nOther commands:\n\
-         \x20 help    Show help for a command\n\
-         \x20 list    List every command with its description\n",
+         \x20 help    Show help for a command\n",
     );
     s
 }
@@ -108,23 +111,85 @@ fn group_usage(app: &App, group: &str) -> String {
     s
 }
 
-fn command_list(app: &App) -> Vec<(String, &str)> {
+// Enumerate command paths for the build's exhaustive help checks.
+fn command_names(app: &App) -> String {
     app.table
         .entries
         .iter()
-        .map(|entry| (entry.name(), entry.desc.as_str()))
-        .chain(
-            native::GROUPS
-                .iter()
-                .map(|(name, summary)| (name.to_string(), *summary)),
-        )
-        .chain(
-            app.ctx
-                .list_plugins(&app.table)
-                .into_iter()
-                .map(|name| (name, "Plugin")),
-        )
+        .map(Entry::name)
+        .chain(native::GROUPS.iter().map(|(name, _)| name.to_string()))
+        .chain(app.ctx.list_plugins(&app.table))
+        .map(|name| format!("{name}\n"))
         .collect()
+}
+
+pub(crate) fn group_names(app: &App) -> Vec<String> {
+    app.table
+        .groups
+        .iter()
+        .cloned()
+        .chain(native::GROUPS.iter().map(|(name, _)| name.to_string()))
+        .chain(["help".to_owned()])
+        .chain(app.ctx.list_plugins(&app.table))
+        .collect()
+}
+
+pub(crate) fn resolve_prefix<'a>(
+    word: &str,
+    names: impl IntoIterator<Item = &'a str>,
+) -> Result<Option<&'a str>, Vec<&'a str>> {
+    if word.is_empty() {
+        return Ok(None);
+    }
+    let mut matches = Vec::new();
+    for name in names {
+        if name == word {
+            return Ok(Some(name));
+        }
+        if name.starts_with(word) && !matches.contains(&name) {
+            matches.push(name);
+        }
+    }
+    match matches.as_slice() {
+        [] => Ok(None),
+        [name] => Ok(Some(name)),
+        _ => {
+            matches.sort_unstable();
+            Err(matches)
+        }
+    }
+}
+
+fn resolve_group<'a>(names: &'a [String], word: &str) -> Result<&'a str, ()> {
+    match resolve_prefix(word, names.iter().map(String::as_str)) {
+        Ok(Some(name)) => Ok(name),
+        Ok(None) => {
+            err!("unknown command '{word}'. Try 'tpp help'.");
+            Err(())
+        }
+        Err(matches) => {
+            err!(
+                "ambiguous command '{word}'. Matches: {}",
+                matches.join(", ")
+            );
+            Err(())
+        }
+    }
+}
+
+fn resolve_action<'a>(app: &'a App, group: &'a str, word: &str) -> Option<&'a Entry> {
+    match resolve_prefix(
+        word,
+        app.table.rows(group).map(|entry| entry.action.as_str()),
+    ) {
+        Ok(Some(action)) => return app.table.find(group, action),
+        Ok(None) => err!("{group}: unknown command '{word}'"),
+        Err(matches) => err!(
+            "{group}: ambiguous command '{word}'. Matches: {}",
+            matches.join(", ")
+        ),
+    }
+    None
 }
 
 fn show_help(app: &App, args: &[OsString]) -> i32 {
@@ -132,36 +197,35 @@ fn show_help(app: &App, args: &[OsString]) -> i32 {
         write_help(&usage(app));
         return 0;
     };
+    let names = group_names(app);
+    let Ok(group) = resolve_group(&names, &group) else {
+        return 2;
+    };
     let action = args.get(1).map(lossy);
-    if matches!(group.as_str(), "help" | "list") {
-        write_help(if group == "help" {
-            "Usage: tpp help [COMMAND [ACTION]]\nShow help for a command or action.\n"
-        } else {
-            "Usage: tpp list [--names] [--json]\nList commands and their descriptions.\n  --names  Print only command names.\n  --json   Print a JSON array.\n"
-        });
+    if group == "help" {
+        write_help("Usage: tpp help [COMMAND [ACTION]]\nShow help for a command or action.\n");
         return 0;
     }
-    if native::is_native(&group) {
+    if native::is_native(group) {
         let mut help = args[1..].to_vec();
         help.push(OsString::from("--help"));
-        return native::run(&group, &help, false);
+        return native::run(group, &help, false);
     }
-    if app.table.is_group(&group) {
-        if let Some(e) = app.table.find(&group, "-") {
+    if app.table.is_group(group) {
+        if let Some(e) = app.table.find(group, "-") {
             return run_entry(e, vec![OsString::from("-h")], false);
         }
         if let Some(action) = action {
-            if let Some(e) = app.table.find(&group, &action) {
+            if let Some(e) = resolve_action(app, group, &action) {
                 return run_entry(e, vec![OsString::from("-h")], false);
             }
-            err!("{group}: unknown command '{action}'");
-            write_err(&group_usage(app, &group));
+            write_usage_error(&group_usage(app, group));
             return 2;
         }
-        write_help(&group_usage(app, &group));
+        write_help(&group_usage(app, group));
         return 0;
     }
-    if let Some(plugin) = app.ctx.find_plugin(&group) {
+    if let Some(plugin) = app.ctx.find_plugin(group) {
         return plugin_help(&plugin, args[1..].to_vec());
     }
     err!("unknown command '{group}'");
@@ -188,7 +252,7 @@ fn plugin_help(plugin: &Path, mut args: Vec<OsString>) -> i32 {
     match Command::new(plugin).args(args).output() {
         Ok(output) => {
             write_help(&String::from_utf8_lossy(&output.stdout));
-            write_err(&String::from_utf8_lossy(&output.stderr));
+            write_usage_error(&String::from_utf8_lossy(&output.stderr));
             output.status.code().unwrap_or(1)
         }
         Err(error) => {
@@ -1025,6 +1089,11 @@ pub fn run(mut args: Vec<OsString>) -> i32 {
         return complete::run(&app, &args[1..]);
     }
 
+    if args.len() == 1 && is(&args[0], "--command-names") {
+        write_out(command_names(&app).as_bytes());
+        return 0;
+    }
+
     let mut lead_json = false;
     let mut i = 0;
     while i < args.len() {
@@ -1044,7 +1113,7 @@ pub fn run(mut args: Vec<OsString>) -> i32 {
             }
             s if s.starts_with('-') => {
                 err!("unknown option '{s}'");
-                write_err(&usage(&app));
+                write_usage_error(&usage(&app));
                 return 2;
             }
             _ => break,
@@ -1052,83 +1121,35 @@ pub fn run(mut args: Vec<OsString>) -> i32 {
     }
     let mut rest = args.split_off(i);
     if rest.is_empty() {
-        write_err(&usage(&app));
+        write_usage_error(&usage(&app));
         return 2;
     }
-    let group = lossy(&rest.remove(0));
+    let word = lossy(&rest.remove(0));
+    let names = group_names(&app);
+    let Ok(group) = resolve_group(&names, &word) else {
+        return 2;
+    };
 
-    match group.as_str() {
-        "help" => {
-            if rest
-                .first()
-                .is_some_and(|arg| is(arg, "--help") || is(arg, "-h"))
-            {
-                return show_help(&app, &[OsString::from("help")]);
-            }
-            return show_help(&app, &rest);
+    if group == "help" {
+        if rest
+            .first()
+            .is_some_and(|arg| is(arg, "--help") || is(arg, "-h"))
+        {
+            return show_help(&app, &[OsString::from("help")]);
         }
-        "list" => {
-            if rest
-                .first()
-                .is_some_and(|arg| is(arg, "--help") || is(arg, "-h"))
-            {
-                return show_help(&app, &[OsString::from("list")]);
-            }
-            let mut names = false;
-            let mut json = lead_json;
-            for arg in &rest {
-                match arg.to_str() {
-                    Some("--names") => names = true,
-                    Some("--json") => json = true,
-                    _ => {
-                        err!("list: unexpected argument '{}'", arg.to_string_lossy());
-                        return 2;
-                    }
-                }
-            }
-            let commands = command_list(&app);
-            if json {
-                use tpp_session::json::Value;
-                let entries = commands
-                    .into_iter()
-                    .map(|(name, description)| {
-                        if names {
-                            Value::string(name)
-                        } else {
-                            Value::Object(vec![
-                                ("command".into(), Value::string(name)),
-                                ("description".into(), Value::string(description)),
-                            ])
-                        }
-                    })
-                    .collect();
-                return render_output("auto", Value::Array(entries).to_compact().as_bytes(), true);
-            }
-            let mut text = String::new();
-            for (name, description) in commands {
-                if names {
-                    text.push_str(&name);
-                    text.push('\n');
-                } else {
-                    text.push_str(&format!("{:<28} {description}\n", format!("tpp {name}")));
-                }
-            }
-            write_out(text.as_bytes());
-            return 0;
-        }
-        _ => {}
+        return show_help(&app, &rest);
     }
 
-    if native::is_native(&group) {
-        return native::run(&group, &rest, lead_json);
+    if native::is_native(group) {
+        return native::run(group, &rest, lead_json);
     }
 
-    if app.table.is_group(&group) {
+    if app.table.is_group(group) {
         let mut argv = rest;
         let before_action = argv.iter().take_while(|arg| is(arg, "--json")).count();
         argv.drain(..before_action);
         let json = lead_json || before_action > 0;
-        if let Some(e) = app.table.find(&group, "-") {
+        if let Some(e) = app.table.find(group, "-") {
             return run_entry(e, argv, json);
         }
         if group == "dialog" && argv.is_empty() {
@@ -1138,28 +1159,27 @@ pub fn run(mut args: Vec<OsString>) -> i32 {
             if let Some(e) = app
                 .table
                 .find(&group, "list")
-                .or_else(|| app.table.find(&group, "get"))
+                .or_else(|| app.table.find(group, "get"))
             {
                 return run_entry(e, argv, json);
             }
-            write_err(&group_usage(&app, &group));
+            write_usage_error(&group_usage(&app, group));
             return 2;
         }
         let first = lossy(&argv[0]);
         if matches!(first.as_str(), "-h" | "--help" | "help") {
-            write_help(&group_usage(&app, &group));
+            write_help(&group_usage(&app, group));
             return 0;
         }
-        if let Some(e) = app.table.find(&group, &first) {
+        if let Some(e) = resolve_action(&app, group, &first) {
             argv.remove(0);
             return run_entry(e, argv, json);
         }
-        err!("{group}: unknown command '{first}'");
-        write_err(&group_usage(&app, &group));
+        write_usage_error(&group_usage(&app, group));
         return 2;
     }
 
-    if let Some(plugin) = app.ctx.find_plugin(&group) {
+    if let Some(plugin) = app.ctx.find_plugin(group) {
         return run_plugin(&plugin, lead_json, rest);
     }
 

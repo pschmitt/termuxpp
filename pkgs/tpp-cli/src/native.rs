@@ -30,13 +30,38 @@ fn strings(args: &[OsString]) -> Vec<String> {
         .collect()
 }
 
+fn expand_action(name: &str, words: &mut [String]) -> bool {
+    let actions = match name {
+        "settings" => &["reload"][..],
+        _ => &tpp_session::complete::ACTIONS,
+    };
+    let Some(word) = words.iter_mut().find(|word| word.as_str() != "--json") else {
+        return true;
+    };
+    match crate::cli::resolve_prefix(word, actions.iter().copied()) {
+        Ok(Some(action)) => *word = action.to_owned(),
+        Ok(None) => {}
+        Err(matches) => {
+            eprintln!(
+                "tpp: {name}: ambiguous command '{word}'. Matches: {}",
+                matches.join(", ")
+            );
+            return false;
+        }
+    }
+    true
+}
+
 /// Run a group with the arguments behind its name. `lead_json` is a
 /// `--json` in front of the group name; the session command takes it in
 /// front of its own command, like it does after it.
 pub fn run(name: &str, args: &[OsString], lead_json: bool) -> i32 {
     debug_assert!(is_native(name));
     if name == "settings" {
-        let words = strings(args);
+        let mut words = strings(args);
+        if !expand_action(name, &mut words) {
+            return 2;
+        }
         if words.is_empty()
             || words
                 .iter()
@@ -66,6 +91,9 @@ pub fn run(name: &str, args: &[OsString], lead_json: bool) -> i32 {
         words.push("--json".to_string());
     }
     words.extend(strings(args));
+    if words.first().is_none_or(|word| word != "__complete") && !expand_action(name, &mut words) {
+        return 2;
+    }
     run_session(&words)
 }
 

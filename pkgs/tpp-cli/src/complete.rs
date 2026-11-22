@@ -9,7 +9,7 @@ use std::ffi::OsString;
 use std::io::{self, Write};
 use std::process::{Command, Stdio};
 
-use crate::cli::App;
+use crate::cli::{group_names, resolve_prefix, App};
 use crate::native;
 
 /// The names that start with `cur`.
@@ -114,13 +114,6 @@ fn complete_arguments(
     NOTHING
 }
 
-fn group_and_plugin_names(app: &App) -> Vec<String> {
-    let mut names = app.table.groups.clone();
-    names.extend(native::GROUPS.iter().map(|(n, _)| n.to_string()));
-    names.extend(app.ctx.list_plugins(&app.table));
-    names
-}
-
 /// The candidates for the last of `words`; the text goes to `out`.
 fn complete_words(app: &App, words: &[String]) -> Answer {
     let n = words.len();
@@ -133,16 +126,13 @@ fn complete_words(app: &App, words: &[String]) -> Answer {
         if cur.starts_with('-') {
             return (0, matching(cur, &["--help", "--json"]));
         }
-        // Groups, help, list, then the plugins
-        let mut names = app.table.groups.clone();
-        names.extend(native::GROUPS.iter().map(|(n, _)| n.to_string()));
-        names.push("help".to_string());
-        names.push("list".to_string());
-        names.extend(app.ctx.list_plugins(&app.table));
-        return (0, matching(cur, &names));
+        return (0, matching(cur, &group_names(app)));
     }
 
-    let group = words[gi].as_str();
+    let names = group_names(app);
+    let Ok(Some(group)) = resolve_prefix(&words[gi], names.iter().map(String::as_str)) else {
+        return NOTHING;
+    };
     let rest = &words[gi + 1..];
     if native::is_native(group) {
         return (0, native::complete(group, rest));
@@ -169,36 +159,33 @@ fn complete_words(app: &App, words: &[String]) -> Answer {
             let actions: Vec<&str> = app.table.rows(group).map(|e| e.action.as_str()).collect();
             return (0, matching(cur, &actions));
         }
-        if app.table.find(group, &prior[0]).is_none() {
+        let typed = prior.remove(0);
+        let Ok(Some(action)) = resolve_prefix(
+            &typed,
+            app.table.rows(group).map(|entry| entry.action.as_str()),
+        ) else {
             return NOTHING;
-        }
-        let action = prior.remove(0);
+        };
         prior.push(cur.to_string());
-        return complete_arguments(app, json_seen, group, &action, &prior);
-    }
-    if group == "list" {
-        let options = ["--names", "--json", "--help"];
-        let candidates: Vec<&str> = options
-            .into_iter()
-            .filter(|option| {
-                (*option != "--json" || gi == 0)
-                    && !rest[..rest.len() - 1].iter().any(|word| word == option)
-            })
-            .collect();
-        return (0, matching(cur, &candidates));
+        return complete_arguments(app, json_seen, group, action, &prior);
     }
     if group == "help" {
         if rest.len() == 1 {
-            return (0, matching(cur, &group_and_plugin_names(app)));
+            return (0, matching(cur, &names));
         }
-        if rest.len() == 2 && app.table.is_group(&rest[0]) {
-            let actions: Vec<&str> = app
-                .table
-                .rows(&rest[0])
-                .filter(|e| e.action != "-")
-                .map(|e| e.action.as_str())
-                .collect();
-            return (0, matching(cur, &actions));
+        if let [typed, _] = rest {
+            if let Ok(Some(group)) = resolve_prefix(typed, names.iter().map(String::as_str)) {
+                if native::is_native(group) {
+                    return (0, native::complete(group, &[cur.to_owned()]));
+                }
+                let actions: Vec<&str> = app
+                    .table
+                    .rows(group)
+                    .filter(|entry| entry.action != "-")
+                    .map(|entry| entry.action.as_str())
+                    .collect();
+                return (0, matching(cur, &actions));
+            }
         }
         return NOTHING;
     }

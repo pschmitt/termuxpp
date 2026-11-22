@@ -145,8 +145,7 @@ let
   dispatcherHelp = runCommand "tpp-dispatcher-help" { nativeBuildInputs = [ tpp ]; } ''
     export HOME="$TMPDIR"
     tpp --help > /dev/null
-    tpp list > /dev/null
-    tpp list --names > names
+    tpp --command-names > names
     test "$(wc -l < names)" -gt 50
     while read -r -a words
     do

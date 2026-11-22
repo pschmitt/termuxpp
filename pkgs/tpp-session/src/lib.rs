@@ -14,7 +14,7 @@ pub mod json;
 pub mod printable;
 pub mod unicode;
 
-/// One line that describes the command, for `tpp list` and the like.
+/// One line that describes the command, for the command overview.
 pub const SUMMARY: &str = "Manage TermuxPP terminal sessions";
 
 /// The main help text (what `tpp-session --help` prints).

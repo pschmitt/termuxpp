@@ -2,7 +2,7 @@
 //!
 //! One row per command: the words that select it (`group`, `action`), the
 //! implementation, how its standard output is treated (`class`), the fixed
-//! leading arguments and the description for `tpp list`. An action of `-`
+//! leading arguments and the description for usage text. An action of `-`
 //! stands for a command without one.
 //!
 //! `class` is `auto`, `text`, `stream` or `raw`, optionally followed by overrides for

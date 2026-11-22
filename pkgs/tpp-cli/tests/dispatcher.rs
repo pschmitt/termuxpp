@@ -293,6 +293,28 @@ fn help_respects_color_controls() {
 }
 
 #[test]
+fn bare_usage_and_usage_errors_use_stderr_colors() {
+    let fx = Fixture::new("usage-stderr-color");
+    for args in [&[][..], &["wifi", "unknown"], &["--unknown"]] {
+        let output = fx
+            .command(args)
+            .env("CLICOLOR_FORCE", "1")
+            .output_retry()
+            .unwrap();
+        assert_eq!(code(&output), 2);
+        assert!(out(&output).is_empty());
+        assert!(err(&output).contains("\x1b[1;36mUsage:"), "{args:?}");
+        let output = fx
+            .command(args)
+            .env("CLICOLOR_FORCE", "1")
+            .env("NO_COLOR", "1")
+            .output_retry()
+            .unwrap();
+        assert!(!err(&output).contains("\x1b["), "{args:?}");
+    }
+}
+
+#[test]
 fn structured_read_commands_render_human_and_json_results() {
     let fx = Fixture::new("structured-commands");
     let commands: &[&[&str]] = &[
@@ -561,8 +583,8 @@ fn help_list_and_unknown() {
     assert!(out(&o).starts_with("Usage: tpp [--json] COMMAND"));
     assert_eq!(out(&fx.run(&["help"])), out(&o));
     let o = fx.run(&["list"]);
-    assert!(out(&o).contains("tpp wifi scan"));
-    assert!(out(&o).contains("tpp battery "));
+    assert_eq!(code(&o), 2);
+    assert!(err(&o).contains("unknown command 'list'"));
     let o = fx.run(&["wifi"]);
     assert_eq!(code(&o), 2);
     assert!(err(&o).contains("Usage: tpp [--json] wifi COMMAND"));
@@ -634,7 +656,8 @@ fn completion() {
     assert!(names.contains(&"wifi".to_string()));
     assert!(!names.contains(&"battery".to_string()));
     let (_, names) = complete(&fx, &[""]);
-    assert!(names.contains(&"help".to_string()) && names.contains(&"list".to_string()));
+    assert!(names.contains(&"help".to_string()));
+    assert!(!names.contains(&"list".to_string()));
     let (_, actions) = complete(&fx, &["wifi", ""]);
     assert!(actions.contains(&"scan".to_string()));
     let (_, flags) = complete(&fx, &["wifi", "scan", "-"]);
@@ -688,9 +711,9 @@ fn a_bare_binary_lists_and_completes() {
         }
         panic!("{} stays busy", bin.display());
     };
-    let o = run(&["list"]);
+    let o = run(&["--command-names"]);
     assert_eq!(code(&o), 0, "{}", err(&o));
-    assert!(out(&o).contains("tpp wifi scan"));
+    assert!(out(&o).contains("wifi scan"));
     let o = run(&["--complete", "wifi", ""]);
     assert!(out(&o).contains("scan"));
     // the usage of every command is the one of the binary
@@ -717,8 +740,7 @@ fn the_session_group_is_part_of_the_binary() {
     assert_eq!(code(&fx.run(&["session", "--nope"])), 2);
     // it is listed and completed next to the table groups
     assert!(out(&fx.run(&["--help"])).contains("  session "));
-    assert!(out(&fx.run(&["list"])).contains("tpp session "));
-    let names = out(&fx.run(&["list", "--names"]));
+    let names = out(&fx.run(&["--command-names"]));
     let names: Vec<&str> = names.lines().collect();
     assert!(
         names.contains(&"session") && names.contains(&"wifi scan") && names.contains(&"battery"),
@@ -764,7 +786,7 @@ fn tpp_session_is_the_same_binary() {
 fn every_command_answers_help_from_the_binary() {
     // No app and no file is needed for the usage text of any command
     let fx = Fixture::new("usage");
-    let names = out(&fx.run(&["list", "--names"]));
+    let names = out(&fx.run(&["--command-names"]));
     let mut seen = 0;
     for name in names.lines().filter(|n| *n != "session") {
         let words: Vec<&str> = name.split(' ').collect();
@@ -849,7 +871,7 @@ fn bad_public_arguments_exit_with_failure() {
 }
 
 #[test]
-fn audit_actions_and_json_command_listing() {
+fn audit_actions() {
     let fx = Fixture::new("audit-actions");
     let (output, call) = fx.app(&["sms", "conversations"], b"[]");
     assert_eq!(code(&output), 0, "{}", err(&output));
@@ -858,15 +880,28 @@ fn audit_actions_and_json_command_listing() {
     assert_eq!(code(&output), 0, "{}", err(&output));
     assert_eq!(call.extra("request"), Some("last"));
     assert_eq!(call.extra("provider"), Some("network"));
-    let output = fx.run(&["--json", "list"]);
-    let value = tpp_session::json::parse(&out(&output)).unwrap();
-    let entries = value.as_array().unwrap();
-    assert!(entries.iter().any(|entry| entry.get("command")
-        == Some(&tpp_session::json::Value::string("sms conversations"))));
-    let output = fx.run(&["list", "--json", "--names"]);
-    let value = tpp_session::json::parse(&out(&output)).unwrap();
-    assert!(value
-        .as_array()
-        .unwrap()
-        .contains(&tpp_session::json::Value::string("location watch")));
+}
+
+#[test]
+fn unique_prefixes_resolve_commands_and_actions() {
+    let fx = Fixture::new("prefixes");
+    let (output, call) = fx.app(&["not", "l"], b"[]");
+    assert_eq!(code(&output), 0, "{}", err(&output));
+    assert_eq!(call.method(), "NotificationList");
+    assert_eq!(
+        out(&fx.run(&["help", "not", "l"])),
+        out(&fx.run(&["notification", "list", "--help"]))
+    );
+    assert_eq!(
+        out(&fx.run(&["sess", "l", "--help"])),
+        out(&fx.run(&["session", "list", "--help"]))
+    );
+    let ambiguous = fx.run(&["s"]);
+    assert_eq!(code(&ambiguous), 2);
+    assert!(err(&ambiguous).contains("session") && err(&ambiguous).contains("sensor"));
+    let ambiguous = fx.run(&["media", "p"]);
+    assert_eq!(code(&ambiguous), 2);
+    assert!(err(&ambiguous).contains("pause, play"));
+    let (_, options) = complete(&fx, &["not", "l", "--"]);
+    assert!(options.contains(&"--help".to_owned()));
 }
