@@ -305,7 +305,13 @@ public class TermuxContextMenuSheet {
 
     /** Add a setting to the current group of the grouped presentation; a pill at its end says On or Off. */
     public TermuxContextMenuSheet addStateRow(int id, CharSequence title, @DrawableRes int icon, boolean checked) {
-        mRows.add(new Action(Placement.ROW, id, title, null, icon, true, false, -1, null, checked));
+        return addStateRow(id, title, icon, checked, false);
+    }
+
+    public TermuxContextMenuSheet addStateRow(int id, CharSequence title, @DrawableRes int icon,
+                                              boolean checked, boolean secondary) {
+        mRows.add(new Action(secondary ? Placement.SECONDARY : Placement.ROW,
+            id, title, null, icon, true, false, -1, null, checked));
         return this;
     }
 

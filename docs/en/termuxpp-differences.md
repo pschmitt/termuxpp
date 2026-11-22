@@ -73,8 +73,8 @@ Upstream uses Android's context menu for terminal actions. TermuxPP uses a
 rounded bottom sheet with a compact session header, a flat Autofill / Open URL /
 Share shortcut strip, and grouped icon-led rows. Open URL is disabled when the terminal
 contains no URLs. Autofill remains conditional on Android support. Keep screen on
-and Wake lock remain visible with On/Off states. Settings sits above
-**More commands**, which opens Reset and Kill. Tapping Kill retains its
+and Wake lock stay visible while on and move under **More** while off.
+**More** also contains Reset and Kill. Settings is the last row. Tapping Kill retains its
 confirmation, and holding it retains the immediate-kill action. Share and
 Autofill choices retain their existing preview cards. The presentation is an
 intentional fork difference; action dispatch and authorization are unchanged.

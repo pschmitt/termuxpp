@@ -118,7 +118,8 @@ public final class TerminalContextMenu {
 
     /**
      * Add the entries of the bottom sheet, in the grouped presentation: a session header, a strip of the frequent
-     * actions, power states, Settings, and expandable secondary commands.
+     * actions, expandable secondary actions, and Settings at the bottom. Keep screen on and the wake lock stay
+     * visible while active, and are under More while not.
      */
     public static TermuxContextMenuSheet populateSheet(@NonNull TermuxContextMenuSheet sheet,
                                                        @NonNull Resources resources, @NonNull State state) {
@@ -135,10 +136,9 @@ public final class TerminalContextMenu {
             resources.getString(R.string.ui_menu_share), null, R.drawable.ui_ic_menu_share);
 
         sheet.addStateRow(TOGGLE_KEEP_SCREEN_ON, resources.getString(R.string.action_toggle_keep_screen_on),
-            R.drawable.ui_ic_menu_sun, state.keepScreenOn);
+            R.drawable.ui_ic_menu_sun, state.keepScreenOn, !state.keepScreenOn);
         sheet.addStateRow(TOGGLE_WAKE_LOCK, resources.getString(R.string.action_toggle_wake_lock),
-            R.drawable.ui_ic_bolt, state.wakeLockHeld);
-        sheet.addRow(SETTINGS, resources.getString(R.string.action_open_settings), null, R.drawable.ui_ic_menu_settings);
+            R.drawable.ui_ic_bolt, state.wakeLockHeld, !state.wakeLockHeld);
         sheet.addSecondaryRow(RESET_TERMINAL, resources.getString(R.string.action_reset_terminal),
             resources.getString(R.string.ui_menu_reset_detail), R.drawable.ui_ic_menu_reset);
 
@@ -148,6 +148,8 @@ public final class TerminalContextMenu {
             resources.getString(state.sessionRunning ? R.string.ui_menu_kill_detail : R.string.ui_menu_not_running),
             R.drawable.ui_ic_menu_power, state.sessionRunning,
             KILL_PROCESS_NOW, resources.getString(R.string.ui_menu_kill_now), true);
+        sheet.addGroupBreak();
+        sheet.addRow(SETTINGS, resources.getString(R.string.action_open_settings), null, R.drawable.ui_ic_menu_settings);
         return sheet;
     }
 
