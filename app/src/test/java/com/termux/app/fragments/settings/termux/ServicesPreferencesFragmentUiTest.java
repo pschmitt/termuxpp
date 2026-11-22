@@ -36,5 +36,7 @@ public class ServicesPreferencesFragmentUiTest {
         assertNotNull(services.findPreference("services_list"));
         assertNotNull(services.findPreference("boot_scripts"));
         assertNotNull(services.findPreference("boot_script_setup"));
+        assertEquals(R.layout.ui_preference_code_block,
+            services.findPreference("boot_script_example").getLayoutResource());
     }
 }

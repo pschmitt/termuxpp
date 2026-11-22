@@ -1,21 +1,26 @@
 package com.termux.app.fragments.settings.termux;
 
 import android.content.Context;
+import android.content.res.ColorStateList;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.ImageView;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.ColorRes;
 import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceCategory;
+import androidx.preference.PreferenceViewHolder;
 
 import com.termux.R;
 import com.termux.app.settings.GroupedPreferencesFragment;
@@ -145,7 +150,18 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
     }
 
     private void addServicePreference(@NonNull Service service) {
-        Preference preference = new Preference(requireContext());
+        Preference preference = new Preference(requireContext()) {
+            @Override
+            public void onBindViewHolder(@NonNull PreferenceViewHolder holder) {
+                super.onBindViewHolder(holder);
+                ImageView icon = (ImageView) holder.findViewById(android.R.id.icon);
+                if (icon != null) {
+                    int color = ContextCompat.getColor(getContext(), serviceStatusColor(service));
+                    icon.setImageTintList(ColorStateList.valueOf(color));
+                }
+            }
+        };
+        preference.setIcon(R.drawable.ui_ic_service_status);
         preference.setTitle(service.name);
         preference.setSummary(serviceStatus(service));
         preference.setOnPreferenceClickListener(clicked -> {
@@ -296,6 +312,25 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
             .setView(scrollView)
             .setPositiveButton(android.R.string.ok, null)
             .show();
+    }
+
+    @ColorRes
+    static int serviceStatusColor(Service service) {
+        if (service.waitingForNetwork) return R.color.ui_service_pending;
+        switch (service.status) {
+            case "running":
+                return R.color.ui_service_running;
+            case "failed":
+            case "error":
+            case "crashed":
+                return R.color.ui_service_failed;
+            case "starting":
+            case "stopping":
+            case "restarting":
+                return R.color.ui_service_pending;
+            default:
+                return R.color.ui_service_inactive;
+        }
     }
 
     private String serviceStatus(Service service) {

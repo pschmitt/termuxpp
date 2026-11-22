@@ -24,4 +24,8 @@
     <color name="ui_sheet_surface">#111218</color>
     <color name="ui_sheet_card">#181921</color>
     <color name="ui_sheet_border">#2A2B36</color>
+    <color name="ui_service_running">#77D496</color>
+    <color name="ui_service_failed">#FF9A96</color>
+    <color name="ui_service_pending">#9AC5FF</color>
+    <color name="ui_service_inactive">#AFA9B8</color>
 </resources>

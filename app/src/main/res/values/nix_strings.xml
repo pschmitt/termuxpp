@@ -19,7 +19,7 @@
     <string name="nix_services_guest_status">Guest status</string>
     <string name="nix_services_empty">No services configured</string>
     <string name="nix_services_waiting_for_wifi">Waiting for Wi-Fi</string>
-    <string name="nix_services_category">Nix guest services</string>
+    <string name="nix_services_category">Services</string>
     <string name="nix_services_refresh">Refresh services</string>
     <string name="nix_services_loading">Loading services…</string>
     <string name="nix_services_not_available">The Nix bootstrap is not installed.</string>

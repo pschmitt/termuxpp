@@ -7,6 +7,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import org.json.JSONException;
+import com.termux.R;
+
 import org.junit.Test;
 
 import java.util.List;
@@ -60,4 +62,18 @@ public class ServicesPreferencesFragmentTest {
         assertFalse(other.hasSettings);
         assertNull(other.network);
     }
+    @Test
+    public void serviceStatusColorsDistinguishRunningFailurePendingAndInactive() {
+        assertEquals(R.color.ui_service_running, serviceStatusColor("running"));
+        assertEquals(R.color.ui_service_failed, serviceStatusColor("failed"));
+        assertEquals(R.color.ui_service_pending, serviceStatusColor("starting"));
+        assertEquals(R.color.ui_service_inactive, serviceStatusColor("stopped"));
+        assertEquals(R.color.ui_service_inactive, serviceStatusColor("unknown"));
+    }
+
+    private int serviceStatusColor(String status) {
+        return ServicesPreferencesFragment.serviceStatusColor(
+            new ServicesPreferencesFragment.Service("example", status, true));
+    }
+
 }
