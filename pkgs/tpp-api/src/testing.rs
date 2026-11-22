@@ -166,6 +166,7 @@ pub fn run_with(
             stdout: &mut stdout,
             stderr: &mut stderr,
             env: e,
+            strict_usage: false,
             transport,
         };
         crate::run(imp, &args, &mut io).unwrap_or_else(|| panic!("unknown impl {imp}"))

@@ -465,6 +465,7 @@ mod tests {
                 stdout: &mut stdout,
                 stderr: &mut stderr,
                 env: e,
+                strict_usage: false,
                 transport: t,
             };
             run(&args, &mut io)

@@ -70,6 +70,8 @@ pub struct Io<'a> {
     pub stdout: &'a mut dyn Write,
     pub stderr: &'a mut dyn Write,
     pub env: Env,
+    /// Report invalid public CLI usage with a failure status.
+    pub strict_usage: bool,
     pub transport: &'a dyn Transport,
 }
 
@@ -314,6 +316,7 @@ pub fn run_stdio(imp: &str, args: &[OsString]) -> Option<i32> {
         stdout: &mut out,
         stderr: &mut err,
         env: Env::process(),
+        strict_usage: false,
         transport: &Native,
     };
     run(imp, args, &mut io)

@@ -8,6 +8,7 @@ use std::fs::{self, File, OpenOptions};
 use std::hash::BuildHasher;
 use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::os::raw::c_int;
+use std::os::unix::ffi::{OsStrExt, OsStringExt};
 use std::os::unix::fs::OpenOptionsExt;
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
@@ -107,37 +108,23 @@ fn group_usage(app: &App, group: &str) -> String {
     s
 }
 
-/// `tpp list --names`: only the words that select each command, one per line,
-/// for scripts (the build checks every command's help with it).
-fn list_names(app: &App) -> String {
-    let mut s = String::new();
-    for e in &app.table.entries {
-        s.push_str(&e.name());
-        s.push('\n');
-    }
-    for (name, _) in native::GROUPS {
-        s.push_str(name);
-        s.push('\n');
-    }
-    for name in app.ctx.list_plugins(&app.table) {
-        s.push_str(&name);
-        s.push('\n');
-    }
-    s
-}
-
-fn list_commands(app: &App) -> String {
-    let mut s = String::new();
-    for e in &app.table.entries {
-        s.push_str(&format!("{:<28} {}\n", format!("tpp {}", e.name()), e.desc));
-    }
-    for (name, summary) in native::GROUPS {
-        s.push_str(&format!("{:<28} {}\n", format!("tpp {name}"), summary));
-    }
-    for name in app.ctx.list_plugins(&app.table) {
-        s.push_str(&format!("{:<28} Plugin\n", format!("tpp {name}")));
-    }
-    s
+fn command_list(app: &App) -> Vec<(String, &str)> {
+    app.table
+        .entries
+        .iter()
+        .map(|entry| (entry.name(), entry.desc.as_str()))
+        .chain(
+            native::GROUPS
+                .iter()
+                .map(|(name, summary)| (name.to_string(), *summary)),
+        )
+        .chain(
+            app.ctx
+                .list_plugins(&app.table)
+                .into_iter()
+                .map(|name| (name, "Plugin")),
+        )
+        .collect()
 }
 
 fn show_help(app: &App, args: &[OsString]) -> i32 {
@@ -150,7 +137,7 @@ fn show_help(app: &App, args: &[OsString]) -> i32 {
         write_help(if group == "help" {
             "Usage: tpp help [COMMAND [ACTION]]\nShow help for a command or action.\n"
         } else {
-            "Usage: tpp list [--names]\nList commands and their descriptions.\n  --names  Print only command names.\n"
+            "Usage: tpp list [--names] [--json]\nList commands and their descriptions.\n  --names  Print only command names.\n  --json   Print a JSON array.\n"
         });
         return 0;
     }
@@ -715,7 +702,7 @@ fn public_help(entry: &Entry, text: &str) -> String {
         )
 }
 
-fn normalize_args(entry: &Entry, args: &mut [OsString]) -> Result<(), String> {
+fn normalize_args(entry: &Entry, args: Vec<OsString>) -> Result<(Vec<OsString>, bool), String> {
     let reserved: &[(&str, &str)] = match (entry.group.as_str(), entry.action.as_str()) {
         ("dialog", "show") => &[("-l", "list")],
         ("audio", "record") => &[("-i", "recording"), ("-q", "stop")],
@@ -727,40 +714,84 @@ fn normalize_args(entry: &Entry, args: &mut [OsString]) -> Result<(), String> {
         ],
         ("notification", "create-channel") => &[("-d", "delete-channel")],
         ("nfc", "write") => &[("-r", "read")],
+        ("sms", "list") => &[
+            ("-c", "conversations"),
+            ("--conversation-list", "conversations"),
+        ],
+        ("location", _) => &[("-r", "watch"), ("--request", "watch")],
         _ => &[],
     };
-    let mut skip_value = false;
-    for arg in args {
-        if skip_value {
-            skip_value = false;
-            continue;
-        }
-        if is(arg, "--") {
+    let options = crate::commands::OPTIONS
+        .iter()
+        .find(|row| row.group == entry.group && row.action == entry.action)
+        .map_or("", |row| row.words);
+    let mut json = false;
+    let mut normalized = Vec::with_capacity(args.len());
+    let mut args = args.into_iter();
+    while let Some(arg) = args.next() {
+        if is(&arg, "--") {
+            normalized.push(arg);
+            normalized.extend(args);
             break;
         }
-        if let Some((_, action)) = reserved.iter().find(|(flag, _)| is(arg, flag)) {
+        if is(&arg, "--json") {
+            json = true;
+            continue;
+        }
+        let bytes = arg.as_bytes();
+        let equals = bytes.iter().position(|&byte| byte == b'=');
+        let name = equals.map_or(bytes, |at| &bytes[..at]);
+        if let Some((_, action)) = reserved.iter().find(|(flag, _)| flag.as_bytes() == name) {
             return Err(format!("use 'tpp {} {action}'", entry.group));
         }
-        if let Some((short, _)) = long_options(&entry.imp)
+        let alias = long_options(&entry.imp)
             .iter()
-            .find(|(short, long)| is(arg, short) || is(arg, long))
-        {
-            *arg = OsString::from(short);
-            skip_value = crate::commands::OPTIONS
-                .iter()
-                .find(|row| row.group == entry.group && row.action == entry.action)
-                .is_some_and(|row| {
-                    row.words.split_whitespace().any(|word| {
-                        word.split_once(':')
-                            .is_some_and(|(option, _)| option == *short)
-                    })
-                });
+            .find(|(_, long)| long.as_bytes() == name);
+        let backend = alias.map_or(name, |(short, _)| short.as_bytes());
+        let takes_value = options.split_whitespace().any(|word| {
+            word.split_once(':')
+                .is_some_and(|(option, _)| option.as_bytes() == backend)
+        });
+        if alias.is_some() {
+            normalized.push(OsString::from_vec(backend.to_vec()));
+        } else {
+            normalized.push(arg.clone());
+        }
+        if let Some(at) = equals {
+            if alias.is_some() {
+                if !takes_value {
+                    return Err(format!(
+                        "option '{}' does not take a value",
+                        String::from_utf8_lossy(name)
+                    ));
+                }
+                normalized.push(OsString::from_vec(bytes[at + 1..].to_vec()));
+            }
+        } else if takes_value {
+            normalized.push(args.next().ok_or_else(|| {
+                format!(
+                    "option '{}' requires a value",
+                    String::from_utf8_lossy(name)
+                )
+            })?);
         }
     }
-    Ok(())
+    Ok((normalized, json))
 }
 
-fn run_entry(e: &Entry, mut args: Vec<OsString>, json: bool) -> i32 {
+fn write_location_help(action: &str) -> i32 {
+    let description = match action {
+        "get" => "Get a current location fix.",
+        "last" => "Show the last known location.",
+        _ => "Stream location updates until interrupted.",
+    };
+    write_help(&format!(
+        "Usage: tpp location {action} [--provider PROVIDER] [--json]\n{description}\n\nOptions:\n  --provider PROVIDER  gps, network, or passive (default: gps).\n"
+    ));
+    0
+}
+
+fn run_entry(e: &Entry, args: Vec<OsString>, json: bool) -> i32 {
     let mut fixed: Vec<OsString> = if e.args == "-" {
         Vec::new()
     } else {
@@ -788,6 +819,13 @@ fn run_entry(e: &Entry, mut args: Vec<OsString>, json: bool) -> i32 {
             ("job-scheduler", "cancel-all") => "Usage: tpp job-scheduler cancel-all\nCancel all pending jobs.\n",
             ("notification", "create-channel") => "Usage: tpp notification create-channel ID NAME\nCreate or rename a notification channel. Use its ID with tpp notification send --channel.\n",
             ("notification", "delete-channel") => "Usage: tpp notification delete-channel ID\nDelete a notification channel.\n",
+            ("location", action) => {
+                return write_location_help(action);
+            }
+            ("media", "info") => "Usage: tpp media info\nShow current media playback information.\n",
+            ("media", "play") => "Usage: tpp media play [FILE]\nPlay a file or resume playback.\n",
+            ("media", "pause") => "Usage: tpp media pause\nPause playback.\n",
+            ("media", "stop") => "Usage: tpp media stop\nStop playback.\n",
             ("nfc", "read") => "Usage: tpp nfc read [short | full]\nRead an NFC tag. Defaults to short output.\n",
             ("nfc", "write") => "Usage: tpp nfc write -t TEXT\nWrite text to an NFC tag.\n",
             ("volume", "list") => "Usage: tpp volume list\nShow volume levels for all audio streams.\n",
@@ -802,9 +840,46 @@ fn run_entry(e: &Entry, mut args: Vec<OsString>, json: bool) -> i32 {
         } else {
             text.to_owned()
         };
+        let text = if e.imp == "sms-list" {
+            let mut lines = text.lines().peekable();
+            let mut help = String::new();
+            while let Some(line) = lines.next() {
+                if line.contains("--conversation-list") {
+                    while lines
+                        .peek()
+                        .is_some_and(|line| !line.trim_start().starts_with('['))
+                    {
+                        lines.next();
+                    }
+                    continue;
+                }
+                if e.action == "list" && line.trim_start().starts_with("[ --conversation-") {
+                    while lines
+                        .peek()
+                        .is_some_and(|line| !line.trim_start().starts_with('['))
+                    {
+                        lines.next();
+                    }
+                    continue;
+                }
+                help.push_str(line);
+                help.push('\n');
+            }
+            help.replace("tpp sms list", &format!("tpp sms {}", e.action))
+        } else {
+            text
+        };
         write_help(&public_help(e, &text));
         return 0;
     }
+    let (mut args, json_flag) = match normalize_args(e, args) {
+        Ok(parsed) => parsed,
+        Err(message) => {
+            err!("{message}");
+            return 2;
+        }
+    };
+    let json = json || json_flag;
     let expected = match (e.group.as_str(), e.action.as_str()) {
         ("dialog" | "job-scheduler" | "volume", "list")
         | ("audio", "recording" | "stop")
@@ -819,10 +894,6 @@ fn run_entry(e: &Entry, mut args: Vec<OsString>, json: bool) -> i32 {
             e.name(),
             e.name()
         );
-        return 2;
-    }
-    if let Err(message) = normalize_args(e, &mut args) {
-        err!("{message}");
         return 2;
     }
     if e.group == "sensor" && e.action == "read" && args.iter().any(|a| is(a, "-l") || is(a, "-c"))
@@ -861,6 +932,13 @@ fn run_entry(e: &Entry, mut args: Vec<OsString>, json: bool) -> i32 {
                 return 2;
             }
         }
+    }
+    if e.group == "nfc"
+        && e.action == "write"
+        && !matches!(args.as_slice(), [option, _] if is(option, "-t"))
+    {
+        err!("usage: tpp nfc write --text TEXT");
+        return 2;
     }
     fixed.extend(args);
     if (e.imp == "notification" && fixed.first().is_some_and(|arg| is(arg, "--help-actions")))
@@ -910,9 +988,7 @@ fn run_entry(e: &Entry, mut args: Vec<OsString>, json: bool) -> i32 {
             | ("job-scheduler", "schedule" | "cancel" | "cancel-all")
             | ("volume", "set")
     ) || (e.imp == "media-player"
-        && typed
-            .first()
-            .is_some_and(|arg| matches!(arg.as_str(), "play" | "pause" | "stop")));
+        && matches!(e.action.as_str(), "play" | "pause" | "stop"));
     run_captured(&class, &e.imp, &fixed, json, acknowledge)
 }
 
@@ -931,24 +1007,6 @@ fn run_plugin(plugin: &Path, lead_json: bool, mut args: Vec<OsString>) -> i32 {
         args.insert(at, OsString::from("--json"));
     }
     exec(plugin, &args)
-}
-
-/// Remove --json (up to a "--") from the arguments.
-fn take_json(args: Vec<OsString>) -> (Vec<OsString>, bool) {
-    let mut found = false;
-    let mut stop = false;
-    let mut out = Vec::with_capacity(args.len());
-    for arg in args {
-        if !stop && is(&arg, "--json") {
-            found = true;
-            continue;
-        }
-        if is(&arg, "--") {
-            stop = true;
-        }
-        out.push(arg);
-    }
-    (out, found)
 }
 
 /// Run a native group as the program, `tpp-session ARGS` for `tpp session ARGS`.
@@ -1016,11 +1074,46 @@ pub fn run(mut args: Vec<OsString>) -> i32 {
             {
                 return show_help(&app, &[OsString::from("list")]);
             }
-            if rest.first().is_some_and(|a| is(a, "--names")) {
-                write_out(list_names(&app).as_bytes());
-            } else {
-                write_out(list_commands(&app).as_bytes());
+            let mut names = false;
+            let mut json = lead_json;
+            for arg in &rest {
+                match arg.to_str() {
+                    Some("--names") => names = true,
+                    Some("--json") => json = true,
+                    _ => {
+                        err!("list: unexpected argument '{}'", arg.to_string_lossy());
+                        return 2;
+                    }
+                }
             }
+            let commands = command_list(&app);
+            if json {
+                use tpp_session::json::Value;
+                let entries = commands
+                    .into_iter()
+                    .map(|(name, description)| {
+                        if names {
+                            Value::string(name)
+                        } else {
+                            Value::Object(vec![
+                                ("command".into(), Value::string(name)),
+                                ("description".into(), Value::string(description)),
+                            ])
+                        }
+                    })
+                    .collect();
+                return render_output("auto", Value::Array(entries).to_compact().as_bytes(), true);
+            }
+            let mut text = String::new();
+            for (name, description) in commands {
+                if names {
+                    text.push_str(&name);
+                    text.push('\n');
+                } else {
+                    text.push_str(&format!("{:<28} {description}\n", format!("tpp {name}")));
+                }
+            }
+            write_out(text.as_bytes());
             return 0;
         }
         _ => {}
@@ -1031,8 +1124,10 @@ pub fn run(mut args: Vec<OsString>) -> i32 {
     }
 
     if app.table.is_group(&group) {
-        let (mut argv, found) = take_json(rest);
-        let json = lead_json || found;
+        let mut argv = rest;
+        let before_action = argv.iter().take_while(|arg| is(arg, "--json")).count();
+        argv.drain(..before_action);
+        let json = lead_json || before_action > 0;
         if let Some(e) = app.table.find(&group, "-") {
             return run_entry(e, argv, json);
         }

@@ -28,13 +28,30 @@ pub fn run(args: &[String], io: &mut Io) -> i32 {
     let mut call = Call::new("Volume");
     if !args.is_empty() {
         if args.len() != 2 {
+            if io.strict_usage {
+                io.errln("tpp volume set: expected a stream and a level");
+                return 2;
+            }
             io.outln("Invalid argument count");
             return super::show_usage(io, USAGE);
         }
         // [[ $2 =~ ^[0-9]+$ ]]
         if args[1].is_empty() || !args[1].bytes().all(|b| b.is_ascii_digit()) {
+            if io.strict_usage {
+                io.errln("tpp volume set: level must be a non-negative integer");
+                return 2;
+            }
             io.outln("ERROR: Volume must be a number");
             return super::show_usage(io, USAGE);
+        }
+        if io.strict_usage
+            && !matches!(
+                args[0].as_str(),
+                "alarm" | "music" | "notification" | "ring" | "system" | "call"
+            )
+        {
+            io.errln("tpp volume set: expected alarm, music, notification, ring, system or call");
+            return 2;
         }
         call = call
             .arg("-a")

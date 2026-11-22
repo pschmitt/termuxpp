@@ -20,6 +20,7 @@ pub fn run_to(imp: &str, args: &[OsString], stdout: &mut dyn Write, human: bool)
         stdout,
         stderr: &mut stderr,
         env: Env::process(),
+        strict_usage: true,
         transport: &transport,
     };
     tpp_api::run(imp, args, &mut io).unwrap_or_else(|| unknown(imp))

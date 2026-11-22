@@ -213,6 +213,13 @@ pub fn run(args: &[String], io: &mut Io) -> i32 {
         // the first argument is not a widget: see whether it at least looks
         // like options (even illegal ones)
         if !has_dash_lowercase(&args[0]) {
+            if io.strict_usage {
+                io.errln(&format!(
+                    "tpp dialog show: unknown widget '{}'. See 'tpp dialog list'.",
+                    args[0]
+                ));
+                return 2;
+            }
             echo_e_line(io, &format!("ERROR: Illegal argument {}\\n", args[0]));
             return super::show_usage(io, USAGE);
         }
@@ -305,6 +312,10 @@ pub fn run(args: &[String], io: &mut Io) -> i32 {
 
     // all valid args should be consumed by now
     if !rest.is_empty() {
+        if io.strict_usage {
+            io.errln("tpp dialog show: unexpected arguments. See 'tpp dialog show --help'.");
+            return 2;
+        }
         io.outln("ERROR: Too many arguments!");
         return super::show_usage(io, USAGE);
     }

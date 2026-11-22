@@ -347,9 +347,9 @@ fn silent_actions_acknowledge_requests() {
         &["notification", "remove", "example"],
         &["notification", "create-channel", "example", "Example"],
         &["notification", "delete-channel", "example"],
-        &["media", "player", "play"],
-        &["media", "player", "pause"],
-        &["media", "player", "stop"],
+        &["media", "play"],
+        &["media", "pause"],
+        &["media", "stop"],
         &["brightness", "100"],
         &["clipboard", "set", "example"],
         &["wifi", "enable"],
@@ -377,7 +377,7 @@ fn silent_actions_acknowledge_requests() {
             "{command:?}"
         );
     }
-    let (info, _) = fx.app(&["media", "player", "info"], b"");
+    let (info, _) = fx.app(&["media", "info"], b"");
     assert_eq!(out(&info), "No output\n");
     let invalid = fx.run(&["torch", "invalid"]);
     assert_ne!(code(&invalid), 0);
@@ -508,11 +508,11 @@ fn sensor_renders_each_reading_and_supports_json() {
 fn location_updates_render_for_people_and_remain_an_array_in_json() {
     let fx = Fixture::new("location-render");
     let reply = b"[\n{\"latitude\":1},\n{\"latitude\":2}\n]\n";
-    let (human, _) = fx.app(&["location", "-r", "updates"], reply);
+    let (human, _) = fx.app(&["location", "watch"], reply);
     assert_eq!(code(&human), 0);
     assert!(out(&human).contains("latitude: 1"), "{}", out(&human));
     assert!(out(&human).contains("latitude: 2"), "{}", out(&human));
-    let (json, _) = fx.app(&["location", "-r", "updates", "--json"], reply);
+    let (json, _) = fx.app(&["location", "watch", "--json"], reply);
     assert_eq!(code(&json), 0);
     assert!(out(&json).starts_with("[\n"), "{}", out(&json));
 }
@@ -807,4 +807,66 @@ fn dialog_reports_progress_and_keeps_the_answer_on_stdout() {
     let rejected = fx.run(&["dialog", "show", "-l"]);
     assert_eq!(code(&rejected), 2);
     assert!(err(&rejected).contains("tpp dialog list"));
+}
+
+#[test]
+fn valueless_flags_do_not_consume_option_values() {
+    let fx = Fixture::new("option-value");
+    for args in [
+        &["dialog", "show", "--title", "--json"][..],
+        &["dialog", "show", "--title=--json"][..],
+    ] {
+        let (output, call) = fx.app(args, br#"{"text":"Ada"}"#);
+        assert_eq!(code(&output), 0);
+        assert_eq!(call.extra("input_title"), Some("--json"));
+        assert!(err(&output).contains("Opening dialog"));
+    }
+    let (output, call) = fx.app(
+        &["dialog", "show", "--title=Hello", "--json"],
+        br#"{"text":"Ada"}"#,
+    );
+    assert_eq!(call.extra("input_title"), Some("Hello"));
+    assert!(err(&output).is_empty());
+    assert!(tpp_session::json::parse(&out(&output)).is_ok());
+}
+
+#[test]
+fn bad_public_arguments_exit_with_failure() {
+    let fx = Fixture::new("bad-arguments");
+    for args in [
+        &["volume", "set", "music", "loud"][..],
+        &["volume", "set", "misspelled", "3"],
+        &["nfc", "write", "--text"],
+        &["nfc", "write", "unexpected"],
+        &["dialog", "show", "unknown-widget"],
+        &["dialog", "show", "text", "unexpected"],
+    ] {
+        let output = fx.run(args);
+        assert_eq!(code(&output), 2, "{args:?}: {}", err(&output));
+        assert!(out(&output).is_empty(), "{args:?}");
+        assert!(!err(&output).is_empty(), "{args:?}");
+    }
+}
+
+#[test]
+fn audit_actions_and_json_command_listing() {
+    let fx = Fixture::new("audit-actions");
+    let (output, call) = fx.app(&["sms", "conversations"], b"[]");
+    assert_eq!(code(&output), 0, "{}", err(&output));
+    assert!(call.has("--ez", "conversation-list", "true"));
+    let (output, call) = fx.app(&["location", "last", "--provider=network"], b"[]");
+    assert_eq!(code(&output), 0, "{}", err(&output));
+    assert_eq!(call.extra("request"), Some("last"));
+    assert_eq!(call.extra("provider"), Some("network"));
+    let output = fx.run(&["--json", "list"]);
+    let value = tpp_session::json::parse(&out(&output)).unwrap();
+    let entries = value.as_array().unwrap();
+    assert!(entries.iter().any(|entry| entry.get("command")
+        == Some(&tpp_session::json::Value::string("sms conversations"))));
+    let output = fx.run(&["list", "--json", "--names"]);
+    let value = tpp_session::json::parse(&out(&output)).unwrap();
+    assert!(value
+        .as_array()
+        .unwrap()
+        .contains(&tpp_session::json::Value::string("location watch")));
 }

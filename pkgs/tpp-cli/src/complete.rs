@@ -103,7 +103,7 @@ fn complete_arguments(
             .cloned()
             .collect();
         flags.push("--help".to_string());
-        if has_json && !json_seen {
+        if has_json && !json_seen && !used.contains("--json") {
             flags.push("--json".to_string());
         }
         return (0, matching(cur, &flags));
@@ -148,15 +148,12 @@ fn complete_words(app: &App, words: &[String]) -> Answer {
         return (0, native::complete(group, rest));
     }
     if app.table.is_group(group) {
-        let mut json_seen = gi > 0;
-        let mut prior: Vec<String> = Vec::new();
-        for w in &rest[..rest.len() - 1] {
-            if w == "--json" {
-                json_seen = true;
-            } else {
-                prior.push(w.clone());
-            }
-        }
+        let leading = rest[..rest.len() - 1]
+            .iter()
+            .take_while(|word| *word == "--json")
+            .count();
+        let json_seen = gi > 0 || leading > 0;
+        let mut prior = rest[leading..rest.len() - 1].to_vec();
         if app.table.find(group, "-").is_some() {
             prior.push(cur.to_string());
             return complete_arguments(app, json_seen, group, "-", &prior);
@@ -178,6 +175,17 @@ fn complete_words(app: &App, words: &[String]) -> Answer {
         let action = prior.remove(0);
         prior.push(cur.to_string());
         return complete_arguments(app, json_seen, group, &action, &prior);
+    }
+    if group == "list" {
+        let options = ["--names", "--json", "--help"];
+        let candidates: Vec<&str> = options
+            .into_iter()
+            .filter(|option| {
+                (*option != "--json" || gi == 0)
+                    && !rest[..rest.len() - 1].iter().any(|word| word == option)
+            })
+            .collect();
+        return (0, matching(cur, &candidates));
     }
     if group == "help" {
         if rest.len() == 1 {
