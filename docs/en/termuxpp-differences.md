@@ -361,7 +361,8 @@ through the [native CLI installer](../../app/src/main/java/com/termux/app/native
 first removes the launcher, script and completion files that earlier versions wrote, because the installer
 leaves paths it did not create alone.
 
-The app accepts one JSON array line on the abstract socket `dev.pschmitt.termux.sessions`
+The app retries opening the session socket during service startup if the first
+bind fails. It accepts one JSON array line on the abstract socket `dev.pschmitt.termux.sessions`
 ([`SessionCommandServer`](../../app/src/main/java/com/termux/app/SessionCommandServer.java)). `TPP_SESSION_SOCKET`
 names another abstract socket, which the tests use. Commands, options, abbreviations, exit statuses (0, 1, 2),
 usage errors, the JSON layout and the table behave as the Python implementation did; the differences are

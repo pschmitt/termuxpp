@@ -137,10 +137,14 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     boolean mWantsToStop = false;
 
     private SessionCommandServer sessionCommandServer;
+    private int sessionCommandServerAttempts;
+    private final Runnable retrySessionCommandServer = this::startSessionCommandServer;
     private boolean legacySessionCliRemoved;
     private final Set<String> closingSessions = new HashSet<>();
 
     private static final String LOG_TAG = "TermuxService";
+    private static final int SESSION_COMMAND_SERVER_MAX_ATTEMPTS = 10;
+    private static final long SESSION_COMMAND_SERVER_RETRY_DELAY_MS = 1000;
 
     @Override
     public void onCreate() {
@@ -153,11 +157,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         mShellManager = TermuxShellManager.getShellManager();
 
         runStartForeground();
-        try {
-            sessionCommandServer = new SessionCommandServer(this);
-        } catch (IOException e) {
-            Logger.logWarn(LOG_TAG, "Could not start the session command listener: " + e.getMessage());
-        }
+        startSessionCommandServer();
         removeLegacySessionCli();
         NativeCliUpdater.installAsync(this);
 
@@ -170,6 +170,19 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         permissionStatePublisher = new PermissionStatePublisher(this);
         permissionStatePublisher.start();
         NixppRuntimeRecovery.startWatchdog(this);
+    }
+
+    private void startSessionCommandServer() {
+        sessionCommandServerAttempts++;
+        try {
+            sessionCommandServer = new SessionCommandServer(this);
+        } catch (IOException e) {
+            if (sessionCommandServerAttempts < SESSION_COMMAND_SERVER_MAX_ATTEMPTS) {
+                mHandler.postDelayed(retrySessionCommandServer, SESSION_COMMAND_SERVER_RETRY_DELAY_MS);
+            } else {
+                Logger.logWarn(LOG_TAG, "Could not start the session command listener: " + e.getMessage());
+            }
+        }
     }
 
     /** Republish the permission state, e.g. after returning from a permission prompt. */
@@ -238,6 +251,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         }
         NixppRuntimeRecovery.stopWatchdog();
 
+        mHandler.removeCallbacks(retrySessionCommandServer);
         if (sessionCommandServer != null) {
             try {
                 sessionCommandServer.close();
