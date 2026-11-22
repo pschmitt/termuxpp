@@ -109,7 +109,7 @@ public class TerminalContextMenuTest {
             TerminalContextMenu.headerDetail(resources, session(null, true, 2, 3)));
         Assert.assertEquals("~/devel · pid 4182",
             TerminalContextMenu.headerDetail(resources, session(null, true, 1, 1)));
-        Assert.assertEquals("~/devel · not running",
+        Assert.assertEquals("~/devel",
             TerminalContextMenu.headerDetail(resources, session(null, false, 1, 1)));
     }
 
@@ -144,11 +144,11 @@ public class TerminalContextMenuTest {
         // Header keeps the session; Settings is a row now, not a header icon.
         View header = dialog.findViewById(R.id.context_sheet_header);
         Assert.assertEquals("zsh", ((TextView) header.findViewById(R.id.context_header_title)).getText().toString());
-        Assert.assertEquals(View.VISIBLE, header.findViewById(R.id.context_header_running).getVisibility());
+        Assert.assertEquals(View.GONE, header.findViewById(R.id.context_header_stopped).getVisibility());
         Assert.assertEquals(View.GONE, header.findViewById(R.id.context_header_action).getVisibility());
         dialog.dismiss();
         BottomSheetDialog exited = mainSheet(activity, session(null, false, 2, 3));
-        Assert.assertEquals(View.GONE, exited.findViewById(R.id.context_header_running).getVisibility());
+        Assert.assertEquals(View.VISIBLE, exited.findViewById(R.id.context_header_stopped).getVisibility());
         exited.dismiss();
     }
 
@@ -432,12 +432,13 @@ public class TerminalContextMenuTest {
     }
 
     @Test
-    public void processInfoAbbreviatesTheHomeDirectory() {
+    public void processInfoDisplaysAbsoluteNativeAndGuestPaths() {
         String home = "/data/data/com.termux/files/home";
-        Assert.assertEquals("~", ProcessInfo.abbreviateHome(home, home));
-        Assert.assertEquals("~/devel", ProcessInfo.abbreviateHome(home + "/devel", home + "/"));
-        Assert.assertEquals(home + "x/devel", ProcessInfo.abbreviateHome(home + "x/devel", home));
-        Assert.assertEquals("/sdcard", ProcessInfo.abbreviateHome("/sdcard", home));
+        String root = home + "/.local/share/termuxpp-nix/root";
+        Assert.assertEquals(home, ProcessInfo.displayCwd(home, root));
+        Assert.assertEquals("/", ProcessInfo.displayCwd(root, root));
+        Assert.assertEquals("/home/user/dev", ProcessInfo.displayCwd(root + "/home/user/dev", root));
+        Assert.assertEquals(root + "-backup", ProcessInfo.displayCwd(root + "-backup", root));
         Assert.assertNull(ProcessInfo.readName(-1));
         Assert.assertNull(ProcessInfo.readCwd(0));
     }

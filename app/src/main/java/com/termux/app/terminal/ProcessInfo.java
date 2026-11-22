@@ -37,13 +37,10 @@ public final class ProcessInfo {
         }
     }
 
-    /** Show a path under the home directory as {@code ~/...}, like a shell prompt does. */
+    /** Show the guest-visible absolute path for a cwd inside its root. */
     @NonNull
-    public static String abbreviateHome(@NonNull String path, @Nullable String home) {
-        if (home == null || home.isEmpty()) return path;
-        String base = home.endsWith("/") ? home.substring(0, home.length() - 1) : home;
-        if (path.equals(base)) return "~";
-        if (path.startsWith(base + "/")) return "~" + path.substring(base.length());
-        return path;
+    public static String displayCwd(@NonNull String path, @NonNull String guestRoot) {
+        if (path.equals(guestRoot)) return "/";
+        return path.startsWith(guestRoot + "/") ? path.substring(guestRoot.length()) : path;
     }
 }

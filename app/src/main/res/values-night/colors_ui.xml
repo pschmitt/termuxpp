@@ -24,6 +24,4 @@
     <color name="ui_sheet_surface">#111218</color>
     <color name="ui_sheet_card">#181921</color>
     <color name="ui_sheet_border">#2A2B36</color>
-    <color name="ui_sheet_running">#122D2B</color>
-    <color name="ui_sheet_on_running">#65DFC2</color>
 </resources>

@@ -108,9 +108,8 @@ public final class TerminalContextMenu {
     static String headerDetail(@NonNull Resources resources, @NonNull State state) {
         List<String> parts = new ArrayList<>();
         if (!TextUtils.isEmpty(state.cwd)) parts.add(state.cwd);
-        parts.add(state.sessionRunning && state.sessionPid > 0
-            ? resources.getString(R.string.ui_menu_session_pid, state.sessionPid)
-            : resources.getString(R.string.ui_menu_not_running));
+        if (state.sessionRunning && state.sessionPid > 0)
+            parts.add(resources.getString(R.string.ui_menu_session_pid, state.sessionPid));
         if (state.sessionCount > 1 && state.sessionNumber > 0)
             parts.add(resources.getString(R.string.ui_menu_session_position, state.sessionNumber, state.sessionCount));
         return TextUtils.join(resources.getString(R.string.ui_menu_session_detail_separator), parts);

@@ -152,6 +152,7 @@
         <item name="colorPrimary">?attr/termuxUiPrimary</item>
         <item name="colorOnPrimary">?attr/termuxUiOnPrimary</item>
         <item name="colorSecondary">?attr/termuxUiPrimary</item>
+        <item name="elevationOverlayEnabled">false</item>
         <item name="colorSurface">@color/ui_sheet_surface</item>
         <item name="colorOnSurface">@color/ui_on_surface</item>
         <item name="android:colorBackground">@color/ui_sheet_surface</item>

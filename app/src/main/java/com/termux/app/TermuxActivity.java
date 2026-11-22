@@ -45,6 +45,7 @@ import dev.pschmitt.termux.shared.data.IntentUtils;
 import dev.pschmitt.termux.shared.interact.DialogUtils;
 import dev.pschmitt.termux.shared.android.PermissionUtils;
 import dev.pschmitt.termux.shared.data.DataUtils;
+import dev.pschmitt.termux.shared.termux.nix.TermuxNix;
 import dev.pschmitt.termux.shared.termux.TermuxConstants;
 import dev.pschmitt.termux.shared.termux.TermuxConstants.TERMUX_APP.TERMUX_ACTIVITY;
 import com.termux.app.activities.SettingsActivity;
@@ -742,7 +743,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private TerminalContextMenu.State getContextSheetState(@NonNull TerminalSession session) {
         int pid = session.isRunning() ? session.getPid() : -1;
         String cwd = ProcessInfo.readCwd(pid);
-        if (cwd != null) cwd = ProcessInfo.abbreviateHome(cwd, TermuxConstants.TERMUX_HOME_DIR_PATH);
+        if (cwd != null) cwd = ProcessInfo.displayCwd(cwd, TermuxNix.RUNTIME_DIR_PATH + "/root");
         int number = 0;
         int count = 0;
         if (mTermuxService != null) {
