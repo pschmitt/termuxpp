@@ -17,7 +17,7 @@
   };
 
   outputs =
-    { nixpkgs, ... }@inputs:
+    { self, nixpkgs, ... }@inputs:
     let
       nixppFor = pkgs: import ./pkgs/nixpp/packages.nix { inherit inputs pkgs; };
       # Host-side ADB client built with a caller's Nixpkgs.
@@ -167,6 +167,12 @@
       # `inputs.termuxpp.lib.adbShell.packagesFor pkgs`).
       lib.adbShell.packagesFor = adbShellFor;
 
+      # Circus builds the available packages and checks on each Linux system.
+      hydraJobs = nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-linux" ] (target: {
+        packages = self.packages.${target};
+        checks = self.checks.${target} or { };
+      });
+
       packages.aarch64-linux =
         removeAttrs (nixppFor nixpkgs.legacyPackages.aarch64-linux) [
           "nixpp-runtime-termux"
@@ -174,7 +180,7 @@
         ]
         // adbShellFor nixpkgs.legacyPackages.aarch64-linux;
       # Only what builds here: the guest helpers are aarch64-only (packages.aarch64-linux)
-      # and nixbot builds every attribute of this set.
+      # and Circus builds every attribute of this set.
       packages.${system} =
         pkgs.lib.filterAttrs (_: drv: pkgs.lib.meta.availableOn pkgs.stdenv.hostPlatform drv) (
           nixppFor pkgs
