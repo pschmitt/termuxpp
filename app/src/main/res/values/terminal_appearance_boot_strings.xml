@@ -12,7 +12,6 @@
     <string name="appearance_config_default">Default (no configuration file)</string>
     <string name="boot_scripts_title">Run at boot</string>
     <string name="boot_scripts_empty">No boot scripts</string>
-    <string name="boot_scripts_empty_summary">Add a script to the directory below to run it when Android starts.</string>
     <string name="boot_script_example_title">Example startup script</string>
     <string name="boot_script_example">#!/data/data/dev.pschmitt.termux/files/usr/bin/sh\ntermux-wake-lock\nsshd</string>
     <string name="boot_setup_title">Boot script setup</string>

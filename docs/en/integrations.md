@@ -35,7 +35,7 @@ optional relaunch.
 
 | Integration | Where to use it |
 | --- | --- |
-| **Boot** | Open **Settings → Services → Run at boot** to see the scripts Android will schedule. Put scripts in the native TermuxPP home's `~/.config/termuxpp/boot/`. TermuxPP schedules them in filename order. For duplicate names, that directory takes precedence over `~/.config/termux/boot/` and `~/.termux/boot/`. |
+| **Boot** | Open **Settings → Services → Run at boot** to see the scripts Android will schedule. Tap the info icon for setup and an example. Put scripts in the native TermuxPP home's `~/.config/termuxpp/boot/`. TermuxPP schedules them in filename order. For duplicate names, that directory takes precedence over `~/.config/termux/boot/` and `~/.termux/boot/`. |
 | **Styling** | Open **Settings → Display** to choose a font and color scheme. See [Terminal settings](terminal-settings.md#configuration-files) for custom files. |
 | **Widget** | Add the TermuxPP widget from your launcher. Put terminal shortcuts in the native home's `~/.shortcuts/` and background tasks in `~/.shortcuts/tasks/`. |
 

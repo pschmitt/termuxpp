@@ -7,7 +7,11 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -18,13 +22,17 @@ import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
+import androidx.core.view.MenuItemCompat;
+import androidx.core.view.MenuProvider;
+import androidx.lifecycle.Lifecycle;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceCategory;
 import androidx.preference.PreferenceViewHolder;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.termux.R;
 import com.termux.app.settings.GroupedPreferencesFragment;
-import com.termux.app.settings.GuestServicesOverviewPreference;
+import com.google.android.material.color.MaterialColors;
 import com.termux.boot.BootReceiver;
 
 import org.json.JSONArray;
@@ -56,23 +64,76 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
-    private GuestServicesOverviewPreference statusPreference;
+    @Nullable private SwipeRefreshLayout swipeRefresh;
     private PreferenceCategory servicesCategory;
     private boolean busy;
 
     @Override
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         setPreferencesFromResource(R.xml.termux_services_preferences, rootKey);
-        statusPreference = findPreference("services_status");
         servicesCategory = findPreference("services_list");
-        if (statusPreference != null) statusPreference.setRefreshAction(this::refreshServices);
+    }
+
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
+        View preferences = super.onCreateView(inflater, container, savedInstanceState);
+        SwipeRefreshLayout refresh = new SwipeRefreshLayout(requireContext());
+        refresh.setColorSchemeColors(MaterialColors.getColor(requireContext(), R.attr.termuxUiPrimary,
+            ContextCompat.getColor(requireContext(), R.color.ui_primary)));
+        refresh.addView(preferences);
+        refresh.setOnChildScrollUpCallback((layout, child) -> getListView().canScrollVertically(-1));
+        refresh.setOnRefreshListener(this::refreshPage);
+        swipeRefresh = refresh;
+        return refresh;
+    }
+
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        requireActivity().addMenuProvider(new MenuProvider() {
+            @Override
+            public void onCreateMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
+                MenuItem help = menu.add(Menu.NONE, R.id.boot_script_help, Menu.NONE, R.string.boot_setup_title);
+                help.setIcon(R.drawable.ui_ic_info);
+                MenuItemCompat.setIconTintList(help,
+                    ColorStateList.valueOf(ContextCompat.getColor(requireContext(), R.color.ui_on_surface)));
+                help.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
+            }
+
+            @Override
+            public boolean onMenuItemSelected(@NonNull MenuItem item) {
+                if (item.getItemId() != R.id.boot_script_help) return false;
+                showBootSetup();
+                return true;
+            }
+        }, getViewLifecycleOwner(), Lifecycle.State.RESUMED);
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        refreshServices();
+        if (swipeRefresh != null) swipeRefresh.setRefreshing(busy);
+        refreshPage();
+    }
+
+    @Override
+    public void onDestroyView() {
+        swipeRefresh = null;
+        super.onDestroyView();
+    }
+
+    private void refreshPage() {
         refreshBootScripts();
+        refreshServices();
+    }
+
+    private void showBootSetup() {
+        DialogUtils.builder(requireContext())
+            .setTitle(R.string.boot_setup_title)
+            .setView(R.layout.ui_boot_script_setup)
+            .setPositiveButton(android.R.string.ok, null)
+            .show();
     }
 
     @Override
@@ -89,15 +150,16 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
         if (files.isEmpty()) {
             Preference empty = new Preference(requireContext());
             empty.setTitle(R.string.boot_scripts_empty);
-            empty.setSummary(R.string.boot_scripts_empty_summary);
             empty.setIconSpaceReserved(false);
             empty.setSelectable(false);
             scripts.addPreference(empty);
         }
+        File defaultDirectory = new File(TermuxConstants.TERMUX_CONFIG_TERMUXPP_DIR_PATH, "boot");
         for (File file : files) {
             Preference script = new Preference(requireContext());
             script.setTitle(file.getName());
-            script.setSummary("~" + file.getParent().substring(home.length()) + "/");
+            if (!defaultDirectory.equals(file.getParentFile()))
+                script.setSummary("~" + file.getParent().substring(home.length()) + "/");
             script.setIconSpaceReserved(false);
             script.setSelectable(false);
             scripts.addPreference(script);
@@ -105,21 +167,16 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
     }
 
     private void refreshServices() {
-        if (busy || statusPreference == null || servicesCategory == null) return;
-        if (!TermuxNix.isProvisioned()) {
-            servicesCategory.removeAll();
-            servicesCategory.setVisible(false);
-            setStatus(R.string.nix_services_not_available);
-            return;
-        }
-        if (!TermuxNix.isReady()) {
-            servicesCategory.removeAll();
-            servicesCategory.setVisible(false);
-            setStatus(R.string.nix_services_guest_not_ready);
+        if (busy || servicesCategory == null) return;
+        boolean provisioned = TermuxNix.isProvisioned();
+        if (!provisioned || !TermuxNix.isReady()) {
+            int message = provisioned
+                ? R.string.nix_services_guest_not_ready : R.string.nix_services_not_available;
+            showServicePlaceholder(getString(message));
+            setBusy(false);
             return;
         }
         setBusy(true);
-        setStatus(R.string.nix_services_loading);
         executor.execute(() -> {
             CommandResult result = runGuestCommand("svc", "--json", "list");
             List<Service> services = null;
@@ -137,16 +194,28 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
                 if (!isAdded() || servicesCategory == null) return;
                 setBusy(false);
                 if (loaded == null) {
-                    setStatus(getString(R.string.nix_services_load_error, concise(failure)));
+                    String message = getString(R.string.nix_services_load_error, concise(failure));
+                    if (servicesCategory.getPreferenceCount() == 0 || servicesCategory.findPreference("services_empty") != null)
+                        showServicePlaceholder(message);
+                    else
+                        Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
                     return;
                 }
                 servicesCategory.removeAll();
-                servicesCategory.setVisible(!loaded.isEmpty());
-                setStatus(loaded.isEmpty() ? getString(R.string.nix_services_empty)
-                    : getResources().getQuantityString(R.plurals.nix_services_count, loaded.size(), loaded.size()));
+                if (loaded.isEmpty()) showServicePlaceholder(getString(R.string.nix_services_empty));
                 for (Service service : loaded) addServicePreference(service);
             });
         });
+    }
+
+    private void showServicePlaceholder(CharSequence message) {
+        servicesCategory.removeAll();
+        Preference empty = new Preference(requireContext());
+        empty.setKey("services_empty");
+        empty.setTitle(message);
+        empty.setSelectable(false);
+        empty.setIconSpaceReserved(false);
+        servicesCategory.addPreference(empty);
     }
 
     private void addServicePreference(@NonNull Service service) {
@@ -202,7 +271,6 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
     private void runServiceAction(@NonNull Service service, @NonNull String action) {
         if (busy) return;
         setBusy(true);
-        setStatus(getString(R.string.nix_services_action_running, action, service.name));
         executor.execute(() -> {
             CommandResult result = runGuestCommand("svc", action, service.name);
             mainHandler.post(() -> {
@@ -342,7 +410,7 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
 
     private void setBusy(boolean value) {
         busy = value;
-        statusPreference.setBusy(value);
+        if (swipeRefresh != null) swipeRefresh.setRefreshing(value);
         for (int i = 0; i < servicesCategory.getPreferenceCount(); i++)
             servicesCategory.getPreference(i).setEnabled(!value);
     }
@@ -459,14 +527,6 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
                 mainHandler.postDelayed(this::refreshServices, 1500);
             });
         });
-    }
-
-    private void setStatus(@NonNull CharSequence summary) {
-        if (statusPreference != null) statusPreference.setSummary(summary);
-    }
-
-    private void setStatus(int summary) {
-        if (statusPreference != null) statusPreference.setSummary(summary);
     }
 
     @NonNull

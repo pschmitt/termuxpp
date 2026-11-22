@@ -2,6 +2,15 @@ package com.termux.app.fragments.settings.termux;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.Window;
+import android.widget.PopupMenu;
+
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.termux.R;
 import com.termux.app.activities.SettingsActivity;
@@ -12,6 +21,7 @@ import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
 import org.robolectric.annotation.Config;
+import org.robolectric.shadows.ShadowDialog;
 
 @RunWith(RobolectricTestRunner.class)
 @Config(sdk = 28)
@@ -30,13 +40,18 @@ public class ServicesPreferencesFragmentUiTest {
         activity.getSupportFragmentManager().beginTransaction()
             .replace(R.id.settings, services)
             .commitNow();
-        assertNotNull(services.findPreference("services_status"));
-        assertEquals(R.layout.ui_guest_services_refresh,
-            services.findPreference("services_status").getWidgetLayoutResource());
+        assertTrue(services.requireView() instanceof SwipeRefreshLayout);
+        assertNull(services.findPreference("services_status"));
         assertNotNull(services.findPreference("services_list"));
         assertNotNull(services.findPreference("boot_scripts"));
-        assertNotNull(services.findPreference("boot_script_setup"));
-        assertEquals(R.layout.ui_preference_code_block,
-            services.findPreference("boot_script_example").getLayoutResource());
+        assertNull(services.findPreference("boot_script_setup"));
+        assertNull(services.findPreference("boot_script_example"));
+
+        Menu menu = new PopupMenu(activity, services.requireView()).getMenu();
+        activity.onCreatePanelMenu(Window.FEATURE_OPTIONS_PANEL, menu);
+        MenuItem help = menu.findItem(R.id.boot_script_help);
+        assertNotNull(help);
+        assertTrue(activity.onMenuItemSelected(Window.FEATURE_OPTIONS_PANEL, help));
+        assertTrue(ShadowDialog.getLatestDialog().isShowing());
     }
 }

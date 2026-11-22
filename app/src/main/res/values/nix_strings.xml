@@ -16,12 +16,9 @@
     <!-- Managed Nix guest services -->
     <string name="nix_services_title">Services</string>
     <string name="nix_services_summary">Manage Nix guest services and scripts that run at boot</string>
-    <string name="nix_services_guest_status">Guest status</string>
     <string name="nix_services_empty">No services configured</string>
     <string name="nix_services_waiting_for_wifi">Waiting for Wi-Fi</string>
     <string name="nix_services_category">Services</string>
-    <string name="nix_services_refresh">Refresh services</string>
-    <string name="nix_services_loading">Loading services…</string>
     <string name="nix_services_not_available">The Nix bootstrap is not installed.</string>
     <string name="nix_services_guest_not_ready">Start the Nix environment once before managing services.</string>
     <string name="nix_services_load_error">Could not load services: %1$s</string>
@@ -32,7 +29,6 @@
     <string name="nix_services_stop">Stop</string>
     <string name="nix_services_restart">Restart</string>
     <string name="nix_services_logs">View logs</string>
-    <string name="nix_services_action_running">Running %1$s for %2$s…</string>
     <string name="nix_services_action_failed">Could not %1$s service</string>
     <string name="nix_services_action_done">%1$s sent to %2$s</string>
     <string name="nix_services_logs_title">Logs · %1$s</string>
@@ -54,8 +50,4 @@
     <string name="nix_services_boot_off">does not start on boot</string>
     <string name="nix_services_set_here">%1$s (set here)</string>
     <string name="nix_services_interrupted">The service command was interrupted.</string>
-    <plurals name="nix_services_count">
-        <item quantity="one">%1$d service</item>
-        <item quantity="other">%1$d services</item>
-    </plurals>
 </resources>

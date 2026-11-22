@@ -323,14 +323,14 @@ separate add-on.
 
 ## Services settings
 
-When the managed Nix guest is available, **Settings > TermuxPP > Services** lists
+When the managed Nix guest is available, **Settings → Services** lists
 its declared services and their enabled and running state. The page can start,
 stop, restart and view bounded logs for a service. Actions call the guest's `svc`
 interface with argument vectors; service names are validated before use. If the
-guest has not been provisioned or is unavailable, the page reports that state and
-offers a refresh. The Run at boot section lists the scripts selected by the
-Android boot receiver from the native TermuxPP home. Sources: [services settings](../../app/src/main/java/com/termux/app/fragments/settings/termux/ServicesPreferencesFragment.java)
-and [preferences entry](../../app/src/main/res/xml/termux_preferences.xml).
+guest is unavailable, the service list describes its state. Pull down to refresh both lists. The Run at boot
+section lists the scripts selected by the Android boot receiver from the native
+TermuxPP home. The info icon opens the boot setup dialog. [Services settings](../../app/src/main/java/com/termux/app/fragments/settings/termux/ServicesPreferencesFragment.java)
+and [preferences entry](../../app/src/main/res/xml/root_preferences.xml).
 
 ## Terminal feedback position
 
