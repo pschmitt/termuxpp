@@ -1,4 +1,17 @@
-<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto"
+    app:title="@string/settings_display">
+
+    <PreferenceCategory app:title="@string/appearance_title">
+        <Preference
+            app:key="terminal_color_scheme"
+            app:icon="@drawable/ui_ic_palette"
+            app:title="@string/appearance_colors" />
+
+        <Preference
+            app:key="terminal_font"
+            app:icon="@drawable/ui_ic_terminal"
+            app:title="@string/appearance_font" />
+    </PreferenceCategory>
 
     <PreferenceCategory
         app:key="view"

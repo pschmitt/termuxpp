@@ -279,7 +279,7 @@
 
     <!-- Companion Apps -->
     <string name="companion_apps_title">Integrations</string>
-    <string name="companion_apps_summary">API, Tasker, widgets, startup scripts, and styling</string>
+    <string name="companion_apps_summary">API, Tasker, floating terminal, and widgets</string>
     <string name="companion_apps_category_title">Built-in features</string>
     <string name="companion_apps_category_summary">Only TermuxPP-compatible builds can connect to this installation.</string>
     <string name="termux_boot_title">TermuxPP:Boot</string>

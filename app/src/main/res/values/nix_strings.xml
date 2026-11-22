@@ -14,12 +14,12 @@
     <string name="bootstrap_note_extracting">unpacking the bootstrap archive</string>
     <string name="bootstrap_note_extracted">unpacked: %1$d links, %2$d files adapted to TermuxPP</string>
     <!-- Managed Nix guest services -->
-    <string name="nix_services_title">Nix guest services</string>
-    <string name="nix_services_summary">View and control services in the Nix environment</string>
+    <string name="nix_services_title">Services</string>
+    <string name="nix_services_summary">Manage Nix guest services and scripts that run at boot</string>
     <string name="nix_services_guest_status">Guest status</string>
     <string name="nix_services_empty">No services configured</string>
     <string name="nix_services_waiting_for_wifi">Waiting for Wi-Fi</string>
-    <string name="nix_services_category">Services</string>
+    <string name="nix_services_category">Nix guest services</string>
     <string name="nix_services_refresh">Refresh services</string>
     <string name="nix_services_loading">Loading services…</string>
     <string name="nix_services_not_available">The Nix bootstrap is not installed.</string>

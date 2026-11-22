@@ -1,0 +1,21 @@
+<resources>
+    <string name="appearance_title">Terminal appearance</string>
+    <string name="appearance_colors">Color scheme</string>
+    <string name="appearance_font">Font</string>
+    <string name="appearance_font_sample">%1$s\nAa 0O 1l {} []</string>
+    <string name="appearance_filter">Filter presets</string>
+    <string name="appearance_config_files">Use configuration files</string>
+    <string name="appearance_default">Default</string>
+    <string name="appearance_selected">%1$s (selected)</string>
+    <string name="appearance_guest_config">Nix guest configuration</string>
+    <string name="appearance_native_config">Native Termux configuration</string>
+    <string name="appearance_config_default">Default (no configuration file)</string>
+    <string name="boot_scripts_title">Run at boot</string>
+    <string name="boot_scripts_empty">No boot scripts</string>
+    <string name="boot_scripts_empty_summary">Add a script to the directory below to run it when Android starts.</string>
+    <string name="boot_script_example_title">Example startup script</string>
+    <string name="boot_script_example">#!/data/data/dev.pschmitt.termux/files/usr/bin/sh\ntermux-wake-lock\nsshd</string>
+    <string name="boot_setup_title">Boot script setup</string>
+    <string name="boot_script_location">~/.config/termuxpp/boot/</string>
+    <string name="boot_script_setup">Put scripts with a shell shebang in this directory in your native Termux home. Scripts from ~/.config/termux/boot/ and ~/.termux/boot/ also run when a higher-priority directory has no script with the same name.</string>
+</resources>

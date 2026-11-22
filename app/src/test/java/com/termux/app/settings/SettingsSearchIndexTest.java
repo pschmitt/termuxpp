@@ -45,9 +45,11 @@ public class SettingsSearchIndexTest {
         assertNotNull(keyboard);
         assertTrue(keyboard.breadcrumb.endsWith(activity.getString(R.string.properties_keyboard)));
 
-        SettingsSearchIndex.Result logLevel = resultFor(results, "log_level");
+        SettingsSearchIndex.Result logLevel = resultFor(results, "api_log_level");
         assertNotNull(logLevel);
         assertTrue(logLevel.title + " :: " + logLevel.breadcrumb, logLevel.matches("api log level"));
+        assertEquals("com.termux.app.fragments.settings.termux.DebuggingPreferencesFragment",
+            logLevel.fragmentPath.get(0));
     }
 
     @Test

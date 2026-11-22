@@ -9,40 +9,28 @@
             app:icon="@drawable/ui_ic_extension"
             app:title="@string/settings_integration_api_title"
             app:summary="@string/settings_integration_api_summary"
-            app:fragment="com.termux.app.fragments.settings.termux_api.DebuggingPreferencesFragment" />
+            app:selectable="false" />
 
         <Preference
             app:key="termux_tasker"
             app:icon="@drawable/ui_ic_bolt"
             app:title="@string/settings_integration_tasker_title"
             app:summary="@string/settings_integration_tasker_summary"
-            app:fragment="com.termux.app.fragments.settings.termux_tasker.DebuggingPreferencesFragment" />
+            app:selectable="false" />
 
         <Preference
             app:key="termux_float"
             app:icon="@drawable/ui_ic_float"
             app:title="@string/settings_integration_float_title"
             app:summary="@string/settings_integration_float_summary"
-            app:fragment="com.termux.app.fragments.settings.termux_float.DebuggingPreferencesFragment" />
+            app:selectable="false" />
 
         <Preference
             app:key="termux_widget"
             app:icon="@drawable/ui_ic_widgets"
             app:title="@string/settings_integration_widget_title"
             app:summary="@string/settings_integration_widget_summary"
-            app:fragment="com.termux.app.fragments.settings.termux_widget.DebuggingPreferencesFragment" />
-
-        <Preference
-            app:key="termux_boot"
-            app:icon="@drawable/ui_ic_power"
-            app:title="@string/settings_integration_boot_title"
-            app:summary="@string/settings_integration_boot_summary" />
-
-        <Preference
-            app:key="termux_styling"
-            app:icon="@drawable/ui_ic_palette"
-            app:title="@string/settings_integration_styling_title"
-            app:summary="@string/settings_integration_styling_summary" />
+            app:selectable="false" />
 
     </PreferenceCategory>
 

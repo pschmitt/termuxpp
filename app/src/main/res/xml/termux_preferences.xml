@@ -15,12 +15,6 @@
         app:fragment="com.termux.app.fragments.settings.termux.ServicesPreferencesFragment" />
 
     <Preference
-        app:icon="@drawable/ui_ic_palette"
-        app:key="termux_styling"
-        app:title="@string/action_style_terminal"
-        app:summary="@string/termux_update_app_styling" />
-
-    <Preference
         app:icon="@drawable/ui_ic_bug"
         app:title="@string/termux_debugging_preferences_title"
         app:summary="@string/termux_debugging_preferences_summary"

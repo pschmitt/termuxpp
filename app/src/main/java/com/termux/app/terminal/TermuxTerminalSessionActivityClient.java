@@ -22,28 +22,27 @@ import dev.pschmitt.termux.shared.termux.shell.command.runner.terminal.TermuxSes
 import dev.pschmitt.termux.shared.termux.interact.TextInputDialogUtils;
 import com.termux.app.TermuxActivity;
 import dev.pschmitt.termux.shared.termux.terminal.TermuxTerminalSessionClientBase;
-import dev.pschmitt.termux.shared.termux.TermuxConfigDirs;
 import dev.pschmitt.termux.shared.termux.TermuxConstants;
-import dev.pschmitt.termux.shared.termux.nix.TermuxNix;
 import com.termux.app.TermuxService;
 import dev.pschmitt.termux.shared.termux.settings.properties.TermuxPropertyConstants;
 import dev.pschmitt.termux.shared.termux.terminal.io.BellHandler;
 import dev.pschmitt.termux.shared.logger.Logger;
 import com.termux.terminal.TerminalColors;
+import com.termux.terminal.TerminalEmulator;
 import com.termux.terminal.TerminalSession;
 import com.termux.terminal.TerminalSessionClient;
 import com.termux.terminal.TextStyle;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Properties;
 
 /** The {@link TerminalSessionClient} implementation that may require an {@link Activity} for its interface methods. */
 public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionClientBase {
 
     private final TermuxActivity mActivity;
+    private String appearanceColors;
+    private String appearanceFont;
+    private boolean pendingPaletteReset;
 
     private static final int MAX_SESSIONS = 8;
 
@@ -62,7 +61,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
      */
     public void onCreate() {
         // Set terminal fonts and colors
-        checkForFontAndColors();
+        checkForFontAndColors(false);
     }
 
     /**
@@ -86,6 +85,9 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
      * Should be called when mActivity.onResume() is called
      */
     public void onResume() {
+        boolean colorsChanged = !TerminalAppearance.Setting.COLORS.selection(mActivity).equals(appearanceColors);
+        boolean fontChanged = !TerminalAppearance.Setting.FONT.selection(mActivity).equals(appearanceFont);
+        if (colorsChanged || fontChanged) checkForFontAndColors(colorsChanged);
         // Just initialize the mBellSoundPool and load the sound, otherwise bell might not run
         // the first time bell key is pressed and play() is called, since sound may not be loaded
         // quickly enough before the call to play(). https://stackoverflow.com/questions/35435625
@@ -112,7 +114,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
      */
     public void onReloadActivityStyling() {
         // Set terminal fonts and colors
-        checkForFontAndColors();
+        checkForFontAndColors(true);
     }
 
 
@@ -512,46 +514,35 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
 
-    public void checkForFontAndColors() {
-        try {
-            // Looked up per file: ~/.config/termuxpp, then ~/.config/termux, then ~/.termux
-            final List<String> configDirs = TermuxNix.configPaths(TermuxConstants.TERMUX_CONFIG_DIR_PATHS_LIST);
-            File colorsFile = TermuxConfigDirs.resolveFile(configDirs, "colors.properties", false);
-            File fontFile = TermuxConfigDirs.resolveFile(configDirs, "font.ttf", true);
+    private void checkForFontAndColors(boolean resetColors) {
+        appearanceColors = TerminalAppearance.Setting.COLORS.selection(mActivity);
+        appearanceFont = TerminalAppearance.Setting.FONT.selection(mActivity);
+        List<String> paths = TerminalAppearance.configPaths();
 
-            final Properties props = new Properties();
-            if (colorsFile.isFile()) {
-                try (InputStream in = new FileInputStream(colorsFile)) {
-                    props.load(in);
-                }
-            }
+        int[] colors = TerminalAppearance.loadColors(mActivity, appearanceColors, paths).mDefaultColors;
+        int[] defaults = TerminalColors.COLOR_SCHEME.mDefaultColors;
+        pendingPaletteReset |= resetColors || !Arrays.equals(colors, defaults);
+        System.arraycopy(colors, 0, defaults, 0, colors.length);
+        applyPaletteToSessions();
 
-            TerminalColors.COLOR_SCHEME.updateWith(props);
-            TerminalSession session = mActivity.getCurrentSession();
-            if (session != null && session.getEmulator() != null) {
-                session.getEmulator().mColors.reset();
-            }
-            updateBackgroundColor();
-
-            final Typeface normalTypeface = loadTypeface(fontFile, Typeface.MONOSPACE);
-            final Typeface italicTypeface = loadTypeface(TermuxConfigDirs.resolveFile(configDirs, "font-italic.ttf", true), null);
-            final Typeface boldTypeface = loadTypeface(TermuxConfigDirs.resolveFile(configDirs, "font-bold.ttf", true), null);
-            final Typeface boldItalicTypeface = loadTypeface(TermuxConfigDirs.resolveFile(configDirs, "font-bold-italic.ttf", true), null);
-            mActivity.getTerminalView().setTypeface(normalTypeface, italicTypeface, boldTypeface, boldItalicTypeface);
-        } catch (Exception e) {
-            Logger.logStackTraceWithMessage(LOG_TAG, "Error in checkForFontAndColors()", e);
-        }
+        Typeface normal = TerminalAppearance.loadFont(mActivity, appearanceFont, paths);
+        boolean useFiles = TerminalAppearance.CONFIG.equals(appearanceFont);
+        Typeface italic = useFiles ? TerminalAppearance.loadConfigFont(paths, "font-italic.ttf") : null;
+        Typeface bold = useFiles ? TerminalAppearance.loadConfigFont(paths, "font-bold.ttf") : null;
+        Typeface boldItalic = useFiles ? TerminalAppearance.loadConfigFont(paths, "font-bold-italic.ttf") : null;
+        mActivity.getTerminalView().setTypeface(normal, italic, bold, boldItalic);
     }
 
-    private Typeface loadTypeface(File fontFile, Typeface fallback) {
-        if (fontFile.exists() && fontFile.length() > 0) {
-            try {
-                return Typeface.createFromFile(fontFile);
-            } catch (RuntimeException e) {
-                Logger.logStackTraceWithMessage(LOG_TAG, "Error loading font file: " + fontFile.getAbsolutePath(), e);
-            }
+    public void applyPaletteToSessions() {
+        TermuxService service = mActivity.getTermuxService();
+        if (!pendingPaletteReset || service == null) return;
+
+        for (TermuxSession session : service.getTermuxSessions()) {
+            TerminalEmulator emulator = session.getTerminalSession().getEmulator();
+            if (emulator != null) emulator.mColors.reset();
         }
-        return fallback;
+        pendingPaletteReset = false;
+        updateBackgroundColor();
     }
 
     public void updateBackgroundColor() {

@@ -20,6 +20,7 @@ import androidx.preference.PreferenceCategory;
 import com.termux.R;
 import com.termux.app.settings.GroupedPreferencesFragment;
 import com.termux.app.settings.GuestServicesOverviewPreference;
+import com.termux.boot.BootReceiver;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -41,7 +42,7 @@ import dev.pschmitt.termux.shared.termux.TermuxConstants;
 import dev.pschmitt.termux.shared.termux.nix.TermuxNix;
 import dev.pschmitt.termux.shared.termux.shell.command.environment.TermuxShellEnvironment;
 
-/** Controls services supervised by the managed Nix guest. */
+/** Shows managed Nix services and the scripts scheduled by Android at boot. */
 @Keep
 public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
 
@@ -66,12 +67,36 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
     public void onResume() {
         super.onResume();
         refreshServices();
+        refreshBootScripts();
     }
 
     @Override
     public void onDestroy() {
         executor.shutdownNow();
         super.onDestroy();
+    }
+
+    private void refreshBootScripts() {
+        PreferenceCategory scripts = findPreference("boot_scripts");
+        scripts.removeAll();
+        String home = TermuxConstants.TERMUX_HOME_DIR_PATH;
+        List<File> files = BootReceiver.getBootScripts(home);
+        if (files.isEmpty()) {
+            Preference empty = new Preference(requireContext());
+            empty.setTitle(R.string.boot_scripts_empty);
+            empty.setSummary(R.string.boot_scripts_empty_summary);
+            empty.setIconSpaceReserved(false);
+            empty.setSelectable(false);
+            scripts.addPreference(empty);
+        }
+        for (File file : files) {
+            Preference script = new Preference(requireContext());
+            script.setTitle(file.getName());
+            script.setSummary("~" + file.getParent().substring(home.length()) + "/");
+            script.setIconSpaceReserved(false);
+            script.setSelectable(false);
+            scripts.addPreference(script);
+        }
     }
 
     private void refreshServices() {

@@ -1,5 +1,6 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    app:title="@string/termux_debugging_preferences_title">
 
     <PreferenceCategory
         android:layout="@layout/ui_preference_group_spacing"
@@ -68,6 +69,49 @@
             app:icon="@drawable/ui_ic_bug"
             app:key="crash_report_notifications_enabled"
             app:title="@string/termux_crash_report_notifications_enabled_title" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/integration_logging_title">
+
+        <ListPreference
+            app:icon="@drawable/ui_ic_extension"
+            app:key="api_log_level"
+            app:enabled="false"
+            app:title="@string/api_log_level_title"
+            app:persistent="false"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            app:icon="@drawable/ui_ic_bolt"
+            app:key="tasker_log_level"
+            app:enabled="false"
+            app:title="@string/tasker_log_level_title"
+            app:persistent="false"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            app:icon="@drawable/ui_ic_float"
+            app:key="float_log_level"
+            app:enabled="false"
+            app:title="@string/float_log_level_title"
+            app:persistent="false"
+            app:useSimpleSummaryProvider="true" />
+
+        <ListPreference
+            app:icon="@drawable/ui_ic_widgets"
+            app:key="widget_log_level"
+            app:enabled="false"
+            app:title="@string/widget_log_level_title"
+            app:persistent="false"
+            app:useSimpleSummaryProvider="true" />
+
+        <SwitchPreferenceCompat
+            app:icon="@drawable/ui_ic_keyboard"
+            app:key="float_key_logging"
+            app:enabled="false"
+            app:title="@string/float_key_logging_title"
+            app:persistent="false" />
 
     </PreferenceCategory>
 

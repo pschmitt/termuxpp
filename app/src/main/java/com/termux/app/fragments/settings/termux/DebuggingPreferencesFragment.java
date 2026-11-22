@@ -26,7 +26,13 @@ import dev.pschmitt.termux.shared.termux.settings.properties.TermuxPropertyConst
 
 import com.termux.R;
 import com.termux.app.settings.GroupedPreferencesFragment;
+import java.util.function.IntConsumer;
+
 import dev.pschmitt.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
+import dev.pschmitt.termux.shared.termux.settings.preferences.TermuxAPIAppSharedPreferences;
+import dev.pschmitt.termux.shared.termux.settings.preferences.TermuxTaskerAppSharedPreferences;
+import dev.pschmitt.termux.shared.termux.settings.preferences.TermuxFloatAppSharedPreferences;
+import dev.pschmitt.termux.shared.termux.settings.preferences.TermuxWidgetAppSharedPreferences;
 import dev.pschmitt.termux.shared.logger.Logger;
 
 @Keep
@@ -43,6 +49,7 @@ public class DebuggingPreferencesFragment extends GroupedPreferencesFragment {
         setPreferencesFromResource(R.xml.termux_debugging_preferences, rootKey);
 
         configureLoggingPreferences(context);
+        configureIntegrationLogging(context);
         configureAdbShellPreference(context);
         configureAllowedSsidsPreference();
         configureCurrentNetworkPreference(context);
@@ -257,6 +264,43 @@ public class DebuggingPreferencesFragment extends GroupedPreferencesFragment {
             setLogLevelListPreferenceData(logLevelListPreference, context, preferences.getLogLevel());
             loggingCategory.addPreference(logLevelListPreference);
         }
+    }
+
+    private void configureIntegrationLogging(Context context) {
+        TermuxAPIAppSharedPreferences api = TermuxAPIAppSharedPreferences.build(context, true);
+        if (api != null) configureLogLevel("api_log_level", api.getLogLevel(true),
+            level -> api.setLogLevel(context, level, true));
+
+        TermuxTaskerAppSharedPreferences tasker = TermuxTaskerAppSharedPreferences.build(context, true);
+        if (tasker != null) configureLogLevel("tasker_log_level", tasker.getLogLevel(true),
+            level -> tasker.setLogLevel(context, level, true));
+
+        TermuxWidgetAppSharedPreferences widget = TermuxWidgetAppSharedPreferences.build(context, true);
+        if (widget != null) configureLogLevel("widget_log_level", widget.getLogLevel(true),
+            level -> widget.setLogLevel(context, level, true));
+
+        TermuxFloatAppSharedPreferences floating = TermuxFloatAppSharedPreferences.build(context, true);
+        SwitchPreferenceCompat keyLogging = findPreference("float_key_logging");
+        if (floating != null) {
+            configureLogLevel("float_log_level", floating.getLogLevel(true),
+                level -> floating.setLogLevel(context, level, true));
+            keyLogging.setEnabled(true);
+            keyLogging.setChecked(floating.isTerminalViewKeyLoggingEnabled(true));
+            keyLogging.setOnPreferenceChangeListener((preference, value) -> {
+                floating.setTerminalViewKeyLoggingEnabled(Boolean.TRUE.equals(value), true);
+                return true;
+            });
+        }
+    }
+
+    private void configureLogLevel(String key, int currentLevel, IntConsumer save) {
+        ListPreference preference = findPreference(key);
+        setLogLevelListPreferenceData(preference, requireContext(), currentLevel);
+        preference.setEnabled(true);
+        preference.setOnPreferenceChangeListener((row, value) -> {
+            save.accept(Integer.parseInt(value.toString()));
+            return true;
+        });
     }
 
     public static ListPreference setLogLevelListPreferenceData(ListPreference logLevelListPreference, Context context, int logLevel) {

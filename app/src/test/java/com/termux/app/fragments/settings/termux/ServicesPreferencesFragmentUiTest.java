@@ -34,5 +34,7 @@ public class ServicesPreferencesFragmentUiTest {
         assertEquals(R.layout.ui_guest_services_refresh,
             services.findPreference("services_status").getWidgetLayoutResource());
         assertNotNull(services.findPreference("services_list"));
+        assertNotNull(services.findPreference("boot_scripts"));
+        assertNotNull(services.findPreference("boot_script_setup"));
     }
 }

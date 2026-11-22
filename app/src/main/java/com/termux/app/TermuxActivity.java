@@ -421,6 +421,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         Logger.logDebug(LOG_TAG, "onServiceConnected");
 
         mTermuxService = ((TermuxService.LocalBinder) service).service;
+        mTermuxTerminalSessionActivityClient.applyPaletteToSessions();
 
         setTermuxSessionsListView();
 

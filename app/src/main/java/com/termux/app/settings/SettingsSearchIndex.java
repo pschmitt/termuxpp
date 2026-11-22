@@ -191,10 +191,6 @@ public final class SettingsSearchIndex {
         screens.put(FRAGMENT_PREFIX + "termux.DebuggingPreferencesFragment", R.xml.termux_debugging_preferences);
         screens.put(FRAGMENT_PREFIX + "AboutPreferencesFragment", R.xml.about_preferences);
         screens.put(FRAGMENT_PREFIX + "termux.AdbShellAuthorizationsPreferencesFragment", R.xml.adb_shell_authorizations_preferences);
-        screens.put(FRAGMENT_PREFIX + "termux_api.DebuggingPreferencesFragment", R.xml.termux_api_debugging_preferences);
-        screens.put(FRAGMENT_PREFIX + "termux_tasker.DebuggingPreferencesFragment", R.xml.termux_tasker_debugging_preferences);
-        screens.put(FRAGMENT_PREFIX + "termux_float.DebuggingPreferencesFragment", R.xml.termux_float_debugging_preferences);
-        screens.put(FRAGMENT_PREFIX + "termux_widget.DebuggingPreferencesFragment", R.xml.termux_widget_debugging_preferences);
         return screens;
     }
 

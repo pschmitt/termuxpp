@@ -58,7 +58,7 @@ public class BootReceiver extends BroadcastReceiver {
         }
     }
 
-    static List<File> getBootScripts(String termuxHome) {
+    public static List<File> getBootScripts(String termuxHome) {
         String[] relativeDirectories = {
                 ".config/termuxpp/boot",
                 ".config/termux/boot",

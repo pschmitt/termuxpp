@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    app:title="@string/nix_services_title">
 
     <com.termux.app.settings.GuestServicesOverviewPreference
         android:widgetLayout="@layout/ui_guest_services_refresh"
@@ -14,4 +15,22 @@
         app:key="services_list"
         app:title="@string/nix_services_category" />
 
+    <PreferenceCategory
+        app:key="boot_scripts"
+        app:title="@string/boot_scripts_title" />
+
+    <PreferenceCategory app:title="@string/boot_setup_title">
+        <Preference
+            app:key="boot_script_setup"
+            app:title="@string/boot_script_location"
+            app:summary="@string/boot_script_setup"
+            app:iconSpaceReserved="false"
+            app:selectable="false" />
+        <Preference
+            app:key="boot_script_example"
+            app:title="@string/boot_script_example_title"
+            app:summary="@string/boot_script_example"
+            app:iconSpaceReserved="false"
+            app:selectable="false" />
+    </PreferenceCategory>
 </PreferenceScreen>

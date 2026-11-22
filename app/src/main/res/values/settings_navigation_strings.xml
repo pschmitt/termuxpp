@@ -18,10 +18,12 @@
     <string name="settings_integration_float_summary">Open a terminal over other apps</string>
     <string name="settings_integration_widget_title">Widgets</string>
     <string name="settings_integration_widget_summary">Launch terminal scripts from the home screen</string>
-    <string name="settings_integration_boot_title">Run at boot</string>
-    <string name="settings_integration_boot_summary">Run scripts when the device starts</string>
-    <string name="settings_integration_styling_title">Colors and fonts</string>
-    <string name="settings_integration_styling_summary">Change the terminal palette and typeface</string>
+    <string name="integration_logging_title">Integration logging</string>
+    <string name="api_log_level_title">API log level</string>
+    <string name="tasker_log_level_title">Tasker log level</string>
+    <string name="float_log_level_title">Floating terminal log level</string>
+    <string name="widget_log_level_title">Widgets log level</string>
+    <string name="float_key_logging_title">Floating terminal key logging</string>
     <string name="settings_accent_color">Accent color</string>
     <string name="settings_accent_color_summary">Choose the app accent or use the Android wallpaper colors</string>
     <string-array name="settings_accent_entries">

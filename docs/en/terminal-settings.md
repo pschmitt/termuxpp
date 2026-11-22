@@ -87,6 +87,17 @@ tpp ui sidebar
 `tpp ui settings --search` opens Settings with the search results already visible.
 `tpp ui session-switcher` and `tpp session switcher` open the same picker.
 
+## Terminal appearance
+
+Open **Settings → Display** to preview and select a
+color scheme and a font. **Use configuration files** follows the file lookup
+order below, starting in the ready Nix guest's home when available. **Default**
+selects the built-in appearance. Selecting a preset or **Default** overrides
+the files for that setting without writing to either home directory. Font
+presets use the selected face for all styles, with bold and italic derived by
+the renderer. Palette changes apply to open sessions when you return to the
+terminal.
+
 ## Configuration files
 
 Keep `termuxpp.properties`, `termux.float.properties`, `colors.properties`,

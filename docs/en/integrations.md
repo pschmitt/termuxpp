@@ -35,10 +35,12 @@ optional relaunch.
 
 | Integration | Where to use it |
 | --- | --- |
-| **Boot** | Put startup scripts in the native TermuxPP home's `~/.config/termuxpp/boot/`. Scripts run in filename order. For duplicate names, that directory takes precedence over `~/.config/termux/boot/` and `~/.termux/boot/`. |
+| **Boot** | Open **Settings → Services → Run at boot** to see the scripts Android will schedule. Put scripts in the native TermuxPP home's `~/.config/termuxpp/boot/`. TermuxPP schedules them in filename order. For duplicate names, that directory takes precedence over `~/.config/termux/boot/` and `~/.termux/boot/`. |
 | **Float** | Start a floating terminal and allow the overlay permission if Android requests it. Float reads `~/.config/termuxpp/termux.float.properties`. |
-| **Styling** | Open Styling from Settings → Integrations to choose terminal fonts and colors. See [Terminal settings](terminal-settings.md#configuration-files) for custom files. |
+| **Styling** | Open **Settings → Display** to choose a font and color scheme. See [Terminal settings](terminal-settings.md#configuration-files) for custom files. |
 | **Widget** | Add the TermuxPP widget from your launcher. Put terminal shortcuts in the native home's `~/.shortcuts/` and background tasks in `~/.shortcuts/tasks/`. |
+
+API, Tasker, floating terminal, and widget log levels are in **Settings → Debugging → Integration logging**.
 
 ## Migrating from standalone companions
 
