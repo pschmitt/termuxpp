@@ -229,6 +229,50 @@ fn code(o: &Output) -> i32 {
 const BATTERY: &[u8] = b"{\"percentage\": 85, \"status\": \"FULL\"}\n";
 
 #[test]
+fn structured_read_commands_render_human_and_json_results() {
+    let fx = Fixture::new("structured-commands");
+    let commands: &[&[&str]] = &[
+        &["battery"],
+        &["audio", "info"],
+        &["camera", "info"],
+        &["call-log"],
+        &["contacts", "list"],
+        &["location"],
+        &["keystore", "list"],
+        &["saf", "dirs"],
+        &["sensor", "-l"],
+        &["sms", "list"],
+        &["notification", "list"],
+        &["tts", "engines"],
+        &["telephony", "cell-info"],
+        &["telephony", "device-info"],
+        &["usb", "-l"],
+        &["volume"],
+        &["wifi", "connection"],
+        &["wifi", "scan"],
+    ];
+    for command in commands {
+        let (human, _) = fx.app(command, b"[{\"name\":\"example\",\"count\":2}]\n");
+        assert_eq!(code(&human), 0, "{command:?}: {}", err(&human));
+        let expected = if *command == ["location"] {
+            "name: example\ncount: 2\n"
+        } else {
+            "- name: example\n  count: 2\n"
+        };
+        assert_eq!(out(&human).trim_end(), expected.trim_end(), "{command:?}");
+        let mut args = vec!["--json"];
+        args.extend_from_slice(command);
+        let (json, _) = fx.app(&args, b"[{\"name\":\"example\",\"count\":2}]\n");
+        assert_eq!(code(&json), 0, "{command:?}: {}", err(&json));
+        assert_eq!(
+            out(&json).trim_end(),
+            "[\n  {\n    \"name\": \"example\",\n    \"count\": 2\n  }\n]",
+            "{command:?}"
+        );
+    }
+}
+
+#[test]
 fn human_and_json_output() {
     let fx = Fixture::new("json");
     let (human, call) = fx.app(&["battery"], BATTERY);
