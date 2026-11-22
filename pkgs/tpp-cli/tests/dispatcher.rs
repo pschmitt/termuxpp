@@ -314,7 +314,7 @@ fn silent_actions_acknowledge_requests() {
         );
     }
     let (info, _) = fx.app(&["media", "player", "info"], b"");
-    assert_eq!(out(&info), "");
+    assert_eq!(out(&info), "No output\n");
     let invalid = fx.run(&["torch", "invalid"]);
     assert_ne!(code(&invalid), 0);
     assert!(!out(&invalid).contains("Request sent"));
@@ -391,7 +391,7 @@ fn invalid_utf8_is_refused_with_json_only() {
 fn empty_output_and_exit_status() {
     let fx = Fixture::new("empty");
     let (o, _) = fx.app(&["battery"], b"");
-    assert_eq!(out(&o), "");
+    assert_eq!(out(&o), "No output\n");
     assert_eq!(code(&o), 0);
     let (o, _) = fx.app(&["--json", "battery"], b"");
     assert_eq!(out(&o), "null\n");

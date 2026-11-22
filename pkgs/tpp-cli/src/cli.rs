@@ -555,6 +555,14 @@ fn run_captured(class: &str, imp: &str, args: &[OsString], json: bool, acknowled
         }
         return 0;
     }
+    if status == 0 && data.is_empty() && class == "auto" && !json {
+        if ctx::use_color() {
+            write_out(b"\x1b[2mNo output\x1b[0m\n");
+        } else {
+            write_out(b"No output\n");
+        }
+        return 0;
+    }
     let rc = render_output(class, &data, json);
     if let Some(code) = signal_status() {
         return code;
