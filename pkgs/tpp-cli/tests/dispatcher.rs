@@ -281,6 +281,18 @@ fn silent_actions_acknowledge_requests() {
         &["torch", "on"],
         &["notification", "send", "-t", "hello"],
         &["notification", "remove", "example"],
+        &["brightness", "100"],
+        &["clipboard", "set", "example"],
+        &["wifi", "enable"],
+        &["wifi", "disable"],
+        &["telephony", "call", "123"],
+        &["media", "scan", "/example"],
+        &["sms", "send", "-n", "123", "example"],
+        &["infrared", "transmit", "-f", "38000", "100,100"],
+        &["tts", "speak", "example"],
+        &["download", "https://example.invalid/file"],
+        &["share"],
+        &["wallpaper", "-u", "https://example.invalid/image"],
     ];
     for command in commands {
         let (human, _) = fx.app(command, b"");

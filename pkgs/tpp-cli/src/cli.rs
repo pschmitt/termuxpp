@@ -603,7 +603,22 @@ fn run_entry(e: &Entry, mut args: Vec<OsString>, json: bool) -> i32 {
     let acknowledge = !help
         && matches!(
             e.imp.as_str(),
-            "vibrate" | "toast" | "torch" | "notification" | "notification-remove"
+            "vibrate"
+                | "toast"
+                | "torch"
+                | "notification"
+                | "notification-remove"
+                | "brightness"
+                | "clipboard-set"
+                | "wifi-enable"
+                | "telephony-call"
+                | "media-scan"
+                | "sms-send"
+                | "infrared-transmit"
+                | "tts-speak"
+                | "download"
+                | "share"
+                | "wallpaper"
         );
     run_captured(&class, &e.imp, &fixed, json, acknowledge)
 }
