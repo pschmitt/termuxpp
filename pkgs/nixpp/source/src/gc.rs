@@ -237,6 +237,40 @@ pub fn run(runtime: &Path, keep: usize, dry_run: bool) -> Result<Report> {
             "gc must run inside the guest that owns the selected runtime",
         ));
     }
+    if !dry_run {
+        let paths = crate::bootstrap::root_bootstrap_tools(runtime).map_err(|error| {
+            Error::invalid(format!("cannot protect bootstrap tools: {error:#}"))
+        })?;
+        for path in paths {
+            if !Path::new(&path).try_exists()? {
+                let status = Command::new("nix")
+                    .args([
+                        "--refresh",
+                        "copy",
+                        "--from",
+                        "https://cache.nixos.org",
+                        &path,
+                    ])
+                    .stdin(Stdio::null())
+                    .status()?;
+                if !status.success() {
+                    return Err(Error::invalid(format!(
+                        "cannot restore bootstrap store path {path}: {status}"
+                    )));
+                }
+            }
+        }
+        for path in ["/bin/sh", "/usr/bin/env"] {
+            if !fs::metadata(path).is_ok_and(|metadata| {
+                use std::os::unix::fs::PermissionsExt;
+                metadata.is_file() && metadata.permissions().mode() & 0o111 != 0
+            }) {
+                return Err(Error::invalid(format!(
+                    "bootstrap executable is missing or unusable: {path}"
+                )));
+            }
+        }
+    }
     run_with(runtime, keep, dry_run, has_unleased_sessions, || {
         prune_home_profiles(runtime)?;
         let status = Command::new("nix")

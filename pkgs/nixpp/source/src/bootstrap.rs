@@ -65,6 +65,7 @@ pub const SCRIPTS: [(&str, &str); 4] = [
 ];
 
 const GCROOT_DIR: &str = "nix/var/nix/gcroots/termuxpp-session";
+const BOOTSTRAP_GCROOT_DIR: &str = "nix/var/nix/gcroots/termuxpp-bootstrap";
 const MAX_BOOTSTRAP_ARCHIVE_BYTES: u64 = 1 << 30;
 const MAX_EXTRACTED_BYTES: u64 = 512 << 20;
 const MAX_ENTRIES: usize = 100_000;
@@ -375,12 +376,65 @@ fn prepare_with(
 /// An existing script (or a link in its place) is replaced atomically, never
 /// followed; see [`replace_with`].
 pub fn install_scripts(directory: &Path) -> Result<()> {
+    if directory.join("session.env").try_exists()? {
+        root_bootstrap_tools(directory)?;
+    }
     for (name, content) in SCRIPTS {
         replace_with(directory, name, 0o700, |file| {
             file.write_all(content.as_bytes())
         })?;
     }
     Ok(())
+}
+
+/// Protect the seed tools even when no system generation references them.
+/// Read the existing runtime's paths so older seeds keep their own closures.
+pub(crate) fn root_bootstrap_tools(directory: &Path) -> Result<Vec<String>> {
+    let root = directory.join("root");
+    let environment = fs::read_to_string(directory.join("session.env"))?;
+    let mut paths = Vec::new();
+    for key in ["BOOTSTRAP_BUSYBOX=", "BOOTSTRAP_NIX="] {
+        let path = environment
+            .lines()
+            .find_map(|line| line.strip_prefix(key))
+            .with_context(|| format!("session.env is missing {key}"))?;
+        ensure!(
+            crate::store::is_store_root(path),
+            "invalid bootstrap path for {key}"
+        );
+        paths.push(path.to_owned());
+    }
+    // Also protect a previously repaired shell or env link.
+    for alias in ["bin/sh", "usr/bin/env"] {
+        let link = root.join(alias);
+        if fs::symlink_metadata(&link)?.is_symlink() {
+            let target = fs::read_link(link)?;
+            if let Some(path) = target
+                .ancestors()
+                .filter_map(Path::to_str)
+                .find(|path| crate::store::is_store_root(path))
+            {
+                paths.push(path.to_owned());
+            }
+        }
+    }
+    paths.sort_unstable();
+    paths.dedup();
+    mkdir_inside(&fs::canonicalize(&root)?, &root, BOOTSTRAP_GCROOT_DIR)?;
+    for path in &paths {
+        let name = path
+            .strip_prefix("/nix/store/")
+            .expect("validated store root");
+        let link = root.join(BOOTSTRAP_GCROOT_DIR).join(name);
+        match symlink(path, &link) {
+            Ok(()) => {}
+            Err(error)
+                if error.kind() == ErrorKind::AlreadyExists
+                    && fs::read_link(&link).is_ok_and(|target| target == Path::new(path)) => {}
+            Err(error) => return Err(error).with_context(|| format!("cannot root {path}")),
+        }
+    }
+    Ok(paths)
 }
 
 /// Files of the native Android bridge broker, which Termux:API through the
@@ -1173,6 +1227,26 @@ mod tests {
             _dir: dir,
             directory,
         }
+    }
+
+    #[test]
+    fn bootstrap_roots_are_installed_and_recreated_for_existing_runtimes() {
+        let prepared = run_prepare("nix");
+        let runtime = &prepared.directory;
+        let roots = runtime.join("root").join(BOOTSTRAP_GCROOT_DIR);
+        let busybox = package('b', "busybox-static-1.36");
+        let nix = package('c', "nix-static-2.24");
+        let verify_roots = || {
+            for path in [&busybox, &nix] {
+                let name = Path::new(path).file_name().unwrap();
+                assert_eq!(fs::read_link(roots.join(name)).unwrap(), Path::new(path));
+            }
+        };
+        verify_roots();
+        fs::remove_dir_all(&roots).unwrap();
+        install_scripts(runtime).unwrap();
+        install_scripts(runtime).unwrap();
+        verify_roots();
     }
 
     #[test]

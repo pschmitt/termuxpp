@@ -39,6 +39,17 @@ source-code change. Recheck both implementations when updating this page.
 
 The public CLI spells out actions such as `tpp dialog list`, `tpp job-scheduler list`, `tpp job-scheduler cancel ID`, `tpp audio stop`, and `tpp saf list DIRECTORY`. Additional actions include `tpp sms conversations`, `tpp media play`, and `tpp location watch`. `tpp list --json` returns command descriptions as JSON, and `--names` limits the result to command names. Invalid volume, NFC and dialog arguments fail with a nonzero exit status. Help and completion use descriptive options such as `--provider`, `--limit` and `--title`. Help uses terminal colors and respects `NO_COLOR`. Commands that wait for Android, including dialog and location requests, report what they are waiting for on stderr in human mode. `--json` keeps progress off the output. If Android denies notification listener access, `tpp notification list` points Nix guest users to `tpp permissions grant notification-access`.
 
+## Bootstrap tools and garbage collection
+
+The managed Nix runtime registers permanent store roots for its static BusyBox
+and Nix. BusyBox supplies the guest's `/bin/sh` and `/usr/bin/env`, and static
+Nix can run in bootstrap mode. Runtime startup also registers these roots for
+existing installs. Before pruning generations, `nixpp gc` tries to restore any
+missing bootstrap store paths from the public cache and checks both guest
+entry points. [Bootstrap preparation](../../pkgs/nixpp/source/src/bootstrap.rs)
+and [garbage collection](../../pkgs/nixpp/source/src/gc.rs) implement this
+TermuxPP runtime behavior.
+
 ## Session sidebar
 
 Upstream opens the rename dialog when a session is long-pressed. TermuxPP opens
