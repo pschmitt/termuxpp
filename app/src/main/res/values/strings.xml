@@ -5,7 +5,6 @@
     <!ENTITY TERMUX_APP_NAME "TermuxPP">
     <!ENTITY TERMUX_API_APP_NAME "Termux:API">
     <!ENTITY TERMUX_BOOT_APP_NAME "Termux:Boot">
-    <!ENTITY TERMUX_FLOAT_APP_NAME "Termux:Float">
     <!ENTITY TERMUX_STYLING_APP_NAME "Termux:Styling">
     <!ENTITY TERMUX_TASKER_APP_NAME "Termux:Tasker">
     <!ENTITY TERMUX_WIDGET_APP_NAME "Termux:Widget">
@@ -259,9 +258,6 @@
 
 
 
-    <!-- Termux:Float App Preferences -->
-    <string name="termux_float_preferences_title">TermuxPP:Float</string>
-    <string name="termux_float_preferences_summary">Settings for TermuxPP:Float</string>
 
 
 
@@ -279,7 +275,7 @@
 
     <!-- Companion Apps -->
     <string name="companion_apps_title">Integrations</string>
-    <string name="companion_apps_summary">API, Tasker, floating terminal, and widgets</string>
+    <string name="companion_apps_summary">API, Tasker, and widgets</string>
     <string name="companion_apps_category_title">Built-in features</string>
     <string name="companion_apps_category_summary">Only TermuxPP-compatible builds can connect to this installation.</string>
     <string name="termux_boot_title">TermuxPP:Boot</string>

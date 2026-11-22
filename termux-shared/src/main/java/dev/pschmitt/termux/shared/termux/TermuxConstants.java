@@ -390,20 +390,6 @@ public final class TermuxConstants {
     public static final String TERMUX_BOOT_FDROID_PACKAGE_URL = FDROID_PACKAGES_BASE_URL + "/" + TERMUX_BOOT_PACKAGE_NAME; // Default: "https://f-droid.org/en/packages/com.termux.boot"
 
 
-    /** TermuxPP:Float app name */
-    public static final String TERMUX_FLOAT_APP_NAME = "TermuxPP:Float"; // Default: "Termux:Float"
-    /** TermuxPP:Float app package name */
-    public static final String TERMUX_FLOAT_PACKAGE_NAME = TERMUX_PACKAGE_NAME + ".window"; // Default: "com.termux.window"
-    /** TermuxPP:Float GitHub repo name */
-    public static final String TERMUX_FLOAT_GITHUB_REPO_NAME = "termuxpp-float"; // Default: "termux-float"
-    /** TermuxPP:Float GitHub repo url */
-    public static final String TERMUX_FLOAT_GITHUB_REPO_URL = "https://github.com/pschmitt/termuxpp-float"; // Default: "https://github.com/termux/termux-float"
-    /** TermuxPP:Float GitHub issues repo url */
-    public static final String TERMUX_FLOAT_GITHUB_ISSUES_REPO_URL = TERMUX_FLOAT_GITHUB_REPO_URL + "/issues"; // Default: "https://github.com/termux/termux-float/issues"
-    /** TermuxPP:Float F-Droid package url */
-    public static final String TERMUX_FLOAT_FDROID_PACKAGE_URL = FDROID_PACKAGES_BASE_URL + "/" + TERMUX_FLOAT_PACKAGE_NAME; // Default: "https://f-droid.org/en/packages/com.termux.window"
-
-
     /** Termux:Styling app name */
     public static final String TERMUX_STYLING_APP_NAME = "Termux:Styling"; // Default: "Termux:Styling"
     /** Termux:Styling app package name */
@@ -456,7 +442,6 @@ public final class TermuxConstants {
     public static final List<String> TERMUX_PLUGIN_APP_NAMES_LIST = Arrays.asList(
         TERMUX_API_APP_NAME,
         TERMUX_BOOT_APP_NAME,
-        TERMUX_FLOAT_APP_NAME,
         TERMUX_STYLING_APP_NAME,
         TERMUX_TASKER_APP_NAME,
         TERMUX_WIDGET_APP_NAME);
@@ -464,7 +449,6 @@ public final class TermuxConstants {
     public static final List<String> TERMUX_PLUGIN_APP_PACKAGE_NAMES_LIST = Arrays.asList(
         TERMUX_API_PACKAGE_NAME,
         TERMUX_BOOT_PACKAGE_NAME,
-        TERMUX_FLOAT_PACKAGE_NAME,
         TERMUX_STYLING_PACKAGE_NAME,
         TERMUX_TASKER_PACKAGE_NAME,
         TERMUX_WIDGET_PACKAGE_NAME);
@@ -726,8 +710,6 @@ public final class TermuxConstants {
     /** Termux:Boot app default SharedPreferences file basename without extension */
     public static final String TERMUX_BOOT_DEFAULT_PREFERENCES_FILE_BASENAME_WITHOUT_EXTENSION = TERMUX_BOOT_PACKAGE_NAME + "_preferences"; // Default: "com.termux.boot_preferences"
 
-    /** Termux:Float app default SharedPreferences file basename without extension */
-    public static final String TERMUX_FLOAT_DEFAULT_PREFERENCES_FILE_BASENAME_WITHOUT_EXTENSION = TERMUX_FLOAT_PACKAGE_NAME + "_preferences"; // Default: "com.termux.window_preferences"
 
     /** Termux:Styling app default SharedPreferences file basename without extension */
     public static final String TERMUX_STYLING_DEFAULT_PREFERENCES_FILE_BASENAME_WITHOUT_EXTENSION = TERMUX_STYLING_PACKAGE_NAME + "_preferences"; // Default: "com.termux.styling_preferences"
@@ -764,32 +746,6 @@ public final class TermuxConstants {
         TERMUX_CONFIG_TERMUXPP_DIR_PATH + "/termux.properties",
         TERMUX_PROPERTIES_SECONDARY_FILE_PATH,
         TERMUX_PROPERTIES_TERTIARY_FILE_PATH);
-
-
-
-    /** Termux:Float app properties primary (canonical) file path */
-    public static final String TERMUX_FLOAT_PROPERTIES_PRIMARY_FILE_PATH = TERMUX_CONFIG_TERMUXPP_DIR_PATH + "/termux.float.properties"; // Default: "/data/data/dev.pschmitt.termux/files/home/.config/termuxpp/termux.float.properties"
-    /** Termux:Float app properties primary file */
-    public static final File TERMUX_FLOAT_PROPERTIES_PRIMARY_FILE = new File(TERMUX_FLOAT_PROPERTIES_PRIMARY_FILE_PATH);
-
-    /** Termux:Float app properties secondary file path */
-    public static final String TERMUX_FLOAT_PROPERTIES_SECONDARY_FILE_PATH = TERMUX_CONFIG_HOME_DIR_PATH + "/termux.float.properties"; // Default: "/data/data/com.termux/files/home/.config/termux/termux.float.properties"
-    /** Termux:Float app properties secondary file */
-    public static final File TERMUX_FLOAT_PROPERTIES_SECONDARY_FILE = new File(TERMUX_FLOAT_PROPERTIES_SECONDARY_FILE_PATH);
-
-    /** Termux:Float app properties tertiary (legacy) file path */
-    public static final String TERMUX_FLOAT_PROPERTIES_TERTIARY_FILE_PATH = TERMUX_DATA_HOME_DIR_PATH + "/termux.float.properties"; // Default: "/data/data/com.termux/files/home/.termux/termux.float.properties"
-    /** Termux:Float app properties tertiary file */
-    public static final File TERMUX_FLOAT_PROPERTIES_TERTIARY_FILE = new File(TERMUX_FLOAT_PROPERTIES_TERTIARY_FILE_PATH);
-
-    /** Termux:Float app properties file paths list, in lookup order. **DO NOT** allow these files to be modified by
-     * {@link android.content.ContentProvider} exposed to external apps, since they may silently
-     * modify the values for security properties like {@link #PROP_ALLOW_EXTERNAL_APPS} set by users
-     * without their explicit consent. */
-    public static final List<String> TERMUX_FLOAT_PROPERTIES_FILE_PATHS_LIST = Arrays.asList(
-        TERMUX_FLOAT_PROPERTIES_PRIMARY_FILE_PATH,
-        TERMUX_FLOAT_PROPERTIES_SECONDARY_FILE_PATH,
-        TERMUX_FLOAT_PROPERTIES_TERTIARY_FILE_PATH);
 
 
 
@@ -914,17 +870,6 @@ public final class TermuxConstants {
     public static final String TERMUX_CRASH_REPORTS_NOTIFICATION_CHANNEL_ID = "termux_crash_reports_notification_channel";
     /** Termux app notification channel name used for crash reports */
     public static final String TERMUX_CRASH_REPORTS_NOTIFICATION_CHANNEL_NAME = TermuxConstants.TERMUX_APP_NAME + " Crash Reports";
-
-
-    /** Termux app notification channel id used by {@link TERMUX_FLOAT_APP.TERMUX_FLOAT_SERVICE} */
-    public static final String TERMUX_FLOAT_APP_NOTIFICATION_CHANNEL_ID = "termux_float_notification_channel";
-    /** Termux app notification channel name used by {@link TERMUX_FLOAT_APP.TERMUX_FLOAT_SERVICE} */
-    public static final String TERMUX_FLOAT_APP_NOTIFICATION_CHANNEL_NAME = TermuxConstants.TERMUX_FLOAT_APP_NAME + " App";
-    /** Termux app unique notification id used by {@link TERMUX_APP.TERMUX_SERVICE} */
-    public static final int TERMUX_FLOAT_APP_NOTIFICATION_ID = 1339;
-
-
-
 
 
     /*
@@ -1284,39 +1229,6 @@ public final class TermuxConstants {
 
         /** Termux:Boot app launcher activity name. This is an `activity-alias` for {@link #TERMUX_BOOT_MAIN_ACTIVITY_NAME} used for launchers with {@link Intent#CATEGORY_LAUNCHER}. */
         public static final String TERMUX_BOOT_LAUNCHER_ACTIVITY_NAME = "com.termux.boot.BootActivity"; // The fork keeps the upstream Java namespace.
-
-    }
-
-
-
-
-
-    /**
-     * Termux:Float app constants.
-     */
-    public static final class TERMUX_FLOAT_APP {
-
-        /** Termux:Float app core activity name. */
-        public static final String TERMUX_FLOAT_ACTIVITY_NAME = TERMUX_FLOAT_PACKAGE_NAME + ".TermuxFloatActivity"; // Default: "com.termux.window.TermuxFloatActivity"
-
-        /** Termux:Float app core service name. */
-        public static final String TERMUX_FLOAT_SERVICE_NAME = TERMUX_FLOAT_PACKAGE_NAME + ".TermuxFloatService"; // Default: "com.termux.window.TermuxFloatService"
-
-        /**
-         * Termux:Float app core service.
-         */
-        public static final class TERMUX_FLOAT_SERVICE {
-
-            /** Intent action to stop TERMUX_FLOAT_SERVICE. */
-            public static final String ACTION_STOP_SERVICE = TERMUX_FLOAT_PACKAGE_NAME + ".ACTION_STOP_SERVICE"; // Default: "com.termux.float.ACTION_STOP_SERVICE"
-
-            /** Intent action to show float window. */
-            public static final String ACTION_SHOW = TERMUX_FLOAT_PACKAGE_NAME + ".ACTION_SHOW"; // Default: "com.termux.float.ACTION_SHOW"
-
-            /** Intent action to hide float window. */
-            public static final String ACTION_HIDE = TERMUX_FLOAT_PACKAGE_NAME + ".ACTION_HIDE"; // Default: "com.termux.float.ACTION_HIDE"
-
-        }
 
     }
 

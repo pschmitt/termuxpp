@@ -176,7 +176,7 @@ jobs:
             echo "Automated debuggable and non-debuggable builds of the latest main ($GITHUB_SHA), built $(date -u +'%Y-%m-%d %H:%M UTC'). Not a stable release."
             echo
             echo "Read by the in-app updater (Settings > Updates). The commit above is the build's identity."
-            echo "The TermuxPP APK includes API, Tasker, Float, Boot, Styling and Widget features."
+            echo "The TermuxPP APK includes API, Tasker, Boot, Styling and Widget features."
             echo "\`SHA256SUMS\` covers the APKs. These APKs are signed with the repository development key."
           } > release-notes.md
 

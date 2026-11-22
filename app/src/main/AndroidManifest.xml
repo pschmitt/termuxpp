@@ -65,7 +65,6 @@
         <package android:name="dev.pschmitt.termux.tasker" />
         <package android:name="dev.pschmitt.termux.styling" />
         <package android:name="dev.pschmitt.termux.boot" />
-        <package android:name="dev.pschmitt.termux.window" />
         <package android:name="dev.pschmitt.termux.widget" />
     </queries>
 

@@ -35,7 +35,6 @@ import java.util.function.IntConsumer;
 import dev.pschmitt.termux.shared.termux.settings.preferences.TermuxAppSharedPreferences;
 import dev.pschmitt.termux.shared.termux.settings.preferences.TermuxAPIAppSharedPreferences;
 import dev.pschmitt.termux.shared.termux.settings.preferences.TermuxTaskerAppSharedPreferences;
-import dev.pschmitt.termux.shared.termux.settings.preferences.TermuxFloatAppSharedPreferences;
 import dev.pschmitt.termux.shared.termux.settings.preferences.TermuxWidgetAppSharedPreferences;
 import dev.pschmitt.termux.shared.logger.Logger;
 
@@ -313,19 +312,6 @@ public class DebuggingPreferencesFragment extends GroupedPreferencesFragment {
         TermuxWidgetAppSharedPreferences widget = TermuxWidgetAppSharedPreferences.build(context, true);
         if (widget != null) configureLogLevel("widget_log_level", widget.getLogLevel(true),
             level -> widget.setLogLevel(context, level, true));
-
-        TermuxFloatAppSharedPreferences floating = TermuxFloatAppSharedPreferences.build(context, true);
-        SwitchPreferenceCompat keyLogging = findPreference("float_key_logging");
-        if (floating != null) {
-            configureLogLevel("float_log_level", floating.getLogLevel(true),
-                level -> floating.setLogLevel(context, level, true));
-            keyLogging.setEnabled(true);
-            keyLogging.setChecked(floating.isTerminalViewKeyLoggingEnabled(true));
-            keyLogging.setOnPreferenceChangeListener((preference, value) -> {
-                floating.setTerminalViewKeyLoggingEnabled(Boolean.TRUE.equals(value), true);
-                return true;
-            });
-        }
     }
 
     private void configureLogLevel(String key, int currentLevel, IntConsumer save) {

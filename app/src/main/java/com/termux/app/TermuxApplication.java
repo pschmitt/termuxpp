@@ -5,7 +5,6 @@ import android.content.Context;
 
 import com.termux.BuildConfig;
 import com.termux.widget.TermuxWidgetApplication;
-import com.termux.window.TermuxFloatApplication;
 import dev.pschmitt.termux.api.TermuxAPIApplication;
 import dev.pschmitt.termux.tasker.TermuxTaskerApplication;
 import dev.pschmitt.termux.shared.errors.Error;
@@ -41,7 +40,6 @@ public class TermuxApplication extends Application {
         TermuxAPIApplication.initialize(context);
         TermuxTaskerApplication.initialize(context);
         TermuxWidgetApplication.initialize(context);
-        TermuxFloatApplication.initialize(context);
 
         Logger.logDebug("Starting Application");
 

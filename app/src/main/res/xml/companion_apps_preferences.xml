@@ -19,13 +19,6 @@
             app:selectable="false" />
 
         <Preference
-            app:key="termux_float"
-            app:icon="@drawable/ui_ic_float"
-            app:title="@string/settings_integration_float_title"
-            app:summary="@string/settings_integration_float_summary"
-            app:selectable="false" />
-
-        <Preference
             app:key="termux_widget"
             app:icon="@drawable/ui_ic_widgets"
             app:title="@string/settings_integration_widget_title"

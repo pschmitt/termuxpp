@@ -4,7 +4,7 @@ page_ref: /docs/apps/termux/self-update.html
 
 # Self-update over Shizuku
 
-TermuxPP includes API, Tasker, Boot, Float, Styling, and Widget in one APK.
+TermuxPP includes API, Tasker, Boot, Styling, and Widget in one APK.
 **Settings > Updates** checks and updates that APK as a whole. Nothing is checked or downloaded in
 the background. Every check starts with a tap, and every install asks for confirmation first.
 

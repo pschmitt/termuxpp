@@ -11,7 +11,6 @@ import androidx.preference.Preference;
 import com.termux.R;
 import com.termux.app.settings.GroupedPreferencesFragment;
 import dev.pschmitt.termux.shared.termux.settings.preferences.TermuxAPIAppSharedPreferences;
-import dev.pschmitt.termux.shared.termux.settings.preferences.TermuxFloatAppSharedPreferences;
 import dev.pschmitt.termux.shared.termux.settings.preferences.TermuxTaskerAppSharedPreferences;
 import dev.pschmitt.termux.shared.termux.settings.preferences.TermuxWidgetAppSharedPreferences;
 
@@ -26,8 +25,6 @@ public class CompanionAppsPreferencesFragment extends GroupedPreferencesFragment
         setPreferencesFromResource(R.xml.companion_apps_preferences, rootKey);
         configurePreference("termux_api",
             TermuxAPIAppSharedPreferences.build(context, false) != null, R.drawable.ui_ic_extension);
-        configurePreference("termux_float",
-            TermuxFloatAppSharedPreferences.build(context, false) != null, R.drawable.ui_ic_float);
         configurePreference("termux_tasker",
             TermuxTaskerAppSharedPreferences.build(context, false) != null, R.drawable.ui_ic_bolt);
         configurePreference("termux_widget",

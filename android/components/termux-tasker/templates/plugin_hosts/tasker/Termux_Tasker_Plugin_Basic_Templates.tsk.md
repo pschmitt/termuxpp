@@ -274,7 +274,6 @@ Actions:
         "addons": {
             "1":"Termux:API",
             "2":"Termux:Boot",
-            "3":"Termux:Float",
             "4":"Termux:Styling",
             "5":"Termux:Tasker",
             "6":"Termux:Widget"
@@ -439,7 +438,6 @@ Actions:
         "addons": {
             "1":"Termux:API",
             "2":"Termux:Boot",
-            "3":"Termux:Float",
             "4":"Termux:Styling",
             "5":"Termux:Tasker",
             "6":"Termux:Widget"

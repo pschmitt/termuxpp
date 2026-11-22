@@ -100,7 +100,7 @@ terminal.
 
 ## Configuration files
 
-Keep `termuxpp.properties`, `termux.float.properties`, `colors.properties`,
+Keep `termuxpp.properties`, `colors.properties`,
 and the terminal fonts under `~/.config/termuxpp`. The optional fonts are
 `font.ttf`, `font-italic.ttf`, `font-bold.ttf`, and `font-bold-italic.ttf`.
 The app accepts symlinked fonts. Properties files must be regular files.

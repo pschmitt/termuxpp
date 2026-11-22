@@ -4,7 +4,7 @@ page_ref: /docs/apps/termux/integrations.html
 
 # Built-in integrations
 
-The TermuxPP APK includes **API, Tasker, Boot, Float, Styling, and Widget**.
+The TermuxPP APK includes **API, Tasker, Boot, Styling, and Widget**.
 Open **Settings → Integrations** for their available controls and diagnostics.
 
 ## API
@@ -31,16 +31,15 @@ disabled unless an automation needs it. The plug-in can return command output
 and exit status. Its **Kill TermuxPP** action stops shells and the app, with an
 optional relaunch.
 
-## Boot, Float, Styling, and Widget
+## Boot, Styling, and Widget
 
 | Integration | Where to use it |
 | --- | --- |
 | **Boot** | Open **Settings → Services → Run at boot** to see the scripts Android will schedule. Put scripts in the native TermuxPP home's `~/.config/termuxpp/boot/`. TermuxPP schedules them in filename order. For duplicate names, that directory takes precedence over `~/.config/termux/boot/` and `~/.termux/boot/`. |
-| **Float** | Open **TermuxPP:Float** from Android’s launcher. If the launcher groups the entries, run `am start -n dev.pschmitt.termux/com.termux.window.TermuxFloatActivity` from TermuxPP. Allow the overlay permission if Android requests it. Float reads `~/.config/termuxpp/termux.float.properties`. |
 | **Styling** | Open **Settings → Display** to choose a font and color scheme. See [Terminal settings](terminal-settings.md#configuration-files) for custom files. |
 | **Widget** | Add the TermuxPP widget from your launcher. Put terminal shortcuts in the native home's `~/.shortcuts/` and background tasks in `~/.shortcuts/tasks/`. |
 
-API, Tasker, floating terminal, and widget log levels are in **Settings → Debugging → Integration logging**.
+API, Tasker, and widget log levels are in **Settings → Debugging → Integration logging**.
 
 ## Migrating from standalone companions
 
@@ -62,7 +61,6 @@ The native API tools and the TermuxAm helper have their own build instructions.
 | API | [Android component](../../android/components/termux-api/) and [CLI tools](../../pkgs/tpp-api-bridge/TERMUXPP.md) |
 | Tasker | [Plug-in component](../../android/components/termux-tasker/) |
 | Boot | [Boot component](../../android/components/termux-boot/) |
-| Float | [Floating terminal component](../../android/components/termux-float/) |
 | Styling | [Styling component](../../android/components/termux-styling/) |
 | Widget | [Widget component](../../android/components/termux-widget/) |
 | TermuxAm | [Helper](../../android/components/termux-am/TERMUXPP.md) |

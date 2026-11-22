@@ -11,7 +11,7 @@
 
 - **Terminal and Linux environment.** Run Termux packages in the Android
   app sandbox, or enter a managed Nix guest with the custom bootstrap.
-- **Built-in integrations.** One APK includes API, Tasker, Boot, Float,
+- **Built-in integrations.** One APK includes API, Tasker, Boot,
   Styling, and Widget. See [Built-in integrations](docs/en/integrations.md).
 - **Terminal customization.** Assign tap and swipe actions, edit extra keys,
   and set fonts and colors. See [Terminal settings](docs/en/terminal-settings.md).
@@ -42,7 +42,7 @@ See the [Termux package management guide][package-management] for APT usage.
 | Topic | Description |
 | --- | --- |
 | [Terminal settings](docs/en/terminal-settings.md) | Properties, fonts, colors, touch gestures, extra keys, and links. |
-| [Built-in integrations](docs/en/integrations.md) | Use API, Tasker, Boot, Float, Styling, and Widget. Migrate standalone installations. |
+| [Built-in integrations](docs/en/integrations.md) | Use API, Tasker, Boot, Styling, and Widget. Migrate standalone installations. |
 | [Self-update over Shizuku](docs/en/self-update.md) | Configure and use the in-app APK updater. |
 | [Custom AArch64 bootstrap](docs/en/aarch64-bootstrap.md) | Build a verified bootstrap. |
 | [Upstream and TermuxPP differences](docs/en/termuxpp-differences.md) | App identity, compatibility, the Nix guest, services, and ADB access. |

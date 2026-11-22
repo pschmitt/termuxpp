@@ -68,12 +68,12 @@ public class CompanionAppsPreferencesTest {
         DebuggingPreferencesFragment debugging = new DebuggingPreferencesFragment();
         activity.getSupportFragmentManager().beginTransaction().replace(R.id.settings, debugging).commitNow();
 
-        for (String key : new String[]{"api_log_level", "tasker_log_level", "float_log_level", "widget_log_level"}) {
+        for (String key : new String[]{"api_log_level", "tasker_log_level", "widget_log_level"}) {
             ListPreference level = debugging.findPreference(key);
             Assert.assertNotNull(level);
             Assert.assertNotNull(level.getEntries());
         }
-        Assert.assertNotNull(debugging.findPreference("float_key_logging"));
+        Assert.assertNull(debugging.findPreference("float_key_logging"));
     }
 
     @Test
@@ -84,12 +84,12 @@ public class CompanionAppsPreferencesTest {
 
         Assert.assertNotNull(fragment.findPreference("termux_api"));
         Assert.assertNotNull(fragment.findPreference("termux_tasker"));
-        Assert.assertNotNull(fragment.findPreference("termux_float"));
+        Assert.assertNull(fragment.findPreference("termux_float"));
         Assert.assertNull(fragment.findPreference("termux_boot"));
         Assert.assertNull(fragment.findPreference("termux_styling"));
         Assert.assertNotNull(fragment.findPreference("termux_widget"));
 
-        for (String key : new String[]{"termux_api", "termux_tasker", "termux_float", "termux_widget"}) {
+        for (String key : new String[]{"termux_api", "termux_tasker", "termux_widget"}) {
             Preference companion = fragment.findPreference(key);
             Assert.assertNotNull(companion.getIcon());
             Assert.assertTrue(companion.isVisible());

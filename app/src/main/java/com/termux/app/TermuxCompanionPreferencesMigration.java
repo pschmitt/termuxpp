@@ -22,8 +22,6 @@ public final class TermuxCompanionPreferencesMigration {
             TermuxConstants.TERMUX_API_DEFAULT_PREFERENCES_FILE_BASENAME_WITHOUT_EXTENSION),
         new CompanionPreferences(TermuxConstants.TERMUX_BOOT_PACKAGE_NAME,
             TermuxConstants.TERMUX_BOOT_DEFAULT_PREFERENCES_FILE_BASENAME_WITHOUT_EXTENSION),
-        new CompanionPreferences(TermuxConstants.TERMUX_FLOAT_PACKAGE_NAME,
-            TermuxConstants.TERMUX_FLOAT_DEFAULT_PREFERENCES_FILE_BASENAME_WITHOUT_EXTENSION),
         new CompanionPreferences(TermuxConstants.TERMUX_STYLING_PACKAGE_NAME,
             TermuxConstants.TERMUX_STYLING_DEFAULT_PREFERENCES_FILE_BASENAME_WITHOUT_EXTENSION),
         new CompanionPreferences(TermuxConstants.TERMUX_TASKER_PACKAGE_NAME,

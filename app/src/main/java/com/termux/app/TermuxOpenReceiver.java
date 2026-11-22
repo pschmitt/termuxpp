@@ -225,7 +225,10 @@ public class TermuxOpenReceiver extends BroadcastReceiver {
                 for (String propertiesPath : TermuxNix.configPaths(TermuxConstants.TERMUX_PROPERTIES_FILE_PATHS_LIST)) {
                     if (new File(propertiesPath).getCanonicalPath().equals(path)) mode = "r";
                 }
-                if (TermuxConstants.TERMUX_FLOAT_PROPERTIES_FILE_PATHS_LIST.contains(path)) mode = "r";
+                // Keep retired configuration files read-only for existing installations.
+                for (String configDir : TermuxConstants.TERMUX_CONFIG_DIR_PATHS_LIST) {
+                    if (new File(configDir, "termux.float.properties").getPath().equals(path)) mode = "r";
+                }
 
             } catch (IOException e) {
                 throw new IllegalArgumentException(e);

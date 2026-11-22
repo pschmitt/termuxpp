@@ -85,27 +85,12 @@
             app:useSimpleSummaryProvider="true" />
 
         <ListPreference
-            app:icon="@drawable/ui_ic_float"
-            app:key="float_log_level"
-            app:enabled="false"
-            app:title="@string/float_log_level_title"
-            app:persistent="false"
-            app:useSimpleSummaryProvider="true" />
-
-        <ListPreference
             app:icon="@drawable/ui_ic_widgets"
             app:key="widget_log_level"
             app:enabled="false"
             app:title="@string/widget_log_level_title"
             app:persistent="false"
             app:useSimpleSummaryProvider="true" />
-
-        <SwitchPreferenceCompat
-            app:icon="@drawable/ui_ic_keyboard"
-            app:key="float_key_logging"
-            app:enabled="false"
-            app:title="@string/float_key_logging_title"
-            app:persistent="false" />
 
     </PreferenceCategory>
 
