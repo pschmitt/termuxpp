@@ -976,9 +976,32 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         mExtraKeysView = extraKeysView;
     }
 
-    public void showSessionSwitcher() {
-        if (mTermuxService == null || isFinishing() || (sessionSwitcher != null && sessionSwitcher.isShowing())
-            || getDrawer().getDrawerLockMode(Gravity.START) == DrawerLayout.LOCK_MODE_LOCKED_CLOSED) return;
+    public boolean openTerminalUi(String action, @Nullable String query) {
+        if (!mIsVisible || isFinishing() || isDestroyed()) return false;
+        switch (action) {
+            case "more":
+                return mTerminalView.showContextMenu();
+            case "settings":
+                Intent intent = new Intent(this, SettingsActivity.class);
+                if (query != null) intent.putExtra(SettingsActivity.EXTRA_SEARCH_QUERY, query);
+                return ActivityUtils.startActivity(this, intent) == null;
+            case "session-switcher":
+                return showSessionSwitcher();
+            case "sidebar":
+                DrawerLayout drawer = getDrawer();
+                if (drawer.getDrawerLockMode(Gravity.START) == DrawerLayout.LOCK_MODE_LOCKED_CLOSED)
+                    return false;
+                drawer.openDrawer(Gravity.START);
+                return true;
+            default:
+                throw new IllegalArgumentException("Unknown terminal UI action: " + action);
+        }
+    }
+
+    public boolean showSessionSwitcher() {
+        if (!mIsVisible || mTermuxService == null || isFinishing()
+            || getDrawer().getDrawerLockMode(Gravity.START) == DrawerLayout.LOCK_MODE_LOCKED_CLOSED) return false;
+        if (sessionSwitcher != null && sessionSwitcher.isShowing()) return true;
 
         List<TerminalSession> sessions = new ArrayList<>();
         List<CharSequence> titles = new ArrayList<>();
@@ -1013,6 +1036,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             .create();
         sessionSwitcher.setOnDismissListener(dialog -> sessionSwitcher = null);
         sessionSwitcher.show();
+        return true;
     }
 
     private void configureSessionShelf() {

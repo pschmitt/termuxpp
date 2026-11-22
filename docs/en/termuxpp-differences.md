@@ -335,6 +335,14 @@ refreshes terminal styling in the app.
 
 ## Terminal session CLI
 
+`tpp session switcher` opens the TermuxPP session picker from a visible terminal.
+`tpp session list` uses the same display-name fallback as the sidebar, including
+`Session N` for tabs without a custom name or terminal title. The same socket
+powers `tpp ui` commands to open More, Settings (with an optional search
+query), the session picker, and the session sidebar. Upstream Termux's sidebar
+uses numeric prefixes alongside the session name and terminal title.
+[Upstream sidebar source](https://github.com/termux/termux-app/blob/master/app/src/main/java/com/termux/app/terminal/TermuxSessionsListViewController.java).
+
 TermuxPP ships `tpp-session` to list, focus, rename, reorder, close,
 and kill app terminal sessions. It uses stable session IDs and a local
 socket restricted to the app's Android UID. Every command accepts `--json` (also as `tpp --json session ...`): `list` prints an array and the other commands a JSON object that echoes the accepted request. See [Session commands](terminal-settings.md#session-commands).
@@ -350,7 +358,7 @@ through the [native CLI installer](../../app/src/main/java/com/termux/app/native
 first removes the launcher, script and completion files that earlier versions wrote, because the installer
 leaves paths it did not create alone.
 
-The app's side is unchanged: one JSON array line to the abstract socket `dev.pschmitt.termux.sessions`
+The app accepts one JSON array line on the abstract socket `dev.pschmitt.termux.sessions`
 ([`SessionCommandServer`](../../app/src/main/java/com/termux/app/SessionCommandServer.java)). `TPP_SESSION_SOCKET`
 names another abstract socket, which the tests use. Commands, options, abbreviations, exit statuses (0, 1, 2),
 usage errors, the JSON layout and the table behave as the Python implementation did; the differences are

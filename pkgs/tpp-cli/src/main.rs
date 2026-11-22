@@ -31,6 +31,7 @@ mod native;
 mod render;
 mod storage;
 mod table;
+mod ui;
 
 fn main() {
     let mut args = std::env::args_os();

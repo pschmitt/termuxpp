@@ -7,7 +7,7 @@ use crate::client::{Exchange, COMPLETION_TIMEOUT};
 use crate::json::Value;
 
 /// The commands in the order completion offers them.
-pub const ACTIONS: [&str; 8] = [
+pub const ACTIONS: [&str; 9] = [
     "list",
     "close",
     "focus",
@@ -16,6 +16,7 @@ pub const ACTIONS: [&str; 8] = [
     "rename",
     "reload-settings",
     "completions",
+    "switcher",
 ];
 /// The commands that take a session ID first.
 const ID_ACTIONS: [&str; 5] = ["close", "focus", "kill", "move", "rename"];
@@ -165,6 +166,7 @@ mod tests {
                 "rename",
                 "reload-settings",
                 "completions",
+                "switcher",
                 "--help"
             ]
         );

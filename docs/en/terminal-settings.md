@@ -10,6 +10,7 @@ In a provisioned Nix guest, the app uses the guest's home first, with native
 files as fallbacks. Edit the file in the same home to manage it through dotfiles.
 
 - [Session commands](#session-commands)
+- [Opening the app interface](#opening-the-app-interface)
 - [Configuration files](#configuration-files)
 - [Terminal feedback position](#terminal-feedback-position)
 - [Tap and swipe actions](#tap-and-swipe-actions)
@@ -28,6 +29,7 @@ live IDs and positions, `--json` for every command (once), `--help` for every co
 shells for `completions`. `tpp session` completes the same words through the `tpp` completions.
 
 ```text
+tpp session switcher
 tpp-session list --json
 tpp-session focus ID
 tpp-session rename ID "Build logs"
@@ -36,9 +38,14 @@ tpp-session close ID
 tpp-session kill ID
 ```
 
+`tpp session switcher` opens the same picker as the session-switcher gesture
+while the terminal screen is visible. The text output of `tpp session list`
+uses the sidebar's naming order: the custom name, the terminal title, then
+`Session N` using the tab's current position.
+
 Every command accepts `--json`, after the command or in front of it
 (`tpp --json session close ID`). `list --json` prints the sessions as a JSON array. `close`,
-`focus`, `kill`, `move`, `rename` and `reload-settings` print nothing without
+`focus`, `kill`, `move`, `rename`, `reload-settings` and `switcher` print nothing without
 `--json`; with it they print a JSON object that echoes the request after the app
 accepted it:
 
@@ -64,6 +71,21 @@ to the shell. Run `close` on an exited tab to dismiss it.
 The Nix guest has the same commands in its own build of the same code; both talk to the
 app through the same abstract Unix socket. `TPP_SESSION_SOCKET` selects a different socket name
 (for tests).
+
+## Opening the app interface
+
+Run these commands from the visible TermuxPP terminal.
+
+```text
+tpp ui more
+tpp ui settings
+tpp ui settings --search "font size"
+tpp ui session-switcher
+tpp ui sidebar
+```
+
+`tpp ui settings --search` opens Settings with the search results already visible.
+`tpp ui session-switcher` and `tpp session switcher` open the same picker.
 
 ## Configuration files
 

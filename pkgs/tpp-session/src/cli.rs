@@ -72,7 +72,25 @@ fn execute(
         return Ok(());
     }
 
-    let reply = match exchange.exchange(&request(&parsed.command), COMMAND_TIMEOUT) {
+    let reply = request_app(exchange, &request(&parsed.command))?;
+
+    if parsed.command == Command::List {
+        let sessions = reply.get("result").ok_or_else(|| unexpected(&reply))?;
+        if parsed.json {
+            print_json(out, sessions, environment);
+        } else {
+            let table = table(sessions, environment.color).ok_or_else(|| unexpected(&reply))?;
+            let _ = out.write_all(table.as_bytes());
+        }
+    } else if parsed.json {
+        print_json(out, &outcome(&parsed.command), environment);
+    }
+    Ok(())
+}
+
+/// Send a command to the running app and report socket or application errors.
+pub fn request_app(exchange: &dyn Exchange, request: &Value) -> Result<Value, String> {
+    let reply = match exchange.exchange(request, COMMAND_TIMEOUT) {
         Ok(reply) => reply,
         Err(ExchangeError::Unreachable(error)) => {
             return Err(format!(
@@ -88,18 +106,7 @@ fn execute(
         return Err(error.display());
     }
 
-    if parsed.command == Command::List {
-        let sessions = reply.get("result").ok_or_else(|| unexpected(&reply))?;
-        if parsed.json {
-            print_json(out, sessions, environment);
-        } else {
-            let table = table(sessions, environment.color).ok_or_else(|| unexpected(&reply))?;
-            let _ = out.write_all(table.as_bytes());
-        }
-    } else if parsed.json {
-        print_json(out, &outcome(&parsed.command), environment);
-    }
-    Ok(())
+    Ok(reply)
 }
 
 fn unexpected(reply: &Value) -> String {
@@ -129,7 +136,10 @@ fn request(command: &Command) -> Value {
             items.push(Value::string(id.as_str()));
             items.push(Value::string(name.as_str()));
         }
-        Command::List | Command::Completions { .. } | Command::ReloadSettings => {}
+        Command::List
+        | Command::Completions { .. }
+        | Command::ReloadSettings
+        | Command::Switcher => {}
     }
     Value::Array(items)
 }
@@ -152,7 +162,10 @@ fn outcome(command: &Command) -> Value {
             entries.push(("id".to_string(), Value::string(id.as_str())));
             entries.push(("name".to_string(), Value::string(name.as_str())));
         }
-        Command::List | Command::Completions { .. } | Command::ReloadSettings => {}
+        Command::List
+        | Command::Completions { .. }
+        | Command::ReloadSettings
+        | Command::Switcher => {}
     }
     Value::Object(entries)
 }
@@ -185,11 +198,15 @@ fn table(sessions: &Value, color: bool) -> Option<String> {
         let Value::String(label) = label else {
             return None;
         };
-        let label: String = label
-            .chars()
-            .map(|letter| if is_printable(letter) { letter } else { '?' })
-            .collect();
         let position = session.get("position")?.display();
+        let label: String = if label.is_empty() {
+            format!("Session {position}")
+        } else {
+            label
+                .chars()
+                .map(|letter| if is_printable(letter) { letter } else { '?' })
+                .collect()
+        };
         let id = session.get("id")?.display();
         let state = if color {
             let code = if state == "running" { "32" } else { "33" };

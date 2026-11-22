@@ -79,7 +79,7 @@ fn status(output: &Output) -> i32 {
 #[test]
 fn list_prints_the_table_and_sends_one_request() {
     let app = FakeApp::start(
-        r#"{"result": [{"id": "abc", "position": 1, "current": true, "running": true, "name": "", "title": "bash"}]}"#,
+        r#"{"result": [{"id": "abc", "position": 1, "current": true, "running": true, "name": "", "title": "bash"}, {"id": "def", "position": 2, "current": false, "running": true, "name": "", "title": ""}]}"#,
         1,
     );
     let output = app.command(&["list"]).output().unwrap();
@@ -87,7 +87,7 @@ fn list_prints_the_table_and_sends_one_request() {
     assert_eq!(status(&output), 0);
     assert_eq!(
         text(&output.stdout),
-        "  POS  ID                                    STATE    NAME / TITLE\n*   1  abc  running  bash\n"
+        "  POS  ID                                    STATE    NAME / TITLE\n*   1  abc  running  bash\n    2  def  running  Session 2\n"
     );
     assert_eq!(text(&output.stderr), "");
 }
@@ -95,6 +95,7 @@ fn list_prints_the_table_and_sends_one_request() {
 #[test]
 fn commands_send_ids_names_and_positions() {
     for (args, request) in [
+        (&["switcher"][..], "[\"switcher\"]\n"),
         (&["close", "abc"][..], "[\"close\", \"abc\"]\n"),
         (&["move", "abc", "3"][..], "[\"move\", \"abc\", 3]\n"),
         (
@@ -253,6 +254,16 @@ fn help_texts_match_the_python_implementation() {
             vec![name.as_str(), "--help"]
         };
         let output = tpp(&args).output().unwrap();
+        let expected = if name.is_empty() {
+            expected
+                .replace("reload-settings}", "reload-settings,switcher}")
+                .replace(
+                    "reload app properties and styling\n",
+                    "reload app properties and styling\n    switcher            open the session switcher\n",
+                )
+        } else {
+            expected
+        };
         assert_eq!(text(&output.stdout), expected, "help for {name:?}");
     }
 }

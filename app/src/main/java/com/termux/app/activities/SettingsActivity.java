@@ -41,6 +41,8 @@ import dev.pschmitt.termux.shared.theme.NightMode;
 public class SettingsActivity extends AppCompatActivity
         implements PreferenceFragmentCompat.OnPreferenceStartFragmentCallback {
 
+    public static final String EXTRA_SEARCH_QUERY = "dev.pschmitt.termux.settings.SEARCH_QUERY";
+
     private final Map<Preference, Boolean> searchVisibility = new LinkedHashMap<>();
     private PreferenceGroup searchScreen;
     private PreferenceCategory searchResults;
@@ -71,7 +73,11 @@ public class SettingsActivity extends AppCompatActivity
             getSupportFragmentManager()
                 .beginTransaction()
                 .replace(R.id.settings, new RootPreferencesFragment())
-                .runOnCommit(this::updateNavigation)
+                .runOnCommit(() -> {
+                    updateNavigation();
+                    String query = getIntent().getStringExtra(EXTRA_SEARCH_QUERY);
+                    if (query != null) searchQuery.setText(query);
+                })
                 .commit();
         }
 

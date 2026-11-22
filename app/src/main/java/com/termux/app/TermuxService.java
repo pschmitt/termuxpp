@@ -893,12 +893,30 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         return new String(head, 0, length, StandardCharsets.ISO_8859_1).contains(mark);
     }
 
+    private void openTerminalUi(String action, @Nullable String query) {
+        if (mTermuxTerminalSessionActivityClient == null
+            || !mTermuxTerminalSessionActivityClient.openTerminalUi(action, query))
+            throw new IllegalStateException("Cannot open " + action + " from the current TermuxPP screen");
+    }
+
     /** Called on the main thread by the app-UID session socket. */
     Object runSessionCommand(JSONArray args) throws JSONException, ErrnoException {
         String command = args.getString(0);
         if ("reload-settings".equals(command) && args.length() == 1) {
             mProperties.loadTermuxPropertiesFromDisk();
             sendBroadcast(new Intent(TERMUX_ACTIVITY.ACTION_RELOAD_STYLE).setPackage(getPackageName()));
+            return JSONObject.NULL;
+        }
+        if ("switcher".equals(command) && args.length() == 1) {
+            openTerminalUi("session-switcher", null);
+            return JSONObject.NULL;
+        }
+        if ("ui".equals(command)) {
+            String action = args.getString(1);
+            int count = args.length();
+            if (count != 2 && !(count == 3 && "settings".equals(action)))
+                throw new IllegalArgumentException("Invalid terminal UI command arguments");
+            openTerminalUi(action, count == 3 ? args.getString(2) : null);
             return JSONObject.NULL;
         }
         List<TermuxSession> sessions = getTermuxSessions();

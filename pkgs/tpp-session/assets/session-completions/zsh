@@ -12,6 +12,7 @@ then
     'move:Reorder a session'
     'rename:Change the session name'
     'reload-settings:Reload app properties and styling'
+    'switcher:Open the session switcher'
     'completions:Print completion source'
     '--help:Show help'
   )

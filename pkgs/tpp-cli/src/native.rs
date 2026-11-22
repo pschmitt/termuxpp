@@ -15,6 +15,7 @@ use tpp_session::client::SocketExchange;
 pub const GROUPS: &[(&str, &str)] = &[
     ("session", tpp_session::SUMMARY),
     ("settings", "Reload app properties and styling"),
+    ("ui", "Open the TermuxPP interface"),
 ];
 
 /// The program name that runs the session group on its own.
@@ -57,6 +58,9 @@ fn expand_action(name: &str, words: &mut [String]) -> bool {
 /// front of its own command, like it does after it.
 pub fn run(name: &str, args: &[OsString], lead_json: bool) -> i32 {
     debug_assert!(is_native(name));
+    if name == "ui" {
+        return crate::ui::run(&strings(args), lead_json);
+    }
     if name == "settings" {
         let mut words = strings(args);
         if !expand_action(name, &mut words) {
@@ -123,6 +127,9 @@ fn run_session(args: &[String]) -> i32 {
 /// The candidates for the last of `words`, the words behind the group name.
 pub fn complete(name: &str, words: &[String]) -> Vec<String> {
     debug_assert!(is_native(name));
+    if name == "ui" {
+        return crate::ui::complete(words);
+    }
     if name == "settings" {
         return match words {
             [word] => ["reload", "--help"]

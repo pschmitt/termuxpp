@@ -68,6 +68,7 @@ pub enum Command {
         shell: Shell,
     },
     ReloadSettings,
+    Switcher,
 }
 
 impl Command {
@@ -82,6 +83,7 @@ impl Command {
             Command::Rename { .. } => "rename",
             Command::Completions { .. } => "completions",
             Command::ReloadSettings => "reload-settings",
+            Command::Switcher => "switcher",
         }
     }
 }
@@ -123,6 +125,7 @@ pub fn parse(args: &[String]) -> Outcome {
                 _ => Shell::Bash,
             },
         },
+        Some("switcher") => Command::Switcher,
         _ => Command::ReloadSettings,
     };
     Outcome::Run(Parsed {
@@ -180,7 +183,7 @@ static MAIN: Spec = Spec {
 };
 
 /// The commands in the order argparse lists them in its error messages.
-static COMMANDS: [(&str, Spec); 8] = [
+static COMMANDS: [(&str, Spec); 9] = [
     (
         "list",
         Spec {
@@ -242,6 +245,14 @@ static COMMANDS: [(&str, Spec); 8] = [
         Spec {
             prog: "tpp-session reload-settings",
             help: help::RELOAD_SETTINGS,
+            positionals: &[],
+        },
+    ),
+    (
+        "switcher",
+        Spec {
+            prog: "tpp-session switcher",
+            help: help::SWITCHER,
             positionals: &[],
         },
     ),
@@ -857,7 +868,7 @@ mod tests {
         text.lines().last().unwrap().to_string()
     }
 
-    const MAIN_USAGE: &str = "usage: tpp-session [-h] [--json]\n                   {list,close,focus,kill,move,rename,completions,reload-settings} ...\n";
+    const MAIN_USAGE: &str = "usage: tpp-session [-h] [--json]\n                   {list,close,focus,kill,move,rename,completions,reload-settings,switcher} ...\n";
 
     #[test]
     fn commands_parse() {
@@ -968,7 +979,7 @@ mod tests {
         );
         assert_eq!(
             message("bogus"),
-            "tpp-session: error: argument command: invalid choice: 'bogus' (choose from 'list', 'close', 'focus', 'kill', 'move', 'rename', 'completions', 'reload-settings')"
+            "tpp-session: error: argument command: invalid choice: 'bogus' (choose from 'list', 'close', 'focus', 'kill', 'move', 'rename', 'completions', 'reload-settings', 'switcher')"
         );
     }
 
@@ -1142,7 +1153,7 @@ mod tests {
             message("move a -5x"),
             "tpp-session move: error: argument position: invalid int value: '-5x'"
         );
-        assert_eq!(message("-"), "tpp-session: error: argument command: invalid choice: '-' (choose from 'list', 'close', 'focus', 'kill', 'move', 'rename', 'completions', 'reload-settings')");
+        assert_eq!(message("-"), "tpp-session: error: argument command: invalid choice: '-' (choose from 'list', 'close', 'focus', 'kill', 'move', 'rename', 'completions', 'reload-settings', 'switcher')");
     }
 
     #[test]

@@ -7,10 +7,10 @@
 #![cfg(target_os = "linux")]
 
 use std::fs;
-use std::io::{self, Read, Write};
+use std::io::{self, BufRead, BufReader, Read, Write};
 use std::os::linux::net::SocketAddrExt;
 use std::os::unix::fs::PermissionsExt;
-use std::os::unix::net::{SocketAddr, UnixStream};
+use std::os::unix::net::{SocketAddr, UnixListener, UnixStream};
 use std::path::PathBuf;
 use std::process::{Child, Command, Output, Stdio};
 use std::time::{Duration, Instant};
@@ -763,6 +763,61 @@ fn the_session_group_is_part_of_the_binary() {
     fx.plugin("session", "echo plugin");
     assert!(out(&fx.run(&["session", "--help"])).starts_with("usage: tpp-session "));
     assert!(!out(&fx.run(&["--help"])).contains("Plugins:"));
+}
+
+#[test]
+fn ui_commands_send_actions_and_search_to_the_app() {
+    let fx = Fixture::new("ui");
+    let name = format!("tpp-ui-test-{}", std::process::id());
+    let listener = UnixListener::bind_addr(&SocketAddr::from_abstract_name(&name).unwrap()).unwrap();
+    listener.set_nonblocking(true).unwrap();
+
+    for (args, expected) in [
+        (&["ui", "more"][..], r#"["ui", "more"]"#),
+        (&["ui", "sidebar"][..], r#"["ui", "sidebar"]"#),
+        (&["ui", "session-switcher"][..], r#"["ui", "session-switcher"]"#),
+        (
+            &["--json", "ui", "settings", "--search", "font size"][..],
+            r#"["ui", "settings", "font size"]"#,
+        ),
+    ] {
+        let child = fx
+            .command(args)
+            .env("TPP_SESSION_SOCKET", &name)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let stream = loop {
+            match listener.accept() {
+                Ok((stream, _)) => break stream,
+                Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
+                    assert!(Instant::now() < deadline, "no UI request for {args:?}");
+                    std::thread::sleep(Duration::from_millis(5));
+                }
+                Err(error) => panic!("could not accept UI request: {error}"),
+            }
+        };
+        stream.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+        let mut stream = BufReader::new(stream);
+        let mut request = String::new();
+        stream.read_line(&mut request).unwrap();
+        assert_eq!(request.trim_end(), expected);
+        stream.get_mut().write_all(b"{\"result\":null}\n").unwrap();
+        let output = child.wait_with_output().unwrap();
+        assert_eq!(code(&output), 0, "{}", err(&output));
+        if args[0] == "--json" {
+            assert!(out(&output).contains(r#""action": "settings""#));
+        } else {
+            assert!(out(&output).is_empty());
+        }
+    }
+
+    assert_eq!(code(&fx.run(&["ui", "settings", "--search"])), 2);
+    assert_eq!(code(&fx.run(&["ui", "sidebar", "--search", "font"])), 2);
+    assert_eq!(complete(&fx, &["ui", "settings", "--s"]).1, ["--search"]);
+    assert_eq!(complete(&fx, &["ui", "si"]).1, ["sidebar"]);
 }
 
 #[test]
