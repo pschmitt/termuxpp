@@ -328,6 +328,7 @@ struct StreamRenderer<W: Write> {
     invalid_text: bool,
     unwrap_array: bool,
     array_started: bool,
+    array_has_value: bool,
 }
 
 impl<W: Write> StreamRenderer<W> {
@@ -344,6 +345,7 @@ impl<W: Write> StreamRenderer<W> {
             invalid_text: false,
             unwrap_array: false,
             array_started: false,
+            array_has_value: false,
         }
     }
 
@@ -398,8 +400,22 @@ impl<W: Write> Write for StreamRenderer<W> {
                     self.array_started = true;
                     continue;
                 }
-                if self.array_started && (b.is_ascii_whitespace() || b == b',' || b == b']') {
+                if self.array_started && b == b']' {
+                    if !self.array_has_value {
+                        self.out.write_all(
+                            &render::render(Mode::Human, self.color, b"[]").map_err(|_| {
+                                io::Error::new(io::ErrorKind::InvalidData, "invalid output")
+                            })?,
+                        )?;
+                        self.out.flush()?;
+                    }
                     continue;
+                }
+                if self.array_started && (b.is_ascii_whitespace() || b == b',') {
+                    continue;
+                }
+                if self.array_started {
+                    self.array_has_value = true;
                 }
             }
             if !self.structured && self.pending.iter().all(u8::is_ascii_whitespace) {
@@ -475,6 +491,17 @@ mod stream_tests {
         let output = std::str::from_utf8(&stream.out).unwrap();
         assert!(output.contains("latitude: 2"));
         assert!(!output.contains('['));
+    }
+
+    #[test]
+    fn empty_location_array_is_readable() {
+        let mut stream = StreamRenderer::new(Vec::new(), Mode::Human, false);
+        stream.unwrap_array = true;
+        stream.write_all(b"[ ").unwrap();
+        assert!(stream.out.is_empty());
+        stream.write_all(b"]").unwrap();
+        stream.finish().unwrap();
+        assert_eq!(stream.out, b"No results\n");
     }
 
     #[test]
