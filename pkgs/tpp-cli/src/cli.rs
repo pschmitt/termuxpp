@@ -15,6 +15,7 @@ use std::process::Command;
 use std::sync::atomic::{AtomicI32, Ordering};
 
 use crate::api;
+use crate::commands::long_options;
 use crate::complete;
 use crate::ctx::{self, Ctx};
 use crate::native;
@@ -145,8 +146,18 @@ fn show_help(app: &App, args: &[OsString]) -> i32 {
         return 0;
     };
     let action = args.get(1).map(lossy);
+    if matches!(group.as_str(), "help" | "list") {
+        write_help(if group == "help" {
+            "Usage: tpp help [COMMAND [ACTION]]\nShow help for a command or action.\n"
+        } else {
+            "Usage: tpp list [--names]\nList commands and their descriptions.\n  --names  Print only command names.\n"
+        });
+        return 0;
+    }
     if native::is_native(&group) {
-        return native::run(&group, &[OsString::from("--help")], false);
+        let mut help = args[1..].to_vec();
+        help.push(OsString::from("--help"));
+        return native::run(&group, &help, false);
     }
     if app.table.is_group(&group) {
         if let Some(e) = app.table.find(&group, "-") {
@@ -164,7 +175,7 @@ fn show_help(app: &App, args: &[OsString]) -> i32 {
         return 0;
     }
     if let Some(plugin) = app.ctx.find_plugin(&group) {
-        return exec(&plugin, &[OsString::from("--help")]);
+        return plugin_help(&plugin, args[1..].to_vec());
     }
     err!("unknown command '{group}'");
     2
@@ -180,6 +191,23 @@ fn exec(program: &Path, args: &[OsString]) -> i32 {
         127
     } else {
         126
+    }
+}
+
+fn plugin_help(plugin: &Path, mut args: Vec<OsString>) -> i32 {
+    if !args.iter().any(|arg| is(arg, "--help") || is(arg, "-h")) {
+        args.push(OsString::from("--help"));
+    }
+    match Command::new(plugin).args(args).output() {
+        Ok(output) => {
+            write_help(&String::from_utf8_lossy(&output.stdout));
+            write_err(&String::from_utf8_lossy(&output.stderr));
+            output.status.code().unwrap_or(1)
+        }
+        Err(error) => {
+            err!("cannot execute {}: {error}", plugin.display());
+            126
+        }
     }
 }
 
@@ -572,7 +600,7 @@ fn run_stream(imp: &str, args: &[OsString], json: bool) -> i32 {
     let mode = if json { Mode::Json } else { Mode::Human };
     let mut output = StreamRenderer::new(io::stdout(), mode, ctx::use_color());
     output.unwrap_array = imp == "location" && !json;
-    let status = api::run_to(imp, args, &mut output);
+    let status = api::run_to(imp, args, &mut output, !json);
     if let Err(e) = output.finish() {
         err!("cannot write output: {e}");
         if status == 0 {
@@ -610,7 +638,7 @@ fn run_captured(class: &str, imp: &str, args: &[OsString], json: bool, acknowled
     };
     catch_signals();
     let mut stdout = stdout;
-    let status = api::run_to(imp, args, &mut stdout);
+    let status = api::run_to(imp, args, &mut stdout, !json);
     if let Some(code) = signal_status() {
         return code;
     }
@@ -667,20 +695,81 @@ fn run_captured(class: &str, imp: &str, args: &[OsString], json: bool, acknowled
 
 // -------------------------------------------------------------- commands
 
+fn public_help(entry: &Entry, text: &str) -> String {
+    let mut result = String::new();
+    for part in text.split_inclusive(|c: char| !c.is_ascii_alphanumeric() && c != '-') {
+        let name = part.trim_end_matches(|c: char| !c.is_ascii_alphanumeric() && c != '-');
+        let replacement = long_options(&entry.imp)
+            .iter()
+            .find_map(|(short, long)| (*short == name).then_some(*long))
+            .unwrap_or(name);
+        result.push_str(replacement);
+        result.push_str(&part[name.len()..]);
+    }
+    result
+        .replace("tpp saf ls", "tpp saf list")
+        .replace("tpp saf rm", "tpp saf remove")
+        .replace(
+            "tpp notification channel.",
+            "tpp notification create-channel.",
+        )
+}
+
+fn normalize_args(entry: &Entry, args: &mut [OsString]) -> Result<(), String> {
+    let reserved: &[(&str, &str)] = match (entry.group.as_str(), entry.action.as_str()) {
+        ("dialog", "show") => &[("-l", "list")],
+        ("audio", "record") => &[("-i", "recording"), ("-q", "stop")],
+        ("job-scheduler", "schedule") => &[
+            ("-p", "list"),
+            ("--pending", "list"),
+            ("--cancel", "cancel"),
+            ("--cancel-all", "cancel-all"),
+        ],
+        ("notification", "create-channel") => &[("-d", "delete-channel")],
+        ("nfc", "write") => &[("-r", "read")],
+        _ => &[],
+    };
+    let mut skip_value = false;
+    for arg in args {
+        if skip_value {
+            skip_value = false;
+            continue;
+        }
+        if is(arg, "--") {
+            break;
+        }
+        if let Some((_, action)) = reserved.iter().find(|(flag, _)| is(arg, flag)) {
+            return Err(format!("use 'tpp {} {action}'", entry.group));
+        }
+        if let Some((short, _)) = long_options(&entry.imp)
+            .iter()
+            .find(|(short, long)| is(arg, short) || is(arg, long))
+        {
+            *arg = OsString::from(short);
+            skip_value = crate::commands::OPTIONS
+                .iter()
+                .find(|row| row.group == entry.group && row.action == entry.action)
+                .is_some_and(|row| {
+                    row.words.split_whitespace().any(|word| {
+                        word.split_once(':')
+                            .is_some_and(|(option, _)| option == *short)
+                    })
+                });
+        }
+    }
+    Ok(())
+}
+
 fn run_entry(e: &Entry, mut args: Vec<OsString>, json: bool) -> i32 {
     let mut fixed: Vec<OsString> = if e.args == "-" {
         Vec::new()
     } else {
         e.args.split_whitespace().map(OsString::from).collect()
     };
-    let mut help = false;
-    if args.first().is_some_and(|a| is(a, "--help") || is(a, "-h")) {
-        // Help never takes the fixed arguments of the table entry
-        fixed.clear();
-        help = true;
-        args[0] = OsString::from("-h");
-    }
-    if help {
+    if args
+        .first()
+        .is_some_and(|arg| is(arg, "--help") || is(arg, "-h") || is(arg, "help"))
+    {
         let text = match (e.group.as_str(), e.action.as_str()) {
             ("usb", "list") => "Usage: tpp usb list\nList USB devices.\n",
             ("usb", "permission") => "Usage: tpp usb permission DEVICE | VENDOR_ID PRODUCT_ID\nCheck USB device permission.\n",
@@ -689,10 +778,52 @@ fn run_entry(e: &Entry, mut args: Vec<OsString>, json: bool) -> i32 {
             ("sensor", "list") => "Usage: tpp sensor list\nList available sensors.\n",
             ("sensor", "cleanup") => "Usage: tpp sensor cleanup\nStop sensor listeners.\n",
             ("sensor", "read") => "Usage: tpp sensor read [-a | -s SENSORS] [-d MS] [-n COUNT]\nRead sensor values.\n  -a  Read all sensors.\n  -s SENSORS  Read selected sensors.\n  -d MS  Set the delay.\n  -n COUNT  Limit readings.\n",
+            ("dialog", "show") => "Usage: tpp dialog show [WIDGET] [OPTIONS]\nOpen a dialog and wait for the answer. Defaults to the text widget.\nRun tpp dialog list for supported widgets.\n\nOptions:\n  -t TITLE       Set the dialog title.\n  -i HINT        Set the input hint.\n  -m             Allow multiple lines.\n  -p             Hide password input.\n  -n             Accept numeric input.\n  -d FORMAT      Format a date result.\n  -v VALUES      Set comma-separated choices.\n  -r MIN,MAX,START  Set the counter range.\n",
+            ("dialog", "list") => "Usage: tpp dialog list\nList supported widgets and their options.\n",
+            ("audio", "record") => "Usage: tpp audio record [OPTIONS]\nStart recording audio.\n\nOptions:\n  -f FILE      Save the recording to FILE.\n  -l SECONDS   Limit the recording duration. Use 0 for unlimited.\n  -e ENCODER   Set the encoder (aac, amr_wb, amr_nb, opus).\n  -b KBPS      Set the bitrate.\n  -r HZ        Set the sample rate.\n  -c COUNT     Set the number of channels.\n",
+            ("audio", "recording") => "Usage: tpp audio recording\nShow information about the current recording.\n",
+            ("audio", "stop") => "Usage: tpp audio stop\nStop the current recording.\n",
+            ("job-scheduler", "list") => "Usage: tpp job-scheduler list\nList pending jobs.\n",
+            ("job-scheduler", "cancel") => "Usage: tpp job-scheduler cancel ID\nCancel a pending job by ID.\n",
+            ("job-scheduler", "cancel-all") => "Usage: tpp job-scheduler cancel-all\nCancel all pending jobs.\n",
+            ("notification", "create-channel") => "Usage: tpp notification create-channel ID NAME\nCreate or rename a notification channel. Use its ID with tpp notification send --channel.\n",
+            ("notification", "delete-channel") => "Usage: tpp notification delete-channel ID\nDelete a notification channel.\n",
+            ("nfc", "read") => "Usage: tpp nfc read [short | full]\nRead an NFC tag. Defaults to short output.\n",
+            ("nfc", "write") => "Usage: tpp nfc write -t TEXT\nWrite text to an NFC tag.\n",
+            ("volume", "list") => "Usage: tpp volume list\nShow volume levels for all audio streams.\n",
+            ("volume", "set") => "Usage: tpp volume set STREAM LEVEL\nSet the volume for alarm, music, notification, ring, system or call.\n",
             _ => tpp_api::usage(&e.imp).unwrap_or("Help unavailable.\n"),
         };
-        write_help(text);
+        let text = if e.action == "schedule" && e.imp == "job-scheduler" {
+            let options = text
+                .split_once("Options for scheduling:")
+                .map_or("", |(_, options)| options);
+            format!("Usage: tpp job-scheduler schedule --script PATH [OPTIONS]\nSchedule a script to run on Android.\n\nOptions:{options}")
+        } else {
+            text.to_owned()
+        };
+        write_help(&public_help(e, &text));
         return 0;
+    }
+    let expected = match (e.group.as_str(), e.action.as_str()) {
+        ("dialog" | "job-scheduler" | "volume", "list")
+        | ("audio", "recording" | "stop")
+        | ("job-scheduler", "cancel-all") => Some(0),
+        ("job-scheduler", "cancel") | ("notification", "delete-channel") => Some(1),
+        ("notification", "create-channel") | ("volume", "set") => Some(2),
+        _ => None,
+    };
+    if expected.is_some_and(|count| args.len() != count) {
+        err!(
+            "invalid arguments for 'tpp {}'. Try 'tpp help {}'.",
+            e.name(),
+            e.name()
+        );
+        return 2;
+    }
+    if let Err(message) = normalize_args(e, &mut args) {
+        err!("{message}");
+        return 2;
     }
     if e.group == "sensor" && e.action == "read" && args.iter().any(|a| is(a, "-l") || is(a, "-c"))
     {
@@ -710,7 +841,7 @@ fn run_entry(e: &Entry, mut args: Vec<OsString>, json: bool) -> i32 {
     let class = e.effective_class(&typed);
 
     // --json is refused for binary or streamed output, but never for help
-    if class == "raw" && json && !help {
+    if class == "raw" && json {
         let mut name = e.name();
         if e.class != "raw" {
             name.push_str(" with these arguments");
@@ -721,39 +852,67 @@ fn run_entry(e: &Entry, mut args: Vec<OsString>, json: bool) -> i32 {
     if e.group == "usb" && e.action == "open" && args.first().is_some_and(|a| is(a, "-E")) {
         fixed.insert(0, args.remove(0));
     }
+    if e.group == "nfc" && e.action == "read" {
+        match args.as_slice() {
+            [] => args.push(OsString::from("short")),
+            [mode] if is(mode, "short") || is(mode, "full") => {}
+            _ => {
+                err!("usage: tpp nfc read [short | full]");
+                return 2;
+            }
+        }
+    }
     fixed.extend(args);
-    if (class == "stream" || (e.imp == "location" && !json)) && !help {
+    if (e.imp == "notification" && fixed.first().is_some_and(|arg| is(arg, "--help-actions")))
+        || (e.group == "dialog" && e.action == "list" && !json)
+    {
+        let mut output = Vec::new();
+        let status = api::run_to(&e.imp, &fixed, &mut output, false);
+        write_help(&public_help(e, &String::from_utf8_lossy(&output)));
+        return status;
+    }
+    if class == "stream" || (e.imp == "location" && !json) {
         return run_stream(&e.imp, &fixed, json);
+    }
+    if e.imp == "speech-to-text" && !json {
+        return api::run_to(&e.imp, &fixed, &mut io::stdout(), true);
     }
     if class == "raw" || (class == "text" && !json) {
         return api::run(&e.imp, &fixed);
     }
-    let acknowledge = !help
-        && matches!(
-            e.imp.as_str(),
-            "vibrate"
-                | "toast"
-                | "torch"
-                | "notification"
-                | "notification-remove"
-                | "brightness"
-                | "clipboard-set"
-                | "wifi-enable"
-                | "telephony-call"
-                | "media-scan"
-                | "sms-send"
-                | "infrared-transmit"
-                | "tts-speak"
-                | "download"
-                | "share"
-                | "wallpaper"
-                | "notification-channel"
-        )
-        || (!help
-            && e.imp == "media-player"
-            && typed
-                .first()
-                .is_some_and(|arg| matches!(arg.as_str(), "play" | "pause" | "stop")));
+    let acknowledge = matches!(
+        e.imp.as_str(),
+        "vibrate"
+            | "toast"
+            | "torch"
+            | "notification"
+            | "notification-remove"
+            | "brightness"
+            | "clipboard-set"
+            | "wifi-enable"
+            | "telephony-call"
+            | "media-scan"
+            | "sms-send"
+            | "infrared-transmit"
+            | "tts-speak"
+            | "download"
+            | "share"
+            | "wallpaper"
+            | "notification-channel"
+            | "dialog"
+            | "saf-write"
+            | "saf-rm"
+            | "api-start"
+            | "api-stop"
+    ) || matches!(
+        (e.group.as_str(), e.action.as_str()),
+        ("audio", "record" | "stop")
+            | ("job-scheduler", "schedule" | "cancel" | "cancel-all")
+            | ("volume", "set")
+    ) || (e.imp == "media-player"
+        && typed
+            .first()
+            .is_some_and(|arg| matches!(arg.as_str(), "play" | "pause" | "stop")));
     run_captured(&class, &e.imp, &fixed, json, acknowledge)
 }
 
@@ -761,6 +920,12 @@ fn run_entry(e: &Entry, mut args: Vec<OsString>, json: bool) -> i32 {
 /// passed on exactly as given. A leading "tpp --json" is added at the end, in
 /// front of a "--" if there is one.
 fn run_plugin(plugin: &Path, lead_json: bool, mut args: Vec<OsString>) -> i32 {
+    if args
+        .first()
+        .is_some_and(|arg| is(arg, "--help") || is(arg, "-h"))
+    {
+        return plugin_help(plugin, args);
+    }
     if lead_json {
         let at = args.iter().position(|a| is(a, "--")).unwrap_or(args.len());
         args.insert(at, OsString::from("--json"));
@@ -835,8 +1000,22 @@ pub fn run(mut args: Vec<OsString>) -> i32 {
     let group = lossy(&rest.remove(0));
 
     match group.as_str() {
-        "help" => return show_help(&app, &rest),
+        "help" => {
+            if rest
+                .first()
+                .is_some_and(|arg| is(arg, "--help") || is(arg, "-h"))
+            {
+                return show_help(&app, &[OsString::from("help")]);
+            }
+            return show_help(&app, &rest);
+        }
         "list" => {
+            if rest
+                .first()
+                .is_some_and(|arg| is(arg, "--help") || is(arg, "-h"))
+            {
+                return show_help(&app, &[OsString::from("list")]);
+            }
             if rest.first().is_some_and(|a| is(a, "--names")) {
                 write_out(list_names(&app).as_bytes());
             } else {
@@ -856,6 +1035,9 @@ pub fn run(mut args: Vec<OsString>) -> i32 {
         let json = lead_json || found;
         if let Some(e) = app.table.find(&group, "-") {
             return run_entry(e, argv, json);
+        }
+        if group == "dialog" && argv.is_empty() {
+            return run_entry(app.table.find("dialog", "show").unwrap(), argv, json);
         }
         if argv.is_empty() {
             if let Some(e) = app

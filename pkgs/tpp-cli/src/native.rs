@@ -6,7 +6,7 @@
 //! (`tpp-session`). The same code answers to `tpp-session` as argv[0].
 
 use std::ffi::OsString;
-use std::io::{IsTerminal, Write};
+use std::io::Write;
 
 use tpp_session::cli::{self, Environment};
 use tpp_session::client::SocketExchange;
@@ -37,7 +37,11 @@ pub fn run(name: &str, args: &[OsString], lead_json: bool) -> i32 {
     debug_assert!(is_native(name));
     if name == "settings" {
         let words = strings(args);
-        if words.is_empty() || matches!(words[0].as_str(), "-h" | "--help" | "help") {
+        if words.is_empty()
+            || words
+                .iter()
+                .any(|word| matches!(word.as_str(), "-h" | "--help" | "help"))
+        {
             print!(
                 "{}",
                 crate::ctx::color_help(
@@ -68,7 +72,7 @@ pub fn run(name: &str, args: &[OsString], lead_json: bool) -> i32 {
 fn run_session(args: &[String]) -> i32 {
     let stdout = std::io::stdout();
     let environment = Environment {
-        color: stdout.is_terminal() && std::env::var_os("NO_COLOR").is_none(),
+        color: crate::ctx::use_color(),
     };
     let exchange = SocketExchange::from_environment();
     let mut out = stdout.lock();

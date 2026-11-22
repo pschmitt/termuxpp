@@ -69,7 +69,27 @@ pub fn color_help(text: &str) -> String {
         {
             result.push_str(&format!("\x1b[1;36m{content}\x1b[0m{newline}"));
         } else {
-            result.push_str(line);
+            let mut words = content.split_inclusive(char::is_whitespace);
+            let first = words
+                .clone()
+                .find(|word| !word.trim().is_empty())
+                .unwrap_or("");
+            let is_row = content.starts_with("  ") && !content.starts_with("    ");
+            let mut first_word = true;
+            for word in &mut words {
+                let token = word.trim_end();
+                let is_option = token.trim_start_matches(['[', '(', '\'']).starts_with('-');
+                if is_option || (is_row && first_word && !token.is_empty() && word == first) {
+                    result.push_str(if is_option { "\x1b[33m" } else { "\x1b[32m" });
+                    result.push_str(token);
+                    result.push_str("\x1b[0m");
+                    result.push_str(&word[token.len()..]);
+                } else {
+                    result.push_str(word);
+                }
+                first_word &= token.is_empty();
+            }
+            result.push_str(newline);
         }
     }
     result

@@ -345,8 +345,8 @@ fn silent_actions_acknowledge_requests() {
         &["torch", "on"],
         &["notification", "send", "-t", "hello"],
         &["notification", "remove", "example"],
-        &["notification", "channel", "example", "Example"],
-        &["notification", "channel", "-d", "example"],
+        &["notification", "create-channel", "example", "Example"],
+        &["notification", "delete-channel", "example"],
         &["media", "player", "play"],
         &["media", "player", "pause"],
         &["media", "player", "stop"],
@@ -460,12 +460,12 @@ fn empty_output_and_exit_status() {
     let (o, _) = fx.app(&["--json", "battery"], b"");
     assert_eq!(out(&o), "null\n");
 
-    // saf rm exits with the number that the app answers
-    let (o, call) = fx.app(&["saf", "rm", "content://x"], b"7\n");
+    // saf remove exits with the number that the app answers
+    let (o, call) = fx.app(&["saf", "remove", "content://x"], b"7\n");
     assert_eq!(code(&o), 7);
     assert_eq!(call.method(), "SAF");
     assert_eq!(call.extra("uri"), Some("content://x"));
-    let (o, _) = fx.app(&["saf", "rm", "content://x"], b"0\n");
+    let (o, _) = fx.app(&["saf", "remove", "content://x"], b"0\n");
     assert_eq!(code(&o), 0);
 }
 
@@ -770,10 +770,41 @@ fn every_command_answers_help_from_the_binary() {
         let words: Vec<&str> = name.split(' ').collect();
         let mut args = words.clone();
         args.push("--help");
-        let o = fx.run(&args);
+        let o = fx
+            .command(&args)
+            .env("CLICOLOR_FORCE", "1")
+            .output_retry()
+            .unwrap();
+        assert!(out(&o).contains("\x1b["), "{name}");
         assert_eq!(code(&o), 0, "{name}: {}", err(&o));
         assert!(!out(&o).is_empty(), "{name}");
         seen += 1;
     }
     assert!(seen > 50, "{seen}");
+}
+
+#[test]
+fn dialog_reports_progress_and_keeps_the_answer_on_stdout() {
+    let fx = Fixture::new("dialog-feedback");
+    let (output, call) = fx.app(
+        &["dialog", "show", "text", "--title", "Your name"],
+        br#"{"code":-1,"text":"Ada"}"#,
+    );
+    assert_eq!(code(&output), 0);
+    assert_eq!(call.method(), "Dialog");
+    assert_eq!(call.extra("input_title"), Some("Your name"));
+    assert!(err(&output).contains("Answer on the device"));
+    assert!(out(&output).contains("Ada"));
+    assert!(!out(&output).contains("Opening dialog"));
+
+    let (output, _) = fx.app(&["--json", "dialog"], br#"{"code":-1,"text":"Ada"}"#);
+    assert!(err(&output).is_empty());
+    assert!(out(&output).contains(r#""text": "Ada""#));
+    let output = fx.run(&["dialog", "list"]);
+    assert_eq!(code(&output), 0);
+    assert!(out(&output).contains("confirm"));
+
+    let rejected = fx.run(&["dialog", "show", "-l"]);
+    assert_eq!(code(&rejected), 2);
+    assert!(err(&rejected).contains("tpp dialog list"));
 }

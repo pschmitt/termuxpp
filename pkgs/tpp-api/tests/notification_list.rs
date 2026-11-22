@@ -38,7 +38,7 @@ fn missing_notification_access_fails_with_the_message_and_no_stdout() {
     assert_eq!(out.stdout_str(), "");
     assert_eq!(
         out.stderr_str(),
-        format!("tpp notification list: {ACCESS_ERROR}\n")
+        format!("tpp notification list: {ACCESS_ERROR}\nOn TermuxPP guests, run 'tpp permissions grant notification-access', then retry.\n")
     );
 }
 

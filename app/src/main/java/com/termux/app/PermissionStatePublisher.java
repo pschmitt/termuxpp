@@ -15,6 +15,7 @@ import android.os.Process;
 import android.provider.Settings;
 
 import androidx.annotation.NonNull;
+import androidx.core.app.NotificationManagerCompat;
 import androidx.core.content.ContextCompat;
 
 import org.json.JSONException;
@@ -144,6 +145,8 @@ public final class PermissionStatePublisher {
     private JSONObject specialAccess(@NonNull Set<String> requested) throws JSONException {
         JSONObject result = new JSONObject();
         int sdk = Build.VERSION.SDK_INT;
+        result.put("notification-access", NotificationManagerCompat.getEnabledListenerPackages(context)
+            .contains(context.getPackageName()));
         if (sdk >= 23 && requested.contains("android.permission.SYSTEM_ALERT_WINDOW"))
             result.put("overlay", Settings.canDrawOverlays(context));
         if (sdk >= 30 && requested.contains("android.permission.MANAGE_EXTERNAL_STORAGE"))

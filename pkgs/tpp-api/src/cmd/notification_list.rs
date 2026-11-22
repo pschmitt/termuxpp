@@ -47,6 +47,11 @@ pub fn run(args: &[String], io: &mut Io) -> i32 {
             &message
         };
         io.errln(&format!("{NAME}: {message}"));
+        if message.starts_with("Notification access is not granted to TermuxPP.") {
+            io.errln(
+                "On TermuxPP guests, run 'tpp permissions grant notification-access', then retry.",
+            );
+        }
         return 1;
     }
     io.outln(&output);

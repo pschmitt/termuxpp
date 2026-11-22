@@ -1,7 +1,7 @@
 //! The command and option tables (see `commands.rs`) as the dispatcher uses
 //! them. An action of `-` stands for a command without one.
 
-use crate::commands::{Command, Options};
+use crate::commands::{long_options, Command, Options};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Entry {
@@ -100,7 +100,27 @@ impl Table {
             .map(|o| OptionRow {
                 group: o.group.to_string(),
                 action: o.action.to_string(),
-                words: o.words.split_whitespace().map(str::to_string).collect(),
+                words: o
+                    .words
+                    .split_whitespace()
+                    .map(|word| {
+                        let (flag, suffix) = word.split_once(':').unwrap_or((word, ""));
+                        let mappings = commands
+                            .iter()
+                            .find(|c| c.group == o.group && c.action == o.action)
+                            .map_or(&[][..], |c| long_options(c.imp));
+                        if let Some((_, name)) = mappings.iter().find(|(short, _)| *short == flag) {
+                            let suffix = if word.contains(':') {
+                                format!(":{suffix}")
+                            } else {
+                                String::new()
+                            };
+                            format!("{name}{suffix}")
+                        } else {
+                            word.to_string()
+                        }
+                    })
+                    .collect(),
             })
             .collect();
         Table {
