@@ -281,6 +281,11 @@ fn silent_actions_acknowledge_requests() {
         &["torch", "on"],
         &["notification", "send", "-t", "hello"],
         &["notification", "remove", "example"],
+        &["notification", "channel", "example", "Example"],
+        &["notification", "channel", "-d", "example"],
+        &["media", "player", "play"],
+        &["media", "player", "pause"],
+        &["media", "player", "stop"],
         &["brightness", "100"],
         &["clipboard", "set", "example"],
         &["wifi", "enable"],
@@ -308,6 +313,8 @@ fn silent_actions_acknowledge_requests() {
             "{command:?}"
         );
     }
+    let (info, _) = fx.app(&["media", "player", "info"], b"");
+    assert_eq!(out(&info), "");
     let invalid = fx.run(&["torch", "invalid"]);
     assert_ne!(code(&invalid), 0);
     assert!(!out(&invalid).contains("Request sent"));

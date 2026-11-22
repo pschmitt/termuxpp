@@ -619,7 +619,13 @@ fn run_entry(e: &Entry, mut args: Vec<OsString>, json: bool) -> i32 {
                 | "download"
                 | "share"
                 | "wallpaper"
-        );
+                | "notification-channel"
+        )
+        || (!help
+            && e.imp == "media-player"
+            && typed
+                .first()
+                .is_some_and(|arg| matches!(arg.as_str(), "play" | "pause" | "stop")));
     run_captured(&class, &e.imp, &fixed, json, acknowledge)
 }
 
