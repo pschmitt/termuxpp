@@ -5,44 +5,19 @@ on:
     branches:
       - main
     paths:
-      - 'nix/nixpp/**'
+      - 'pkgs/**'
       - flake.nix
       - flake.lock
       - .github/workflows/nixpp.yml
-  pull_request:
-    paths:
-      - 'nix/nixpp/**'
-      - flake.nix
-      - flake.lock
-      - .github/workflows/nixpp.yml
-  workflow_dispatch:
 
 concurrency:
   group: nixpp-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # The guest nixpp and helpers (packages.aarch64-linux), built natively on arm
-  # runners with this flake's lock. nixbot builds the x86_64 outputs, including
-  # the Android/Bionic nixpp-runtime-termux (the NDK only runs on x86_64).
-  nix-aarch64:
-    permissions:
-      contents: read
-      id-token: write
-    uses: pschmitt/ci-workflows/.github/workflows/nix-build.yaml@main
-    with:
-      runner: ubuntu-26.04-arm
-      system: aarch64-linux
-      pin-prefix: gh-termuxpp-main
-    secrets:
-      s3_store: ${{ secrets.NIKS3_S3_STORE }}
-      s3_access_key: ${{ secrets.NIKS3_S3_ACCESS_KEY }}
-      s3_secret_key: ${{ secrets.NIKS3_S3_SECRET_KEY }}
-
   # nixos-config builds these with its own nixpkgs (termuxpp.inputs.nixpkgs
-  # follows it), so the job above never matches its guest systems. Build the
-  # same packages with its current pin, so its next termuxpp bump substitutes
-  # them instead of compiling nixpp in its CI.
+  # follows it), so this flake's Circus builds do not match its guest systems.
+  # Prewarm the cache with the consumer's pin for its next termuxpp bump.
   nixos-config:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
