@@ -29,12 +29,6 @@
             app:useSimpleSummaryProvider="false" />
 
         <Preference
-            app:icon="@drawable/ui_ic_info"
-            app:key="adb_shell_setup"
-            app:persistent="false"
-            app:title="@string/settings_adb_setup_title" />
-
-        <Preference
             app:icon="@drawable/ui_ic_lock"
             app:fragment="com.termux.app.fragments.settings.termux.AdbShellAuthorizationsPreferencesFragment"
             app:key="adb_shell_authorizations"

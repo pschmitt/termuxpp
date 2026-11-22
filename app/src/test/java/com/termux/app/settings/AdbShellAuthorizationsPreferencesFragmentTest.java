@@ -29,6 +29,7 @@ import com.termux.app.AdbShellService;
 import com.termux.app.activities.SettingsActivity;
 import com.termux.app.fragments.settings.termux.AdbShellAuthorizationPreferencesFragment;
 import com.termux.app.fragments.settings.termux.AdbShellAuthorizationsPreferencesFragment;
+import com.termux.app.fragments.settings.termux.DebuggingPreferencesFragment;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -97,6 +98,27 @@ public class AdbShellAuthorizationsPreferencesFragmentTest {
         arguments.putString(AdbShellAuthorizationsPreferencesFragment.ARG_FINGERPRINT, fingerprint);
         fragment.setArguments(arguments);
         return fragment;
+    }
+
+    @Test
+    public void networkRowsOpenDialogsAndSetupRowIsGone() {
+        DebuggingPreferencesFragment debugging = show(new DebuggingPreferencesFragment(), false);
+        assertNull(debugging.findPreference("adb_shell_setup"));
+
+        debugging.findPreference("adb_shell_current_network").performClick();
+        ShadowLooper.idleMainLooper();
+        Dialog network = ShadowDialog.getLatestDialog();
+        assertNotNull(network);
+        assertTrue(network.isShowing());
+        network.dismiss();
+
+        debugging.findPreference("adb_shell_allowed_ssids").performClick();
+        ShadowLooper.idleMainLooper();
+        Dialog allowed = ShadowDialog.getLatestDialog();
+        assertNotNull(allowed);
+        assertTrue(allowed.isShowing());
+        assertTrue(allowed != network);
+        allowed.dismiss();
     }
 
     @Test

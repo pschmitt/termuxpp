@@ -40,11 +40,13 @@
         <item>teal</item>
         <item>rose</item>
     </string-array>
-    <string name="settings_adb_setup_title">Setup and security</string>
     <string name="settings_adb_status_on">On</string>
     <string name="settings_adb_status_off">Off</string>
     <string name="settings_adb_network_any">Any network</string>
     <string name="settings_adb_network_permission">Location permission needed</string>
+    <string name="settings_adb_network_allow_location">Allow location</string>
+    <string name="settings_adb_network_open_settings">Open app settings</string>
+    <string name="settings_adb_network_details">%1$s\n%2$s</string>
     <string name="settings_adb_network_none">No readable Wi-Fi network</string>
     <string name="settings_adb_network_trusted">Trusted network</string>
     <string name="settings_adb_network_untrusted">Untrusted network</string>

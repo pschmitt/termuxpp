@@ -5,6 +5,10 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.net.Uri;
+import android.provider.Settings;
+import android.widget.EditText;
+import android.widget.LinearLayout;
 
 import android.widget.TextView;
 import dev.pschmitt.termux.shared.interact.DialogUtils;
@@ -53,27 +57,13 @@ public class DebuggingPreferencesFragment extends GroupedPreferencesFragment {
         configureAdbShellPreference(context);
         configureAllowedSsidsPreference();
         configureCurrentNetworkPreference(context);
-        configureSetupPreference(context);
 
         for (String key : new String[] {"log_level", "terminal_view_key_logging_enabled",
             "plugin_error_notifications_enabled", "crash_report_notifications_enabled",
-            "adb_shell_current_network", "adb_shell_allowed_ssids", "adb_shell_setup", "adb_shell_authorizations"}) {
+            "adb_shell_current_network", "adb_shell_allowed_ssids", "adb_shell_authorizations"}) {
             Preference row = findPreference(key);
             if (row != null) row.setIcon(null);
         }
-    }
-
-    private void configureSetupPreference(@NonNull Context context) {
-        Preference setup = findPreference("adb_shell_setup");
-        if (setup == null) return;
-        setup.setOnPreferenceClickListener(preference -> {
-            String details = getString(R.string.adb_shell_enabled_summary) + "\n\n"
-                + getString(R.string.adb_shell_allowed_ssids_dialog) + "\n\n"
-                + getString(R.string.adb_shell_current_network_background);
-            DialogUtils.builder(context).setTitle(R.string.settings_adb_setup_title)
-                .setMessage(details).setPositiveButton(android.R.string.ok, null).show();
-            return true;
-        });
     }
 
     private void configureAllowedSsidsPreference() {
@@ -94,6 +84,36 @@ public class DebuggingPreferencesFragment extends GroupedPreferencesFragment {
             postNetworkRefresh();
             return true;
         });
+    }
+
+    @Override
+    public void onDisplayPreferenceDialog(Preference preference) {
+        if (!"adb_shell_allowed_ssids".equals(preference.getKey())) {
+            super.onDisplayPreferenceDialog(preference);
+            return;
+        }
+
+        androidx.preference.EditTextPreference allowed = (androidx.preference.EditTextPreference) preference;
+        Context context = requireContext();
+        EditText input = new EditText(context);
+        input.setSingleLine(true);
+        input.setText(allowed.getText());
+        input.setSelection(input.length());
+        LinearLayout content = new LinearLayout(context);
+        int inset = Math.round(24 * getResources().getDisplayMetrics().density);
+        content.setPadding(inset, 0, inset, 0);
+        content.addView(input, new LinearLayout.LayoutParams(-1, -2));
+
+        DialogUtils.builder(context)
+            .setTitle(allowed.getDialogTitle())
+            .setMessage(allowed.getDialogMessage())
+            .setView(content)
+            .setPositiveButton(android.R.string.ok, (dialog, which) -> {
+                String value = input.getText().toString();
+                if (allowed.callChangeListener(value)) allowed.setText(value);
+            })
+            .setNegativeButton(android.R.string.cancel, null)
+            .show();
     }
 
     @Override
@@ -160,33 +180,48 @@ public class DebuggingPreferencesFragment extends GroupedPreferencesFragment {
         androidx.preference.Preference network = findPreference("adb_shell_current_network");
         if (network == null) return;
         network.setOnPreferenceClickListener(preference -> {
-            if (androidx.core.content.ContextCompat.checkSelfPermission(context,
-                android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                locationPermission.launch(android.Manifest.permission.ACCESS_FINE_LOCATION);
-                return true;
-            }
-            if (!hasBackgroundLocation(context)) {
-                // Android 11+ answers this request with the app's location settings page.
-                locationPermission.launch(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION);
-                return true;
-            }
+            refreshCurrentNetwork(context);
+            CharSequence summary = network.getSummary();
             String ssid = AdbShellService.currentSsid(context);
             String list = currentAllowedSsids();
-            if (ssid == null || (!list.isEmpty() && AdbShellService.permitsSsid(list, "\"" + ssid + "\""))) return true;
-            DialogUtils.builder(context, R.drawable.ui_ic_terminal, false)
-                .setTitle(getString(R.string.adb_shell_trust_network_title, ssid))
-                .setMessage(R.string.adb_shell_trust_network_message)
-                .setPositiveButton(R.string.adb_shell_trust_network_confirm, (dialog, which) -> {
-                    androidx.preference.EditTextPreference edit = findPreference("adb_shell_allowed_ssids");
-                    if (edit == null) return;
-                    edit.setText(list.isEmpty() ? ssid : list + "," + ssid);
-                    refreshCurrentNetwork(context);
-                })
-                .setNegativeButton(android.R.string.cancel, null)
-                .show();
+            com.google.android.material.dialog.MaterialAlertDialogBuilder dialog = DialogUtils.builder(context)
+                .setTitle(network.getTitle())
+                .setMessage(ssid == null ? summary : getString(R.string.settings_adb_network_details, ssid, summary))
+                .setNegativeButton(android.R.string.cancel, null);
+            if (androidx.core.content.ContextCompat.checkSelfPermission(context,
+                android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                dialog.setPositiveButton(R.string.settings_adb_network_allow_location, (ignored, which) ->
+                    locationPermission.launch(android.Manifest.permission.ACCESS_FINE_LOCATION));
+            } else if (!hasBackgroundLocation(context)) {
+                dialog.setMessage(getString(R.string.settings_adb_network_details,
+                    ssid == null ? summary : ssid, getString(R.string.adb_shell_current_network_background)));
+                dialog.setPositiveButton(R.string.settings_adb_network_open_settings, (ignored, which) ->
+                    startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.fromParts("package", context.getPackageName(), null))));
+            } else if (ssid != null && (list.isEmpty() || !AdbShellService.permitsSsid(list, '"' + ssid + '"'))) {
+                dialog.setPositiveButton(R.string.adb_shell_trust_network_confirm, (ignored, which) ->
+                    confirmTrustNetwork(context, ssid, list));
+            } else {
+                dialog.setNegativeButton(android.R.string.ok, null);
+            }
+            dialog.show();
             return true;
         });
         refreshCurrentNetwork(context);
+    }
+
+    private void confirmTrustNetwork(Context context, String ssid, String list) {
+        DialogUtils.builder(context, R.drawable.ui_ic_terminal, false)
+            .setTitle(getString(R.string.adb_shell_trust_network_title, ssid))
+            .setMessage(R.string.adb_shell_trust_network_message)
+            .setPositiveButton(R.string.adb_shell_trust_network_confirm, (dialog, which) -> {
+                androidx.preference.EditTextPreference edit = findPreference("adb_shell_allowed_ssids");
+                if (edit == null) return;
+                edit.setText(list.isEmpty() ? ssid : list + "," + ssid);
+                refreshCurrentNetwork(context);
+            })
+            .setNegativeButton(android.R.string.cancel, null)
+            .show();
     }
 
     private String currentAllowedSsids() {
