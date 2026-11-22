@@ -20,13 +20,13 @@ import org.robolectric.RobolectricTestRunner;
 public class CompanionAppsPreferencesTest {
 
     @Test
-    public void rootSettingsGroupsAllTermuxppCompanionsInOneSubmenu() {
+    public void rootSettingsOmitsReadOnlyIntegrationEntries() {
         SettingsActivity activity = Robolectric.buildActivity(SettingsActivity.class).setup().get();
         Fragment rootFragment = activity.getSupportFragmentManager().findFragmentById(R.id.settings);
         Assert.assertTrue(rootFragment instanceof PreferenceFragmentCompat);
         PreferenceFragmentCompat root = (PreferenceFragmentCompat) rootFragment;
 
-        Assert.assertNotNull(root.findPreference("companion_apps"));
+        Assert.assertNull(root.findPreference("companion_apps"));
         Assert.assertNull(root.findPreference("termux_api"));
         Assert.assertNull(root.findPreference("termux_tasker"));
         Assert.assertNull(root.findPreference("termux_float"));
@@ -40,11 +40,11 @@ public class CompanionAppsPreferencesTest {
         SettingsActivity activity = Robolectric.buildActivity(SettingsActivity.class).setup().get();
         PreferenceFragmentCompat root = (PreferenceFragmentCompat)
             activity.getSupportFragmentManager().findFragmentById(R.id.settings);
-        Preference integrations = root.findPreference("companion_apps");
-        Assert.assertTrue(activity.onPreferenceStartFragment(root, integrations));
+        Preference services = root.findPreference("termux_services");
+        Assert.assertTrue(activity.onPreferenceStartFragment(root, services));
         activity.getSupportFragmentManager().executePendingTransactions();
 
-        Assert.assertEquals(integrations.getTitle(), activity.getTitle());
+        Assert.assertEquals(services.getTitle(), activity.getTitle());
         Assert.assertTrue(activity.getSupportFragmentManager().popBackStackImmediate());
         Assert.assertEquals(activity.getString(R.string.title_activity_termux_settings), activity.getTitle());
     }

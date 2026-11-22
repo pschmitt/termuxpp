@@ -186,7 +186,6 @@ public final class SettingsSearchIndex {
         screens.put(FRAGMENT_PREFIX + "termux.TerminalIOPreferencesFragment", R.xml.termux_terminal_io_preferences);
         screens.put(FRAGMENT_PREFIX + "termux.PropertiesPreferencesFragment", 0);
         screens.put(FRAGMENT_PREFIX + "termux.ServicesPreferencesFragment", R.xml.termux_services_preferences);
-        screens.put(FRAGMENT_PREFIX + "CompanionAppsPreferencesFragment", R.xml.companion_apps_preferences);
         screens.put(FRAGMENT_PREFIX + "UpdatesPreferencesFragment", R.xml.updates_preferences);
         screens.put(FRAGMENT_PREFIX + "termux.DebuggingPreferencesFragment", R.xml.termux_debugging_preferences);
         screens.put(FRAGMENT_PREFIX + "AboutPreferencesFragment", R.xml.about_preferences);

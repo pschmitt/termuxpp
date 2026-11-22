@@ -28,13 +28,6 @@
             app:title="@string/nix_services_title"
             app:summary="@string/nix_services_summary"
             app:fragment="com.termux.app.fragments.settings.termux.ServicesPreferencesFragment" />
-
-        <com.termux.app.settings.SettingsNavigationPreference
-            app:key="companion_apps"
-            app:icon="@drawable/ui_ic_extension"
-            app:title="@string/companion_apps_title"
-            app:summary="@string/companion_apps_summary"
-            app:fragment="com.termux.app.fragments.settings.CompanionAppsPreferencesFragment"/>
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/settings_section_app">
