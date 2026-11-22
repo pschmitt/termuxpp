@@ -588,8 +588,11 @@ fn upgrade_system(
                 "upgrade requires NIXPP_RUNTIME or --runtime",
             )?)
         };
-        ui.step("verifying the cache pin");
-        let generation = guest::cached_upgrade(&target, args.dry_run, &mut ProcessBuilder)?;
+        ui.step(&format!("verifying the cache pin for {}", target.host));
+        let generation =
+            guest::cached_upgrade(&target, args.dry_run, &mut ProcessBuilder, |path| {
+                ui.step(&format!("verified cache pin selects {}", path.display()));
+            })?;
         if let Some(runtime) = runtime {
             guest::activate_system(
                 &runtime,
@@ -634,7 +637,7 @@ fn doctor(ui: &Ui, socket: &Path) -> Result<()> {
     let store = guest::probe_store(&mut builder, None);
     let builders = guest::probe_builders(&mut builder);
     let cache = guest::upgrade_target(Path::new(UPGRADE_CONFIG), None, None)
-        .and_then(|target| guest::cached_upgrade(&target, true, &mut builder))
+        .and_then(|target| guest::cached_upgrade(&target, true, &mut builder, |_| {}))
         .map(|_| ());
     let checks = [
         ("native controller", controller),

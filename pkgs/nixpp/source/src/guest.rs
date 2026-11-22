@@ -620,6 +620,7 @@ pub fn cached_upgrade(
     target: &UpgradeTarget,
     dry_run: bool,
     builder: &mut dyn Builder,
+    report_target: impl FnOnce(&Path),
 ) -> Result<PathBuf> {
     let cache = target
         .cache
@@ -683,6 +684,7 @@ pub fn cached_upgrade(
         "--sigs-needed",
         "1",
     ]))?;
+    report_target(Path::new(path));
     if !dry_run {
         builder.output(&command(&[
             "copy",
@@ -1457,10 +1459,13 @@ mod tests {
             .into_iter(),
             commands: Vec::new(),
         };
-        assert_eq!(
-            cached_upgrade(&target, true, &mut builder).unwrap(),
-            Path::new(&path)
-        );
+        let mut reported = None;
+        let selected = cached_upgrade(&target, true, &mut builder, |path| {
+            reported = Some(path.to_owned());
+        })
+        .unwrap();
+        assert_eq!(selected, Path::new(&path));
+        assert_eq!(reported, Some(selected));
         assert_eq!(builder.commands[0], ["/pinned/read-pin"]);
         assert_eq!(
             builder.commands[2],
@@ -1482,7 +1487,12 @@ mod tests {
         );
         assert_eq!(builder.commands.len(), 3);
         let mut builder = Scripted::new(&path.replace("-test", "-other"));
-        assert!(cached_upgrade(&target, false, &mut builder).is_err());
+        assert!(
+            cached_upgrade(&target, false, &mut builder, |_| {
+                panic!("must not report an invalid pin");
+            })
+            .is_err()
+        );
         assert_eq!(builder.commands.len(), 1);
         let mut builder = CacheFixture {
             results: vec![
@@ -1492,7 +1502,12 @@ mod tests {
             .into_iter(),
             commands: Vec::new(),
         };
-        assert!(cached_upgrade(&target, false, &mut builder).is_err());
+        assert!(
+            cached_upgrade(&target, false, &mut builder, |_| {
+                panic!("must not report an unverified pin");
+            })
+            .is_err()
+        );
         assert_eq!(builder.commands.len(), 2);
     }
 
