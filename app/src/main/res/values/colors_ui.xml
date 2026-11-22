@@ -22,4 +22,9 @@
     <color name="ui_settings_search">#EDE3F5</color>
     <color name="ui_settings_group">#F3EAF9</color>
     <color name="ui_session_shelf_scrim">#5C000000</color>
+    <color name="ui_sheet_surface">#FAF9FC</color>
+    <color name="ui_sheet_card">#F2F0F5</color>
+    <color name="ui_sheet_border">#DFDCE7</color>
+    <color name="ui_sheet_running">#D6F5E9</color>
+    <color name="ui_sheet_on_running">#12654F</color>
 </resources>

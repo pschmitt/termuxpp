@@ -21,4 +21,9 @@
     <color name="ui_session_shelf">#291F33</color>
     <color name="ui_settings_search">#403450</color>
     <color name="ui_settings_group">#2B2235</color>
+    <color name="ui_sheet_surface">#111218</color>
+    <color name="ui_sheet_card">#181921</color>
+    <color name="ui_sheet_border">#2A2B36</color>
+    <color name="ui_sheet_running">#122D2B</color>
+    <color name="ui_sheet_on_running">#65DFC2</color>
 </resources>

@@ -191,6 +191,7 @@ public class TermuxContextMenuSheet {
     private final List<Object> mRows = new ArrayList<>();
     @Nullable private Header mHeader;
     private boolean mSessionHeader;
+    private boolean mSessionRunning;
     /** The number of lines of the longest card preview. */
     private int mPreviewLines = 1;
 
@@ -235,6 +236,11 @@ public class TermuxContextMenuSheet {
         setHeader(R.drawable.ui_ic_menu_terminal, title, detail);
         mSessionHeader = true;
         return this;
+    }
+
+    public TermuxContextMenuSheet setSessionHeader(CharSequence title, CharSequence detail, boolean running) {
+        mSessionRunning = running;
+        return setSessionHeader(title, detail);
     }
 
     public TermuxContextMenuSheet setSessionHeader(CharSequence title, CharSequence detail,
@@ -538,6 +544,7 @@ public class TermuxContextMenuSheet {
         ((TextView) view.findViewById(R.id.context_header_title)).setText(header.title);
         ((TextView) view.findViewById(R.id.context_header_subtitle)).setText(header.detail);
         if (mSessionHeader) {
+            view.findViewById(R.id.context_header_running).setVisibility(mSessionRunning ? View.VISIBLE : View.GONE);
             float density = view.getResources().getDisplayMetrics().density;
             int gutter = view.getResources().getDimensionPixelSize(R.dimen.ui_gutter);
             LinearLayout.LayoutParams headerParams = (LinearLayout.LayoutParams) view.getLayoutParams();
@@ -546,9 +553,10 @@ public class TermuxContextMenuSheet {
             view.setPaddingRelative((int) (4 * density), (int) (4 * density),
                 (int) (4 * density), (int) (4 * density));
             ImageView icon = view.findViewById(R.id.context_header_icon);
+            icon.setBackgroundResource(R.drawable.ui_sheet_session_badge);
             icon.getLayoutParams().width = (int) (40 * density);
             icon.getLayoutParams().height = (int) (40 * density);
-            icon.setImageTintList(ColorStateList.valueOf(MaterialColors.getColor(icon, R.attr.termuxUiOnContainer)));
+            icon.setImageTintList(ColorStateList.valueOf(MaterialColors.getColor(icon, R.attr.termuxUiOnPrimary)));
             TextView title = view.findViewById(R.id.context_header_title);
             title.setTextSize(18);
             TextView subtitle = view.findViewById(R.id.context_header_subtitle);
@@ -707,6 +715,7 @@ public class TermuxContextMenuSheet {
             if (mCard == null) {
                 mCard = (LinearLayout) LayoutInflater.from(mDialog.getContext())
                     .inflate(R.layout.ui_context_sheet_group_card, mContainer, false);
+                mCard.setClipToOutline(true);
                 LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) mCard.getLayoutParams();
                 int gutter = mContainer.getResources().getDimensionPixelSize(R.dimen.ui_gutter);
                 params.setMargins(gutter, mGap, gutter, 0);

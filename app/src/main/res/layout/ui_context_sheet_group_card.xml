@@ -1,14 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The full-width action rows on the sheet surface. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="vertical">
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginBottom="4dp"
-        android:background="@color/ui_divider"
-        android:importantForAccessibility="no" />
-</LinearLayout>
+    android:background="@drawable/ui_sheet_group_surface"
+    android:orientation="vertical" />

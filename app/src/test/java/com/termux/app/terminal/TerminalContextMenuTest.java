@@ -144,7 +144,12 @@ public class TerminalContextMenuTest {
         // Header keeps the session; Settings is a row now, not a header icon.
         View header = dialog.findViewById(R.id.context_sheet_header);
         Assert.assertEquals("zsh", ((TextView) header.findViewById(R.id.context_header_title)).getText().toString());
+        Assert.assertEquals(View.VISIBLE, header.findViewById(R.id.context_header_running).getVisibility());
         Assert.assertEquals(View.GONE, header.findViewById(R.id.context_header_action).getVisibility());
+        dialog.dismiss();
+        BottomSheetDialog exited = mainSheet(activity, session(null, false, 2, 3));
+        Assert.assertEquals(View.GONE, exited.findViewById(R.id.context_header_running).getVisibility());
+        exited.dismiss();
     }
 
     @Test

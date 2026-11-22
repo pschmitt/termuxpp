@@ -123,7 +123,7 @@ public final class TerminalContextMenu {
      */
     public static TermuxContextMenuSheet populateSheet(@NonNull TermuxContextMenuSheet sheet,
                                                        @NonNull Resources resources, @NonNull State state) {
-        sheet.setSessionHeader(headerTitle(resources, state), headerDetail(resources, state));
+        sheet.setSessionHeader(headerTitle(resources, state), headerDetail(resources, state), state.sessionRunning);
 
         // The frequent actions. Where there is a choice, the shortcut opens a sheet of its own.
         if (state.autoFillEnabled) {

@@ -29,14 +29,37 @@
         android:focusable="true"
         android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/context_header_title"
-            android:layout_width="match_parent"
+        <LinearLayout
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:accessibilityHeading="true"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:textAppearance="@style/TextAppearance.TermuxPP.Title" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/context_header_title"
+                android:layout_width="wrap_content"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:accessibilityHeading="true"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textAppearance="@style/TextAppearance.TermuxPP.Title" />
+
+            <TextView
+                android:id="@+id/context_header_running"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/ui_sheet_running_badge"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="2dp"
+                android:paddingBottom="2dp"
+                android:text="@string/ui_menu_session_running"
+                android:textColor="@color/ui_sheet_on_running"
+                android:textSize="11sp"
+                android:visibility="gone" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/context_header_subtitle"

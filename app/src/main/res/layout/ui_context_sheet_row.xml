@@ -15,7 +15,7 @@
         android:id="@+id/context_row_divider"
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:layout_marginStart="56dp"
+        android:layout_marginStart="60dp"
         android:background="@color/ui_divider"
         android:importantForAccessibility="no"
         android:visibility="gone" />
@@ -31,8 +31,10 @@
 
         <ImageView
             android:id="@+id/context_row_icon"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:background="@drawable/ui_sheet_row_icon_tile"
+            android:padding="4dp"
             android:importantForAccessibility="no" />
 
         <LinearLayout
