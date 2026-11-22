@@ -18,4 +18,8 @@
     <color name="ui_on_active">#3D2E00</color>
     <color name="ui_ripple">#1F6A3FB5</color>
     <color name="ui_scrim">#52000000</color>
+    <color name="ui_session_shelf">#EFE6FA</color>
+    <color name="ui_settings_search">#EDE3F5</color>
+    <color name="ui_settings_group">#F3EAF9</color>
+    <color name="ui_session_shelf_scrim">#5C000000</color>
 </resources>

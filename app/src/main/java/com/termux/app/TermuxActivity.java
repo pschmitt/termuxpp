@@ -1,5 +1,6 @@
 package com.termux.app;
 
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
@@ -7,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.view.ContextMenu;
@@ -67,6 +69,7 @@ import com.termux.view.TerminalViewClient;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.viewpager.widget.ViewPager;
 
@@ -210,6 +213,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         super.onCreate(savedInstanceState);
 
         setContentView(R.layout.activity_termux);
+        configureSessionShelf();
 
         // Load termux shared preferences
         // This will also fail if TermuxConstants.TERMUX_PACKAGE_NAME does not equal applicationId
@@ -943,6 +947,23 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     public void setExtraKeysView(ExtraKeysView extraKeysView) {
         mExtraKeysView = extraKeysView;
+    }
+
+    private void configureSessionShelf() {
+        DrawerLayout drawer = getDrawer();
+        drawer.setScrimColor(ContextCompat.getColor(this, R.color.ui_session_shelf_scrim));
+        View sessions = findViewById(R.id.terminal_sessions_list);
+        float revealOffset = 12f * getResources().getDisplayMetrics().density;
+        drawer.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
+            @Override
+            public void onDrawerSlide(@NonNull View panel, float offset) {
+                boolean animated = Build.VERSION.SDK_INT < Build.VERSION_CODES.O
+                    || ValueAnimator.areAnimatorsEnabled();
+                float direction = panel.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL ? 1f : -1f;
+                float remaining = 1f - offset;
+                sessions.setTranslationX(animated ? direction * revealOffset * remaining * remaining : 0f);
+            }
+        });
     }
 
     public DrawerLayout getDrawer() {

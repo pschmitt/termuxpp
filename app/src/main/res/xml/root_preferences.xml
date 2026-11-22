@@ -1,19 +1,19 @@
 <PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <PreferenceCategory app:title="@string/settings_section_terminal">
-        <Preference
+        <com.termux.app.settings.SettingsNavigationPreference
             app:icon="@drawable/ui_ic_terminal"
             app:title="@string/settings_display"
             app:summary="@string/termux_terminal_view_preferences_summary"
             app:fragment="com.termux.app.fragments.settings.termux.TerminalViewPreferencesFragment"/>
 
-        <Preference
+        <com.termux.app.settings.SettingsNavigationPreference
             app:icon="@drawable/ui_ic_keyboard"
             app:title="@string/settings_input"
             app:summary="@string/termux_terminal_io_preferences_summary"
             app:fragment="com.termux.app.fragments.settings.termux.TerminalIOPreferencesFragment"/>
 
-        <Preference
+        <com.termux.app.settings.SettingsNavigationPreference
             app:icon="@drawable/ui_ic_settings"
             app:key="termux_properties"
             app:title="@string/properties_title"
@@ -22,14 +22,14 @@
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/settings_section_automation">
-        <Preference
+        <com.termux.app.settings.SettingsNavigationPreference
             app:key="termux_services"
             app:icon="@drawable/ui_ic_bolt"
             app:title="@string/nix_services_title"
             app:summary="@string/nix_services_summary"
             app:fragment="com.termux.app.fragments.settings.termux.ServicesPreferencesFragment" />
 
-        <Preference
+        <com.termux.app.settings.SettingsNavigationPreference
             app:key="companion_apps"
             app:icon="@drawable/ui_ic_extension"
             app:title="@string/companion_apps_title"
@@ -38,20 +38,20 @@
     </PreferenceCategory>
 
     <PreferenceCategory app:title="@string/settings_section_app">
-        <Preference
+        <com.termux.app.settings.SettingsNavigationPreference
             app:key="updates"
             app:icon="@drawable/ui_ic_system_update"
             app:title="@string/termux_updates_title"
             app:summary="@string/termux_updates_summary"
             app:fragment="com.termux.app.fragments.settings.UpdatesPreferencesFragment"/>
 
-        <Preference
+        <com.termux.app.settings.SettingsNavigationPreference
             app:icon="@drawable/ui_ic_bug"
             app:title="@string/termux_debugging_preferences_title"
             app:summary="@string/termux_debugging_preferences_summary"
             app:fragment="com.termux.app.fragments.settings.termux.DebuggingPreferencesFragment"/>
 
-        <Preference
+        <com.termux.app.settings.SettingsNavigationPreference
             app:key="about"
             app:icon="@drawable/ui_ic_info"
             app:title="@string/about_preference_title"

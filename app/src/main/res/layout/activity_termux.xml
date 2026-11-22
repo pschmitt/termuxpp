@@ -43,7 +43,8 @@
                 android:dividerHeight="0dp"
                 android:descendantFocusability="blocksDescendants"
                 android:orientation="vertical"
-                android:background="?attr/termuxActivityDrawerBackground">
+                android:clipToOutline="true"
+                android:background="@drawable/ui_session_shelf">
 
                 <LinearLayout
                     android:layout_width="match_parent"

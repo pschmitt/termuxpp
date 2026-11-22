@@ -1,16 +1,23 @@
 package com.termux.app.activities;
 
+import android.animation.ValueAnimator;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SearchView;
+import androidx.core.view.OneShotPreDrawListener;
+import androidx.dynamicanimation.animation.SpringAnimation;
+import androidx.dynamicanimation.animation.SpringForce;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.Observer;
@@ -20,6 +27,7 @@ import androidx.preference.PreferenceFragmentCompat;
 import androidx.preference.PreferenceGroup;
 
 import com.termux.R;
+import com.termux.app.settings.SettingsNavigationPreference;
 import com.termux.app.settings.SettingsSearchIndex;
 
 import java.util.LinkedHashMap;
@@ -37,6 +45,11 @@ public class SettingsActivity extends AppCompatActivity
     private List<SettingsSearchIndex.Result> searchIndex;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
+    private View settingsIntro;
+    private View searchButton;
+    private MenuItem searchAction;
+    private SpringAnimation searchMotion;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -44,6 +57,14 @@ public class SettingsActivity extends AppCompatActivity
         AppCompatActivityUtils.setNightMode(this, NightMode.getAppNightMode().getName(), true);
 
         setContentView(R.layout.activity_settings);
+        settingsIntro = findViewById(R.id.settings_intro);
+        searchButton = findViewById(R.id.settings_search_button);
+        searchButton.setOnClickListener(view -> {
+            if (searchAction != null) {
+                searchAction.setVisible(true);
+                if (!searchAction.expandActionView()) searchAction.setVisible(false);
+            }
+        });
         if (savedInstanceState == null) {
             getSupportFragmentManager()
                 .beginTransaction()
@@ -83,6 +104,7 @@ public class SettingsActivity extends AppCompatActivity
     }
 
     private void updateNavigation() {
+        cancelSearchMotion();
         clearSearch();
         Fragment screen = getSupportFragmentManager().findFragmentById(R.id.settings);
         CharSequence title = null;
@@ -91,6 +113,10 @@ public class SettingsActivity extends AppCompatActivity
             if (preferences != null) title = preferences.getTitle();
         }
         if (title == null && screen != null) title = screen.getTag();
+        boolean home = screen instanceof RootPreferencesFragment;
+        settingsIntro.setVisibility(home ? View.VISIBLE : View.GONE);
+        ActionBar actionBar = getSupportActionBar();
+        if (actionBar != null) actionBar.setDisplayShowTitleEnabled(!home);
         setTitle(title == null ? getString(R.string.title_activity_termux_settings) : title);
         invalidateOptionsMenu();
     }
@@ -98,6 +124,7 @@ public class SettingsActivity extends AppCompatActivity
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         Fragment screen = getSupportFragmentManager().findFragmentById(R.id.settings);
+        searchAction = null;
         if (!(screen instanceof PreferenceFragmentCompat))
             return super.onCreateOptionsMenu(menu);
 
@@ -105,15 +132,29 @@ public class SettingsActivity extends AppCompatActivity
         SearchView search = new SearchView(this);
         search.setQueryHint(getString(label));
         MenuItem item = menu.add(label).setIcon(R.drawable.ui_ic_search).setActionView(search);
-        item.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM | MenuItem.SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW);
+        boolean home = screen instanceof RootPreferencesFragment;
+        searchAction = item;
+        item.setShowAsAction((home ? MenuItem.SHOW_AS_ACTION_ALWAYS : MenuItem.SHOW_AS_ACTION_IF_ROOM)
+            | MenuItem.SHOW_AS_ACTION_COLLAPSE_ACTION_VIEW);
+        if (home) item.setVisible(false);
+        search.setMaxWidth(Integer.MAX_VALUE);
+        search.setBackgroundResource(R.drawable.ui_settings_search_field);
         item.setOnActionExpandListener(new MenuItem.OnActionExpandListener() {
             @Override public boolean onMenuItemActionExpand(MenuItem action) {
+                if (home) enterHomeSearch(search);
                 startSearch((PreferenceFragmentCompat) screen);
                 return true;
             }
 
             @Override public boolean onMenuItemActionCollapse(MenuItem action) {
                 clearSearch();
+                cancelSearchMotion();
+                search.setTranslationY(0f);
+                if (home) {
+                    action.setVisible(false);
+                    if (getSupportFragmentManager().findFragmentById(R.id.settings) == screen)
+                        settingsIntro.setVisibility(View.VISIBLE);
+                }
                 return true;
             }
         });
@@ -129,6 +170,38 @@ public class SettingsActivity extends AppCompatActivity
             }
         });
         return true;
+    }
+
+    private void enterHomeSearch(SearchView search) {
+        int[] origin = new int[2];
+        searchButton.getLocationInWindow(origin);
+        settingsIntro.setVisibility(View.GONE);
+        OneShotPreDrawListener.add(search, () -> {
+            if (!search.isAttachedToWindow() || search.isIconified() || !animationsEnabled()) return;
+            int[] destination = new int[2];
+            search.getLocationInWindow(destination);
+            search.setTranslationY(origin[1] - destination[1]);
+            searchMotion = new SpringAnimation(search, SpringAnimation.TRANSLATION_Y, 0f);
+            searchMotion.getSpring().setDampingRatio(SpringForce.DAMPING_RATIO_NO_BOUNCY)
+                .setStiffness(SpringForce.STIFFNESS_MEDIUM);
+            searchMotion.start();
+        });
+    }
+
+    private void cancelSearchMotion() {
+        if (searchMotion == null) return;
+        searchMotion.cancel();
+        searchMotion = null;
+    }
+
+    @Override
+    protected void onDestroy() {
+        cancelSearchMotion();
+        super.onDestroy();
+    }
+
+    private static boolean animationsEnabled() {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.O || ValueAnimator.areAnimatorsEnabled();
     }
 
     private void rememberVisibility(PreferenceGroup group) {
@@ -157,7 +230,8 @@ public class SettingsActivity extends AppCompatActivity
 
         for (Map.Entry<Preference, Boolean> entry : searchVisibility.entrySet())
             entry.getKey().setVisible(false);
-        if (searchResults == null) {
+        boolean showingResults = searchResults != null;
+        if (!showingResults) {
             searchResults = new PreferenceCategory(this);
             searchResults.setTitle(R.string.settings_search_results);
             searchScreen.addPreference(searchResults);
@@ -166,7 +240,7 @@ public class SettingsActivity extends AppCompatActivity
         int resultNumber = 0;
         for (SettingsSearchIndex.Result result : searchIndex) {
             if (!result.matches(normalized)) continue;
-            Preference item = new Preference(this);
+            Preference item = new SettingsNavigationPreference(this);
             item.setTitle(result.title);
             item.setSummary(result.breadcrumb);
             item.setKey("settings-search-result-" + resultNumber++);
@@ -177,10 +251,17 @@ public class SettingsActivity extends AppCompatActivity
             searchResults.addPreference(item);
         }
         if (resultNumber == 0) {
-            Preference empty = new Preference(this);
+            Preference empty = new SettingsNavigationPreference(this);
             empty.setTitle(R.string.settings_search_empty);
             empty.setSelectable(false);
             searchResults.addPreference(empty);
+        }
+        Fragment fragment = getSupportFragmentManager().findFragmentById(R.id.settings);
+        if (!showingResults && animationsEnabled() && fragment instanceof PreferenceFragmentCompat) {
+            View list = ((PreferenceFragmentCompat) fragment).getListView();
+            list.animate().cancel();
+            list.setAlpha(0f);
+            list.animate().alpha(1f).setDuration(160).start();
         }
     }
 
@@ -204,6 +285,7 @@ public class SettingsActivity extends AppCompatActivity
     private void navigateToSearchResult(@NonNull SettingsSearchIndex.Result result) {
         Fragment caller = getSupportFragmentManager().findFragmentById(R.id.settings);
         if (caller == null) return;
+        if (searchAction != null) searchAction.collapseActionView();
         Fragment destination = caller;
         for (int i = 0; i < result.fragmentPath.size(); i++) {
             String fragmentClass = result.fragmentPath.get(i);

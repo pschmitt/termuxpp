@@ -31,6 +31,12 @@
         <item name="android:textColor">@color/ui_on_surface</item>
     </style>
 
+    <style name="TextAppearance.TermuxPP.SettingsHeadline" parent="TextAppearance.MaterialComponents.Headline4">
+        <item name="android:textSize">34sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textColor">@color/ui_on_surface</item>
+    </style>
+
     <!-- Preference screens use our own rounded-row layouts. -->
     <style name="Preference.TermuxPP" parent="Preference.Material">
         <item name="android:layout">@layout/ui_preference_row</item>

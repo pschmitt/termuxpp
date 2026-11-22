@@ -60,7 +60,7 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
         if (sessionAtRow == null) {
             sessionTitleView.setText(R.string.ui_session_null);
             sessionTitleView.setPaintFlags(sessionTitleView.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
-            sessionTitleView.setTextColor(ContextCompat.getColor(mActivity, R.color.ui_on_surface));
+            sessionTitleView.setTextColor(ContextCompat.getColorStateList(mActivity, R.color.ui_session_row_text));
             sessionSubtitleView.setVisibility(View.GONE);
             sessionRowView.setContentDescription(number + ", " + mActivity.getString(R.string.ui_session_null));
             return sessionRowView;
@@ -100,7 +100,8 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
             sessionTitleView.setPaintFlags(sessionTitleView.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
         }
         boolean failed = !sessionRunning && sessionAtRow.getExitStatus() != 0;
-        sessionTitleView.setTextColor(ContextCompat.getColor(mActivity, failed ? R.color.ui_danger : R.color.ui_on_surface));
+        sessionTitleView.setTextColor(ContextCompat.getColorStateList(mActivity,
+            failed ? R.color.ui_session_failed_text : R.color.ui_session_row_text));
 
         sessionRowView.setContentDescription(subtitle.isEmpty() ? number + ", " + title : number + ", " + title + ", " + subtitle);
         return sessionRowView;

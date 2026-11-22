@@ -52,6 +52,12 @@ TermuxPP runtime behavior. Bare `tpp toast` in a terminal shows how to supply a 
 
 ## Session sidebar
 
+Both apps use an edge drawer for switching sessions. TermuxPP presents it as a
+rounded session shelf with a highlighted current row and a lighter scrim over
+the terminal. The session list settles into place as the drawer opens.
+[Upstream drawer](https://github.com/termux/termux-app/blob/master/app/src/main/res/layout/activity_termux.xml) ·
+[TermuxPP shelf](../../app/src/main/res/layout/activity_termux.xml)
+
 Upstream opens the rename dialog when a session is long-pressed. TermuxPP opens
 session actions instead, including rename, reorder and close; holding the session
 number picks the row up: it follows the finger, the other rows make room as it
@@ -389,7 +395,13 @@ terminal menu can toggle it. `termux-wake-lock` and `termux-wake-unlock` work as
 [service](../../app/src/main/java/com/termux/app/TermuxService.java) and
 [wake lock documentation](terminal-settings.md#wake-lock).
 
-## Recursive Settings search
+## Settings and search
+
+TermuxPP groups the Settings home into Terminal, Automation and services, and
+App and support. Search starts from a field above those groups and moves into the
+toolbar when activated. Results show their location in Settings.
+[Upstream Settings home](https://github.com/termux/termux-app/blob/master/app/src/main/res/xml/root_preferences.xml) ·
+[TermuxPP Settings layout](../../app/src/main/res/layout/activity_settings.xml)
 
 Settings search indexes the reachable preference screens and the dynamically generated TermuxPP
 properties. A result shows its settings path; selecting it opens the owning screen, scrolls to the
