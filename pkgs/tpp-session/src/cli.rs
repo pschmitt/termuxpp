@@ -82,6 +82,19 @@ fn execute(
             let table = table(sessions, environment.color).ok_or_else(|| unexpected(&reply))?;
             let _ = out.write_all(table.as_bytes());
         }
+    } else if matches!(parsed.command, Command::New { .. }) {
+        let Some(Value::String(id)) = reply.get("result") else {
+            return Err(unexpected(&reply));
+        };
+        if parsed.json {
+            let Value::Object(mut entries) = outcome(&parsed.command) else {
+                unreachable!()
+            };
+            entries.push(("id".to_string(), Value::string(id)));
+            print_json(out, &Value::Object(entries), environment);
+        } else {
+            let _ = writeln!(out, "{id}");
+        }
     } else if parsed.json {
         print_json(out, &outcome(&parsed.command), environment);
     }
@@ -125,6 +138,10 @@ fn completions(shell: Shell) -> &'static str {
 fn request(command: &Command) -> Value {
     let mut items = vec![Value::string(command.name())];
     match command {
+        Command::New { name, argv } => {
+            items.push(name.as_deref().map(Value::string).unwrap_or(Value::Null));
+            items.push(Value::Array(argv.iter().map(Value::string).collect()));
+        }
         Command::Close { id } | Command::Focus { id } | Command::Kill { id } => {
             items.push(Value::string(id.as_str()))
         }
@@ -163,6 +180,7 @@ fn outcome(command: &Command) -> Value {
             entries.push(("name".to_string(), Value::string(name.as_str())));
         }
         Command::List
+        | Command::New { .. }
         | Command::Completions { .. }
         | Command::ReloadSettings
         | Command::Switcher => {}

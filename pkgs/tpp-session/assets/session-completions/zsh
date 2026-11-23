@@ -6,6 +6,7 @@ if (( CURRENT == 2 ))
 then
   actions=(
     'list:List terminal sessions'
+    'new:Create and switch to a session'
     'close:Hang up or dismiss a session'
     'focus:Switch to a session'
     'kill:Force-stop a session shell'
@@ -37,6 +38,9 @@ then
   return
 fi
 case $action in
+  new)
+    _arguments '--name[Name of the new session]:name' '--json[Output JSON]' '(-h --help)'{-h,--help}'[Show help]' '*:command:_normal'
+    ;;
   completions)
     (( ${#positional} == 0 )) && compadd - bash fish zsh
     ;;

@@ -33,6 +33,27 @@ public class GhosttyTerminalIntegrationTest {
         });
     }
 
+    @Test
+    public void scrollbackRemainsReadableAfterMoreOutput() {
+        assumeTrue(Arrays.asList(Build.SUPPORTED_64_BIT_ABIS).contains("arm64-v8a"));
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(() -> {
+            TerminalEmulator emulator = new TerminalEmulator(new TerminalOutputRecorder(), 30, 12, 12, 24, 2000, null);
+            try {
+                assertTrue(emulator.enableLibghostty(2000));
+                for (int i = 0; i < 40; i++) append(emulator, "line " + i + "\r\n");
+                int history = emulator.getScreen().getActiveTranscriptRows();
+                assertTrue(history >= 25);
+                emulator.setTopRow(-history);
+                assertEquals("line 0", emulator.getSelectedText(0, -history, 29, -history));
+                append(emulator, "more output\r\n");
+                history = emulator.getScreen().getActiveTranscriptRows();
+                assertEquals("line 0", emulator.getSelectedText(0, -history, 29, -history));
+            } finally {
+                emulator.close();
+            }
+        });
+    }
+
     private void verifyEngine(boolean useLibghostty) {
         TerminalOutputRecorder output = new TerminalOutputRecorder();
         TerminalEmulator emulator = new TerminalEmulator(output, 30, 12, 12, 24, 2000, null);

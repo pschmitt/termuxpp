@@ -6,13 +6,14 @@
 
 pub const MAIN: &str = concat!(
     "usage: tpp-session [-h] [--json]\n",
-    "                   {list,close,focus,kill,move,rename,completions,reload-settings,switcher} ...\n",
+    "                   {list,new,close,focus,kill,move,rename,completions,reload-settings,switcher} ...\n",
     "\n",
     "Manage TermuxPP terminal sessions.\n",
     "\n",
     "positional arguments:\n",
-    "  {list,close,focus,kill,move,rename,completions,reload-settings,switcher}\n",
+    "  {list,new,close,focus,kill,move,rename,completions,reload-settings,switcher}\n",
     "    list                list sessions and their IDs\n",
+    "    new                 create and switch to a session\n",
     "    close               hang up a shell or dismiss an exited tab\n",
     "    focus               switch to a session\n",
     "    kill                force-kill a session shell\n",
@@ -126,4 +127,10 @@ pub const RELOAD_SETTINGS: &str = concat!(
     "options:\n",
     "  -h, --help  show this help message and exit\n",
     "  --json      output JSON\n",
+);
+
+pub const NEW: &str = concat!(
+    "usage: tpp-session new [-h] [--json] [--name NAME] [-- COMMAND [ARG ...]]\n",
+    "\n",
+    "Create and switch to a new terminal session. With no command, open the default shell.\n",
 );

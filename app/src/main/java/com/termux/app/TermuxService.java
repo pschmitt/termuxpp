@@ -918,6 +918,8 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     /** Called on the main thread by the app-UID session socket. */
     Object runSessionCommand(JSONArray args) throws JSONException, ErrnoException {
         String command = args.getString(0);
+        if ("new".equals(command) && args.length() == 3)
+            return createSessionFromCommand(args.isNull(1) ? null : args.getString(1), args.getJSONArray(2));
         if ("reload-settings".equals(command) && args.length() == 1) {
             mProperties.loadTermuxPropertiesFromDisk();
             sendBroadcast(new Intent(TERMUX_ACTIVITY.ACTION_RELOAD_STYLE).setPackage(getPackageName()));
@@ -1003,6 +1005,43 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         if (mTermuxTerminalSessionActivityClient != null)
             mTermuxTerminalSessionActivityClient.termuxSessionListNotifyUpdated();
         return JSONObject.NULL;
+    }
+
+    private String createSessionFromCommand(@Nullable String name, JSONArray argv) throws JSONException {
+        if (mWantsToStop) throw new IllegalStateException("TermuxPP is stopping");
+        if (name != null && name.codePoints().anyMatch(Character::isISOControl))
+            throw new IllegalArgumentException("Names cannot contain control characters");
+
+        String executable = null;
+        List<String> arguments = new ArrayList<>();
+        if (argv.length() != 0) {
+            if (argv.getString(0).isEmpty())
+                throw new IllegalArgumentException("Expected a command after --");
+            if (TermuxNix.shouldEnterGuest(mProperties)) {
+                executable = TermuxNix.NIXPP_PATH;
+                java.util.Collections.addAll(arguments, TermuxNix.loginArguments(TermuxNix.user(mProperties)));
+                arguments.add("--");
+            } else {
+                executable = TermuxConstants.TERMUX_PREFIX_DIR_PATH + "/bin/sh";
+                java.util.Collections.addAll(arguments, "-c", "exec \"$@\"", "tpp-session");
+            }
+            for (int i = 0; i < argv.length(); i++) {
+                String arg = argv.getString(i);
+                if (arg.indexOf(0) >= 0)
+                    throw new IllegalArgumentException("Command arguments cannot contain NUL");
+                arguments.add(arg);
+            }
+        }
+
+        ExecutionCommand execution = new ExecutionCommand(TermuxShellManager.getNextShellId(),
+            executable, arguments.toArray(new String[0]), null, null, Runner.TERMINAL_SESSION.getName(), false);
+        execution.shellName = name;
+        execution.redactArgumentsInLogs = true;
+        TermuxSession session = createTermuxSession(execution);
+        if (session == null) throw new IllegalStateException("Could not create a new terminal session");
+        TerminalSession terminal = session.getTerminalSession();
+        handleSessionAction(TERMUX_SERVICE.VALUE_EXTRA_SESSION_ACTION_SWITCH_TO_NEW_SESSION_AND_OPEN_ACTIVITY, terminal);
+        return terminal.mHandle;
     }
 
     public boolean finishSessionClosedByCommand(TerminalSession terminal) {

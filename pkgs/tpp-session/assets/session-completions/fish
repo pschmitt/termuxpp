@@ -1,5 +1,7 @@
 complete -c tpp-session -f
 complete -c tpp-session -n '__fish_use_subcommand' -a list -d 'List terminal sessions'
+complete -c tpp-session -n '__fish_use_subcommand' -a new -d 'Create and switch to a session'
+complete -c tpp-session -n '__fish_seen_subcommand_from new' -l name -r -d 'Name of the new session'
 complete -c tpp-session -n '__fish_use_subcommand' -a close -d 'Hang up or dismiss a session'
 complete -c tpp-session -n '__fish_use_subcommand' -a focus -d 'Switch to a session'
 complete -c tpp-session -n '__fish_use_subcommand' -a kill -d 'Force-stop a session shell'
@@ -9,7 +11,7 @@ complete -c tpp-session -n '__fish_use_subcommand' -a switcher -d 'Open the sess
 complete -c tpp-session -n '__fish_use_subcommand' -a reload-settings -d 'Reload app properties and styling'
 complete -c tpp-session -n '__fish_use_subcommand' -a completions -d 'Print completion source'
 complete -c tpp-session -n '__fish_seen_subcommand_from completions; and test (count (commandline -opc)) -eq 2' -a 'bash fish zsh'
-complete -c tpp-session -n '__fish_seen_subcommand_from list close focus kill move rename reload-settings completions switcher; and not __fish_seen_argument -l json' -l json -d 'Output JSON'
+complete -c tpp-session -n '__fish_seen_subcommand_from list new close focus kill move rename reload-settings completions switcher; and not __fish_seen_argument -l json' -l json -d 'Output JSON'
 complete -c tpp-session -s h -l help -d 'Show help'
 complete -c tpp-session -n '__fish_seen_subcommand_from close focus kill move rename; and test (count (commandline -opc)) -eq 2' -a '(tpp-session __complete ids)'
 complete -c tpp-session -n '__fish_seen_subcommand_from move; and test (count (commandline -opc)) -eq 3' -a '(tpp-session __complete positions)'

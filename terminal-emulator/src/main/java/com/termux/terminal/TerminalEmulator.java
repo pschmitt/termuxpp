@@ -891,6 +891,10 @@ public final class TerminalEmulator {
         }
     }
 
+    public boolean isUsingLibghostty() {
+        return ghostty != null;
+    }
+
     void close() {
         if (ghostty != null) {
             mScreen.setSnapshotLoader(null);

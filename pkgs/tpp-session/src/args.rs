@@ -46,6 +46,10 @@ impl Shell {
 #[derive(Debug, PartialEq)]
 pub enum Command {
     List,
+    New {
+        name: Option<String>,
+        argv: Vec<String>,
+    },
     Close {
         id: String,
     },
@@ -76,6 +80,7 @@ impl Command {
     pub fn name(&self) -> &'static str {
         match self {
             Command::List => "list",
+            Command::New { .. } => "new",
             Command::Close { .. } => "close",
             Command::Focus { .. } => "focus",
             Command::Kill { .. } => "kill",
@@ -107,6 +112,10 @@ pub fn parse(args: &[String]) -> Outcome {
     let value = |name: &str| namespace.value(name).unwrap_or_default().to_string();
     let command = match namespace.command {
         Some("list") => Command::List,
+        Some("new") => Command::New {
+            name: namespace.value("name").map(str::to_owned),
+            argv: namespace.new_argv,
+        },
         Some("close") => Command::Close { id: value("id") },
         Some("focus") => Command::Focus { id: value("id") },
         Some("kill") => Command::Kill { id: value("id") },
@@ -183,7 +192,7 @@ static MAIN: Spec = Spec {
 };
 
 /// The commands in the order argparse lists them in its error messages.
-static COMMANDS: [(&str, Spec); 9] = [
+static COMMANDS: [(&str, Spec); 10] = [
     (
         "list",
         Spec {
@@ -192,6 +201,7 @@ static COMMANDS: [(&str, Spec); 9] = [
             positionals: &[],
         },
     ),
+    ("new", NEW),
     (
         "close",
         Spec {
@@ -258,6 +268,56 @@ static COMMANDS: [(&str, Spec); 9] = [
     ),
 ];
 
+const NEW: Spec = Spec {
+    prog: "tpp-session new",
+    help: help::NEW,
+    positionals: &[],
+};
+
+fn parse_new(args: &[String]) -> Result<Namespace, Exit> {
+    let mut result = Namespace::default();
+    let mut remaining = args.iter();
+    while let Some(argument) = remaining.next() {
+        match argument.as_str() {
+            "-h" | "--help" => return Err(Exit::Help(help::NEW.to_owned())),
+            "--json" => result.json = true,
+            "--" => {
+                result.new_argv.extend(remaining.cloned());
+                if result.new_argv.first().is_none_or(String::is_empty) {
+                    return Err(Exit::Error(usage_error(
+                        &NEW,
+                        "expected a command after --",
+                    )));
+                }
+                break;
+            }
+            "--name" => {
+                let name = remaining
+                    .next()
+                    .filter(|name| !name.starts_with('-'))
+                    .ok_or_else(|| {
+                        Exit::Error(usage_error(&NEW, "argument --name: expected one argument"))
+                    })?;
+                result.values.retain(|(key, _)| *key != "name");
+                result.values.push(("name", name.clone()));
+            }
+            option if option.starts_with("--name=") => {
+                result.values.retain(|(key, _)| *key != "name");
+                result
+                    .values
+                    .push(("name", option["--name=".len()..].to_owned()));
+            }
+            option => {
+                return Err(Exit::Error(usage_error(
+                    &NEW,
+                    &format!("unrecognized arguments: {option}"),
+                )));
+            }
+        }
+    }
+    Ok(result)
+}
+
 const SHELLS: [&str; 3] = ["bash", "fish", "zsh"];
 /// Every parser accepts these, in argparse's registration order.
 const OPTION_STRINGS: [&str; 3] = ["-h", "--help", "--json"];
@@ -312,6 +372,7 @@ struct Namespace {
     json: bool,
     command: Option<&'static str>,
     values: Vec<(&'static str, String)>,
+    new_argv: Vec<String>,
     /// Arguments the subcommand did not know; the main parser reports them.
     unrecognized: Vec<String>,
 }
@@ -502,7 +563,13 @@ impl State<'_> {
                         COMMANDS.iter().map(|(name, _)| *name),
                     ));
                 };
-                let sub = parse_known(sub, &values[1..]).map_err(Stop::Exit)?;
+                let sub = if *name == "new" {
+                    parse_new(&values[1..])
+                } else {
+                    parse_known(sub, &values[1..])
+                }
+                .map_err(Stop::Exit)?;
+                self.namespace.new_argv = sub.new_argv;
                 self.namespace.command = Some(name);
                 self.namespace.json |= sub.json;
                 self.namespace.values.extend(sub.values);
@@ -868,7 +935,7 @@ mod tests {
         text.lines().last().unwrap().to_string()
     }
 
-    const MAIN_USAGE: &str = "usage: tpp-session [-h] [--json]\n                   {list,close,focus,kill,move,rename,completions,reload-settings,switcher} ...\n";
+    const MAIN_USAGE: &str = "usage: tpp-session [-h] [--json]\n                   {list,new,close,focus,kill,move,rename,completions,reload-settings,switcher} ...\n";
 
     #[test]
     fn commands_parse() {
@@ -979,7 +1046,7 @@ mod tests {
         );
         assert_eq!(
             message("bogus"),
-            "tpp-session: error: argument command: invalid choice: 'bogus' (choose from 'list', 'close', 'focus', 'kill', 'move', 'rename', 'completions', 'reload-settings', 'switcher')"
+            "tpp-session: error: argument command: invalid choice: 'bogus' (choose from 'list', 'new', 'close', 'focus', 'kill', 'move', 'rename', 'completions', 'reload-settings', 'switcher')"
         );
     }
 
@@ -1153,7 +1220,10 @@ mod tests {
             message("move a -5x"),
             "tpp-session move: error: argument position: invalid int value: '-5x'"
         );
-        assert_eq!(message("-"), "tpp-session: error: argument command: invalid choice: '-' (choose from 'list', 'close', 'focus', 'kill', 'move', 'rename', 'completions', 'reload-settings', 'switcher')");
+        assert_eq!(
+            message("-"),
+            "tpp-session: error: argument command: invalid choice: '-' (choose from 'list', 'new', 'close', 'focus', 'kill', 'move', 'rename', 'completions', 'reload-settings', 'switcher')"
+        );
     }
 
     #[test]

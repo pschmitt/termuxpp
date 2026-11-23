@@ -115,6 +115,32 @@ fn commands_send_ids_names_and_positions() {
 }
 
 #[test]
+fn new_session_preserves_argument_boundaries_and_returns_id() {
+    let app = FakeApp::start("{\"result\": \"abc\"}\n", 1);
+    let output = app
+        .command(&[
+            "new", "--name", "my shell", "--json", "--", "printf", "%s", "a b", "", "--json",
+        ])
+        .output()
+        .unwrap();
+    assert_eq!(status(&output), 0);
+    assert_eq!(
+        app.request(),
+        "[\"new\", \"my shell\", [\"printf\", \"%s\", \"a b\", \"\", \"--json\"]]\n"
+    );
+    assert_eq!(
+        text(&output.stdout),
+        "{\n  \"ok\": true,\n  \"action\": \"new\",\n  \"id\": \"abc\"\n}\n"
+    );
+
+    let app = FakeApp::start("{\"result\": \"def\"}\n", 1);
+    let output = app.command(&["new"]).output().unwrap();
+    assert_eq!(status(&output), 0);
+    assert_eq!(app.request(), "[\"new\", null, []]\n");
+    assert_eq!(text(&output.stdout), "def\n");
+}
+
+#[test]
 fn json_output_goes_to_standard_output() {
     let app = FakeApp::start("{\"ok\": true}\n", 1);
     let output = app.command(&["focus", "abc", "--json"]).output().unwrap();
@@ -257,6 +283,8 @@ fn help_texts_match_the_python_implementation() {
         let expected = if name.is_empty() {
             expected
                 .replace("reload-settings}", "reload-settings,switcher}")
+                .replace("{list,close", "{list,new,close")
+                .replace("list sessions and their IDs\n", "list sessions and their IDs\n    new                 create and switch to a session\n")
                 .replace(
                     "reload app properties and styling\n",
                     "reload app properties and styling\n    switcher            open the session switcher\n",

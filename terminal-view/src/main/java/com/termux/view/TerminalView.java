@@ -498,7 +498,9 @@ public final class TerminalView extends View {
         int rowsInHistory = mEmulator.getScreen().getActiveTranscriptRows();
         if (mTopRow < -rowsInHistory) setTopRow(-rowsInHistory);
 
-        if (isSelectingText() || mEmulator.isAutoScrollDisabled()) {
+        boolean keepScrollback = mEmulator.isAutoScrollDisabled()
+            || (mEmulator.isUsingLibghostty() && mTopRow < 0);
+        if (isSelectingText() || keepScrollback) {
             // Do not scroll when selecting text.
             int rowShift = mEmulator.getScrollCounter();
             if (-mTopRow + rowShift > rowsInHistory) {
@@ -507,7 +509,7 @@ public final class TerminalView extends View {
                 if (isSelectingText())
                     stopTextSelectionMode();
 
-                if (mEmulator.isAutoScrollDisabled()) {
+                if (keepScrollback) {
                     setTopRow(-rowsInHistory);
                     skipScrolling = true;
                 }
@@ -651,18 +653,21 @@ public final class TerminalView extends View {
 
     /** Perform a scroll, either from dragging the screen or by scrolling a mouse wheel. */
     void doScroll(MotionEvent event, int rowsDown) {
+        if (rowsDown == 0) return;
+        boolean mouseTracking = mEmulator.isMouseTrackingActive();
+        if (!mouseTracking && !mEmulator.isAlternateBufferActive()) {
+            setTopRow(Math.min(0, Math.max(-mEmulator.getScreen().getActiveTranscriptRows(), mTopRow + rowsDown)));
+            if (!awakenScrollBars()) invalidate();
+            return;
+        }
+
         boolean up = rowsDown < 0;
-        int amount = Math.abs(rowsDown);
-        for (int i = 0; i < amount; i++) {
-            if (mEmulator.isMouseTrackingActive()) {
+        for (int i = 0; i < Math.abs(rowsDown); i++) {
+            if (mouseTracking) {
                 sendMouseEventCode(event, up ? TerminalEmulator.MOUSE_WHEELUP_BUTTON : TerminalEmulator.MOUSE_WHEELDOWN_BUTTON, true);
-            } else if (mEmulator.isAlternateBufferActive()) {
-                // Send up and down key events for scrolling, which is what some terminals do to make scroll work in
-                // e.g. less, which shifts to the alt screen without mouse handling.
-                handleKeyCode(up ? KeyEvent.KEYCODE_DPAD_UP : KeyEvent.KEYCODE_DPAD_DOWN, 0);
             } else {
-                setTopRow(Math.min(0, Math.max(-(mEmulator.getScreen().getActiveTranscriptRows()), mTopRow + (up ? -1 : 1))));
-                if (!awakenScrollBars()) invalidate();
+                // Programs like less use the alternate screen without mouse tracking.
+                handleKeyCode(up ? KeyEvent.KEYCODE_DPAD_UP : KeyEvent.KEYCODE_DPAD_DOWN, 0);
             }
         }
     }

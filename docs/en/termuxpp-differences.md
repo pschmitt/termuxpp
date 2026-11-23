@@ -345,6 +345,11 @@ refreshes terminal styling in the app.
 
 ## Terminal session CLI
 
+`tpp session new [--name NAME] [-- COMMAND ARG ...]` creates and selects a
+session and prints its ID. Omit the command to start the default shell.
+Command arguments are passed separately. The command runs in the configured
+default session environment, including the Nix guest when enabled.
+
 `tpp session switcher` opens the TermuxPP session picker from a visible terminal.
 `tpp session list` uses the same display-name fallback as the sidebar, including
 `Session N` for tabs without a custom name or terminal title. The same socket
@@ -430,8 +435,8 @@ details with the service actions.
 [TermuxPP Settings layout](../../app/src/main/res/layout/activity_settings.xml)
 
 Settings search indexes the reachable preference screens and the dynamically generated TermuxPP
-properties. A result shows its settings path; selecting it opens the owning screen, scrolls to the
-preference and briefly highlights that row. Search indexes preference labels and help text, never
+properties. A result shows its settings path; selecting it opens its editor when available. Other results scroll to the preference
+on its settings screen. Search indexes preference labels and help text, never
 configured property values. Sources: [search index](../../app/src/main/java/com/termux/app/settings/SettingsSearchIndex.java)
 and [Settings navigation](../../app/src/main/java/com/termux/app/activities/SettingsActivity.java).
 
@@ -443,6 +448,13 @@ The libghostty build supports arm64-v8a and uses the existing
 TermuxPP view to display Kitty graphics from libghostty. TermuxPP uses the
 Termux engine on devices where the native library cannot load. Upstream
 Termux uses its own Java emulator.
+Scrolling up in a libghostty session keeps older output visible while new
+output arrives. Scroll to the bottom to follow live output again.
+
+On the ZF10, fzf 0.75.0 in the Nix guest can segfault in the Go runtime
+under either terminal engine. Running `GOMAXPROCS=1 fzf` avoids the crash
+in the tested workload.
+
 [TermuxPP emulator](../../terminal-emulator/src/main/java/com/termux/terminal/TerminalEmulator.java)
 [Upstream Termux emulator](https://github.com/termux/termux-app/blob/master/terminal-emulator/src/main/java/com/termux/terminal/TerminalEmulator.java)
 

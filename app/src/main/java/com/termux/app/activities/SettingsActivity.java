@@ -2,11 +2,8 @@ package com.termux.app.activities;
 
 import android.animation.ValueAnimator;
 import android.content.Context;
-import android.graphics.drawable.Drawable;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.View;
@@ -22,6 +19,7 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.LifecycleOwner;
 import androidx.lifecycle.Observer;
+import androidx.preference.DialogPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceCategory;
 import androidx.preference.PreferenceFragmentCompat;
@@ -47,7 +45,6 @@ public class SettingsActivity extends AppCompatActivity
     private PreferenceGroup searchScreen;
     private PreferenceCategory searchResults;
     private List<SettingsSearchIndex.Result> searchIndex;
-    private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     private View settingsIntro;
     private View searchBar;
@@ -263,10 +260,6 @@ public class SettingsActivity extends AppCompatActivity
             destination = getSupportFragmentManager().getFragmentFactory()
                 .instantiate(getClassLoader(), fragmentClass);
             destination.setTargetFragment(caller, 0);
-            Bundle arguments = new Bundle();
-            if (i == result.fragmentPath.size() - 1 && result.preferenceKey != null)
-                arguments.putString(SEARCH_FOCUS_KEY_ARGUMENT, result.preferenceKey);
-            destination.setArguments(arguments);
             getSupportFragmentManager().beginTransaction()
                 .replace(R.id.settings, destination, result.title)
                 .addToBackStack(null)
@@ -275,35 +268,25 @@ public class SettingsActivity extends AppCompatActivity
             caller = destination;
         }
         if (result.preferenceKey != null && destination instanceof PreferenceFragmentCompat)
-            focusPreference((PreferenceFragmentCompat) destination, result.preferenceKey);
-
+            openPreference((PreferenceFragmentCompat) destination, result.preferenceKey);
     }
 
-    private static final String SEARCH_FOCUS_KEY_ARGUMENT = "termuxpp.settings.search.focus-key";
-
-    private void focusPreference(@NonNull PreferenceFragmentCompat fragment, @NonNull String key) {
+    private void openPreference(@NonNull PreferenceFragmentCompat fragment, @NonNull String key) {
         Observer<LifecycleOwner> observer = new Observer<LifecycleOwner>() {
             @Override public void onChanged(LifecycleOwner owner) {
                 if (owner == null) return;
                 fragment.getViewLifecycleOwnerLiveData().removeObserver(this);
                 fragment.getListView().post(() -> {
+                    if (!fragment.isResumed()) return;
                     Preference target = fragment.findPreference(key);
-                    if (target == null) return;
+                    if (target == null || !target.isVisible()) return;
                     fragment.scrollToPreference(key);
-                    fragment.getListView().postDelayed(() -> highlightPreference(fragment, target), 180);
+                    if (target instanceof DialogPreference || "extra-keys".equals(key))
+                        target.performClick();
                 });
             }
         };
         fragment.getViewLifecycleOwnerLiveData().observe(this, observer);
-    }
-
-    private void highlightPreference(@NonNull PreferenceFragmentCompat fragment, @NonNull Preference target) {
-        if (!fragment.isAdded()) return;
-        Drawable originalIcon = target.getIcon();
-        target.setIcon(R.drawable.ui_ic_search);
-        mainHandler.postDelayed(() -> {
-            if (fragment.isAdded()) target.setIcon(originalIcon);
-        }, 1200);
     }
 
     public static class RootPreferencesFragment extends PreferenceFragmentCompat {

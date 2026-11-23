@@ -1,5 +1,6 @@
 package com.termux.app.activities;
 
+import android.os.Looper;
 import android.view.View;
 import android.widget.EditText;
 
@@ -10,6 +11,7 @@ import androidx.preference.PreferenceFragmentCompat;
 
 import com.termux.R;
 import com.termux.app.fragments.settings.termux.PropertiesPreferencesFragment;
+import com.termux.app.fragments.settings.termux.PropertyChoiceDialog;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -21,6 +23,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.robolectric.Shadows.shadowOf;
 
 @RunWith(RobolectricTestRunner.class)
 public class SettingsActivitySearchTest {
@@ -47,7 +50,7 @@ public class SettingsActivitySearchTest {
     }
 
     @Test
-    public void rootSearchNavigatesToAndFocusesTheExactDynamicProperty() {
+    public void rootSearchOpensTheExactDynamicPropertyEditor() {
         SettingsActivity activity = Robolectric.buildActivity(SettingsActivity.class).setup().get();
         PreferenceFragmentCompat root = (PreferenceFragmentCompat)
             activity.getSupportFragmentManager().findFragmentById(R.id.settings);
@@ -63,8 +66,11 @@ public class SettingsActivitySearchTest {
         assertTrue(current instanceof PropertiesPreferencesFragment);
         PropertiesPreferencesFragment properties = (PropertiesPreferencesFragment) current;
         assertNotNull(properties.findPreference("terminal-triple-tap-action"));
-        assertEquals("terminal-triple-tap-action",
-            properties.getArguments().getString("termuxpp.settings.search.focus-key"));
+        shadowOf(Looper.getMainLooper()).idle();
+        activity.getSupportFragmentManager().executePendingTransactions();
+        Fragment dialog = activity.getSupportFragmentManager().findFragmentByTag("property_choice");
+        assertTrue(dialog instanceof PropertyChoiceDialog);
+        assertEquals("terminal-triple-tap-action", dialog.requireArguments().getString("key"));
     }
 
     @Test

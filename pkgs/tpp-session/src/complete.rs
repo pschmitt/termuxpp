@@ -7,8 +7,9 @@ use crate::client::{Exchange, COMPLETION_TIMEOUT};
 use crate::json::Value;
 
 /// The commands in the order completion offers them.
-pub const ACTIONS: [&str; 9] = [
+pub const ACTIONS: [&str; 10] = [
     "list",
+    "new",
     "close",
     "focus",
     "kill",
@@ -79,9 +80,18 @@ pub fn complete(words: &[String], exchange: &dyn Exchange) -> Vec<String> {
     if rest.iter().any(|word| word == "--help" || word == "-h") {
         return Vec::new();
     }
+    if action == "new" && rest.iter().any(|word| word == "--") {
+        return Vec::new();
+    }
     if current.starts_with('-') {
-        return ["--json", "--help"]
-            .into_iter()
+        let options = if action == "new" {
+            &["--json", "--help", "--name"][..]
+        } else {
+            &["--json", "--help"]
+        };
+        return options
+            .iter()
+            .copied()
             .filter(|flag| flag.starts_with(current) && !rest.iter().any(|word| word == flag))
             .map(str::to_string)
             .collect();
@@ -159,6 +169,7 @@ mod tests {
             offline(""),
             [
                 "list",
+                "new",
                 "close",
                 "focus",
                 "kill",

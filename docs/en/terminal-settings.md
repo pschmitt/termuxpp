@@ -29,6 +29,8 @@ live IDs and positions, `--json` for every command (once), `--help` for every co
 shells for `completions`. `tpp session` completes the same words through the `tpp` completions.
 
 ```text
+tpp session new
+tpp session new --name "Build logs" -- tail -f build.log
 tpp session switcher
 tpp-session list --json
 tpp-session focus ID
@@ -37,6 +39,11 @@ tpp-session move ID 1
 tpp-session close ID
 tpp-session kill ID
 ```
+
+`tpp session new` opens the default shell in a newly selected session. Use
+`--name` to name it and `--` to pass a program and its arguments in the
+default session environment. The command prints the new session ID, or
+an object containing `id` with `--json`.
 
 `tpp session switcher` opens the same picker as the session-switcher gesture
 while the terminal screen is visible. The text output of `tpp session list`
