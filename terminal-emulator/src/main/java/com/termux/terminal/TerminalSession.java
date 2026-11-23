@@ -76,11 +76,18 @@ public final class TerminalSession extends TerminalOutput {
     private final String[] mArgs;
     private final String[] mEnv;
     private final Integer mTranscriptRows;
+    private final boolean mUseLibghostty;
 
 
     private static final String LOG_TAG = "TerminalSession";
 
     public TerminalSession(String shellPath, String cwd, String[] args, String[] env, Integer transcriptRows, TerminalSessionClient client) {
+        this(shellPath, cwd, args, env, transcriptRows, client, false);
+    }
+
+    public TerminalSession(String shellPath, String cwd, String[] args, String[] env,
+                           Integer transcriptRows, TerminalSessionClient client, boolean useLibghostty) {
+        this.mUseLibghostty = useLibghostty;
         this.mShellPath = shellPath;
         this.mCwd = cwd;
         this.mArgs = args;
@@ -123,6 +130,7 @@ public final class TerminalSession extends TerminalOutput {
      */
     public void initializeEmulator(int columns, int rows, int cellWidthPixels, int cellHeightPixels) {
         mEmulator = new TerminalEmulator(this, columns, rows, cellWidthPixels, cellHeightPixels, mTranscriptRows, mClient);
+        if (mUseLibghostty) mEmulator.enableLibghostty(mTranscriptRows);
 
         int[] processId = new int[1];
         mTerminalFileDescriptor = JNI.createSubprocess(mShellPath, mCwd, mArgs, mEnv, processId, rows, columns, cellWidthPixels, cellHeightPixels);
@@ -242,6 +250,11 @@ public final class TerminalSession extends TerminalOutput {
                 Logger.logWarn(mClient, LOG_TAG, "Failed sending SIGKILL: " + e.getMessage());
             }
         }
+    }
+
+    /** Release native terminal state once the session is removed from the service. */
+    public void closeEmulator() {
+        if (mEmulator != null) mEmulator.close();
     }
 
     /** Cleanup resources when the process exits. */

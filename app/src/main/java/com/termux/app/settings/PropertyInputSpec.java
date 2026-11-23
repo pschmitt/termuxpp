@@ -123,6 +123,8 @@ public final class PropertyInputSpec {
                     + TermuxPropertyConstants.IVALUE_TERMINAL_CURSOR_BLINK_RATE_MAX
                     + ", or 0 for a cursor that does not blink. Default: "
                     + TermuxPropertyConstants.DEFAULT_IVALUE_TERMINAL_CURSOR_BLINK_RATE + " (no blinking).";
+            case TermuxPropertyConstants.KEY_TERMINAL_ENGINE:
+                return "Terminal engine for new sessions. libghostty is available on ARM64. Default is Termux.";
             case TermuxPropertyConstants.KEY_TERMINAL_CURSOR_STYLE:
                 return "The shape of the terminal cursor. Values: " + keys(TermuxPropertyConstants.MAP_TERMINAL_CURSOR_STYLE) + "."
                     + " Default: " + inverse(TermuxPropertyConstants.MAP_TERMINAL_CURSOR_STYLE, TermuxPropertyConstants.DEFAULT_IVALUE_TERMINAL_CURSOR_STYLE) + ".";
@@ -328,6 +330,11 @@ public final class PropertyInputSpec {
         switch (key) {
             case TermuxPropertyConstants.KEY_BELL_BEHAVIOUR:
                 return inMap(TermuxPropertyConstants.MAP_BELL_BEHAVIOUR, value);
+            case TermuxPropertyConstants.KEY_TERMINAL_ENGINE:
+                for (String engine : choices(key)) {
+                    if (engine.equalsIgnoreCase(value)) return null;
+                }
+                return "Expected termux or libghostty";
             case TermuxPropertyConstants.KEY_TERMINAL_CURSOR_STYLE:
                 return inMap(TermuxPropertyConstants.MAP_TERMINAL_CURSOR_STYLE, value);
             case TermuxPropertyConstants.KEY_BACK_KEY_BEHAVIOUR:
@@ -488,6 +495,8 @@ public final class PropertyInputSpec {
      */
     @NonNull
     public static String[] choices(@Nullable String key) {
+        if (TermuxPropertyConstants.KEY_TERMINAL_ENGINE.equals(key))
+            return new String[] {TermuxPropertyConstants.TERMINAL_ENGINE_TERMUX, TermuxPropertyConstants.TERMINAL_ENGINE_GHOSTTY};
         if (TermuxPropertyConstants.KEY_EXTRA_KEYS_STYLE.equals(key)) return EXTRA_KEYS_STYLES.clone();
         if (TermuxPropertyConstants.KEY_GESTURE_COMMAND_CONTEXT.equals(key)) return new String[] {"session", "nix", "outer"};
         if (TermuxPropertyConstants.KEY_TERMINAL_TOAST_POSITION.equals(key))

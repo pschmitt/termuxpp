@@ -1,7 +1,61 @@
 apply plugin: 'com.android.library'
 apply plugin: 'maven-publish'
 
+// Keep the Android archives, VT headers, PNG decoder and JNI bridge on the same revision.
+def ghosttyRevision = "b75be1c28d606c2206616aacf1489e063f4bd751"
+def ghosttySha256 = "016566fac26e7ffc49dd78bca62c116853988a80f5e2970392a90cc5dea692d4"
+def ghosttyDirectory = layout.buildDirectory.dir("ghostty").get().asFile
+def ghosttySource = new File(ghosttyDirectory, "ghostty-android-terminal-${ghosttyRevision}")
+def ghosttyReady = new File(ghosttySource, ".termuxpp-ready")
+if (!ghosttyReady.exists()) {
+    ghosttyDirectory.mkdirs()
+    def suppliedArchive = System.getenv("TERMUX_GHOSTTY_ARCHIVE")
+    def archive = suppliedArchive ? file(suppliedArchive) : new File(ghosttyDirectory, "${ghosttyRevision}.tar.gz")
+    if (!archive.exists() && !suppliedArchive) {
+        def url = new URI("https://codeload.github.com/sylirre/ghostty-android-terminal/tar.gz/${ghosttyRevision}").toURL()
+        def connection = url.openConnection()
+        connection.connectTimeout = 15000
+        connection.readTimeout = 60000
+        def temporary = new File(ghosttyDirectory, "${ghosttyRevision}.download")
+        try {
+            connection.inputStream.withCloseable { input ->
+                temporary.withOutputStream { output -> output << input }
+            }
+            java.nio.file.Files.move(temporary.toPath(), archive.toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        } finally {
+            temporary.delete()
+        }
+    }
+    def digest = java.security.MessageDigest.getInstance("SHA-256")
+    archive.withInputStream { input ->
+        byte[] bytes = new byte[65536]
+        int length
+        while ((length = input.read(bytes)) != -1) digest.update(bytes, 0, length)
+    }
+    if (digest.digest().encodeHex().toString() != ghosttySha256) {
+        if (!suppliedArchive) archive.delete()
+        throw new GradleException("libghostty Android archive checksum mismatch")
+    }
+    copy {
+        from tarTree(resources.gzip(archive))
+        into ghosttyDirectory
+        include "*/app/src/main/cpp/**", "*/native/ghostty-vt/**", "*/LICENSE", "*/NOTICE"
+    }
+    ghosttyReady.createNewFile()
+}
+
+def ghosttyAssets = new File(ghosttyDirectory, "assets")
+copy {
+    from(ghosttySource) { include "LICENSE", "NOTICE" }
+    into new File(ghosttyAssets, "licenses/sylirre-terminal")
+}
+def stbSource = new File(ghosttySource, "app/src/main/cpp/stb_image.h").getText("UTF-8")
+def stbLicense = stbSource.lastIndexOf("ALTERNATIVE A - MIT License")
+new File(ghosttyAssets, "licenses/stb_image.txt").setText(stbSource.substring(stbLicense), "UTF-8")
+
 android {
+    sourceSets.main.assets.srcDir ghosttyAssets
     namespace "com.termux.emulator"
 
     compileSdkVersion project.properties.compileSdkVersion.toInteger()
@@ -13,7 +67,8 @@ android {
 
         externalNativeBuild {
             ndkBuild {
-                cFlags "-std=c11", "-Wall", "-Wextra", "-Werror", "-Os", "-fno-stack-protector", "-Wl,--gc-sections"
+                arguments "TERMUX_GHOSTTY_SOURCE=${ghosttySource.absolutePath}"
+                cFlags "-std=gnu11", "-Wall", "-Wextra", "-Werror", "-Os", "-fno-stack-protector", "-Wl,--gc-sections"
             }
         }
 

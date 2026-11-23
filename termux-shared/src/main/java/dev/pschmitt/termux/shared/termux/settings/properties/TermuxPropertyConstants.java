@@ -268,6 +268,10 @@ public final class TermuxPropertyConstants {
 
 
     /** Defines the key for the terminal transcript rows */
+    public static final String KEY_TERMINAL_ENGINE = "terminal-engine";
+    public static final String TERMINAL_ENGINE_TERMUX = "termux";
+    public static final String TERMINAL_ENGINE_GHOSTTY = "libghostty";
+
     public static final String KEY_TERMINAL_TRANSCRIPT_ROWS =  "terminal-transcript-rows"; // Default: "terminal-transcript-rows"
     public static final int IVALUE_TERMINAL_TRANSCRIPT_ROWS_MIN = TerminalEmulator.TERMINAL_TRANSCRIPT_ROWS_MIN;
     public static final int IVALUE_TERMINAL_TRANSCRIPT_ROWS_MAX = TerminalEmulator.TERMINAL_TRANSCRIPT_ROWS_MAX;
@@ -606,6 +610,7 @@ public final class TermuxPropertyConstants {
         KEY_TERMINAL_CURSOR_STYLE,
         KEY_TERMINAL_MARGIN_HORIZONTAL,
         KEY_TERMINAL_MARGIN_VERTICAL,
+        KEY_TERMINAL_ENGINE,
         KEY_TERMINAL_TRANSCRIPT_ROWS,
 
         /* float */

@@ -435,6 +435,17 @@ preference and briefly highlights that row. Search indexes preference labels and
 configured property values. Sources: [search index](../../app/src/main/java/com/termux/app/settings/SettingsSearchIndex.java)
 and [Settings navigation](../../app/src/main/java/com/termux/app/activities/SettingsActivity.java).
 
+TermuxPP offers **Terminal engine** in the properties settings. Set
+`terminal-engine=libghostty` in `termuxpp.properties` to use libghostty for new
+sessions, or `terminal-engine=termux` to select the default Termux engine.
+Open a new session after changing the setting or reloading the file.
+The libghostty build supports arm64-v8a and uses the existing
+TermuxPP view to display Kitty graphics from libghostty. TermuxPP uses the
+Termux engine on devices where the native library cannot load. Upstream
+Termux uses its own Java emulator.
+[TermuxPP emulator](../../terminal-emulator/src/main/java/com/termux/terminal/TerminalEmulator.java)
+[Upstream Termux emulator](https://github.com/termux/termux-app/blob/master/terminal-emulator/src/main/java/com/termux/terminal/TerminalEmulator.java)
+
 Set `create-session-on-single-session-switch=true` in `termuxpp.properties` to
 create and open a new terminal when previous or next session is invoked with
 only one terminal open. This applies to keyboard shortcuts and configured

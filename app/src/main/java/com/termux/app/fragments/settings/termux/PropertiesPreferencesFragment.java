@@ -192,6 +192,8 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
     }
 
     private String choiceLabel(String key, String value) {
+        if (TermuxPropertyConstants.KEY_TERMINAL_ENGINE.equals(key))
+            return TermuxPropertyConstants.TERMINAL_ENGINE_GHOSTTY.equals(value) ? "libghostty" : "Termux";
         if (!key.endsWith("-action")) return value;
         TerminalGestureAction action = TerminalGestureAction.parse(value);
         if (action == TerminalGestureAction.OPEN_SIDEBAR) return getString(R.string.properties_open_session_shelf);

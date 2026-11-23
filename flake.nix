@@ -47,6 +47,11 @@
         includeSystemImages = false;
       };
       sdk = "${android.androidsdk}/libexec/android-sdk";
+      ghosttyAndroidArchive = pkgs.fetchurl {
+        url = "https://codeload.github.com/sylirre/ghostty-android-terminal/tar.gz/b75be1c28d606c2206616aacf1489e063f4bd751";
+        hash = "sha256-AWVm+sJuf/xJ3Xi8piwRaFOYioD14pcDkqkMxd6mktQ=";
+      };
+
       gradle = pkgs.gradle_8;
       # cargo and the Android std for every ABI of the APK: app/tpp-native.gradle
       # builds the Rust tpp executable (crates tpp-cli and tpp-session) with it,
@@ -96,6 +101,7 @@
         ];
         ANDROID_HOME = sdk;
         ANDROID_SDK_ROOT = sdk;
+        TERMUX_GHOSTTY_ARCHIVE = ghosttyAndroidArchive;
         ANDROID_USER_HOME = "/tmp/termuxpp-android-user";
         JAVA_HOME = java.home;
         TERMUX_GIT_REVISION = "0000000";
@@ -146,6 +152,7 @@
         ];
         ANDROID_HOME = sdk;
         ANDROID_SDK_ROOT = sdk;
+        TERMUX_GHOSTTY_ARCHIVE = ghosttyAndroidArchive;
         JAVA_HOME = java.home;
         TERMUX_SPLIT_APKS_FOR_DEBUG_BUILDS = "0";
         TERMUX_APK_VERSION_TAG = "apt-android-7-debug";

@@ -854,6 +854,73 @@ public final class TerminalEmulator {
         }
     }
 
+    private GhosttyTerminal ghostty;
+    private int ghosttyViewport = Integer.MAX_VALUE;
+
+    public static final class ImagePlacement {
+        public final Bitmap bitmap;
+        public final android.graphics.Rect source;
+        public final int column, row, width, height, z, offsetX, offsetY;
+
+        ImagePlacement(Bitmap bitmap, android.graphics.Rect source, int column, int row,
+                       int width, int height, int z, int offsetX, int offsetY) {
+            this.bitmap = bitmap;
+            this.source = source;
+            this.column = column;
+            this.row = row;
+            this.width = width;
+            this.height = height;
+            this.z = z;
+            this.offsetX = offsetX;
+            this.offsetY = offsetY;
+        }
+    }
+
+    boolean enableLibghostty(Integer transcriptRows) {
+        try {
+            ghostty = new GhosttyTerminal(mSession, mColumns, mRows, mCellWidthPixels,
+                mCellHeightPixels, getTerminalTranscriptRows(transcriptRows), mColors.mCurrentColors);
+            mScreen.setSnapshotLoader(this::ensureGhosttyRow);
+            updateGhosttyScreen(0);
+            return true;
+        } catch (LinkageError | IllegalStateException e) {
+            if (mClient != null)
+                mClient.logWarn("TerminalEmulator", "Could not initialize libghostty: " + e);
+            close();
+            return false;
+        }
+    }
+
+    void close() {
+        if (ghostty != null) {
+            mScreen.setSnapshotLoader(null);
+            ghostty.close();
+            ghostty = null;
+        }
+    }
+
+    public java.util.List<ImagePlacement> getImagePlacements(int topRow) {
+        if (ghostty == null) return java.util.Collections.emptyList();
+        updateGhosttyScreen(topRow);
+        return ghostty.readImages();
+    }
+
+    private void ensureGhosttyRow(int row) {
+        if (row < ghosttyViewport || row >= ghosttyViewport + mRows) {
+            int pagesFromBottom = row < 0 ? (row + 1) / mRows - 1 : 0;
+            updateGhosttyScreen(pagesFromBottom * mRows);
+        }
+    }
+
+    private void updateGhosttyScreen(int topRow) {
+        mScreen.setSnapshotHistoryRows(ghostty.historyRows());
+        topRow = Math.max(topRow, -mScreen.getActiveTranscriptRows());
+        if (ghosttyViewport != topRow) {
+            ghostty.readViewport(topRow, mScreen);
+            ghosttyViewport = topRow;
+        }
+    }
+
     public TerminalEmulator(TerminalOutput session, int columns, int rows, int cellWidthPixels, int cellHeightPixels, Integer transcriptRows, TerminalSessionClient client) {
         mSession = session;
         mScreen = mMainBuffer = new TerminalBuffer(client, columns, getTerminalTranscriptRows(transcriptRows), rows);
@@ -896,6 +963,7 @@ public final class TerminalEmulator {
     }
 
     public boolean isAlternateBufferActive() {
+        if (ghostty != null) return ghostty.mode(1);
         return mScreen == mAltBuffer;
     }
 
@@ -912,6 +980,10 @@ public final class TerminalEmulator {
      * @param mouseButton one of the MOUSE_* constants of this class.
      */
     public void sendMouseEvent(int mouseButton, int column, int row, boolean pressed) {
+        if (ghostty != null) {
+            ghostty.mouse(mouseButton, column, row, pressed);
+            return;
+        }
         if (column < 1) column = 1;
         if (column > mColumns) column = mColumns;
         if (row < 1) row = 1;
@@ -933,6 +1005,18 @@ public final class TerminalEmulator {
     }
 
     public void resize(int columns, int rows, int cellWidthPixels, int cellHeightPixels) {
+        if (ghostty != null) {
+            mColumns = columns;
+            mRows = rows;
+            mCellWidthPixels = cellWidthPixels;
+            mCellHeightPixels = cellHeightPixels;
+            ghostty.resize(columns, rows, cellWidthPixels, cellHeightPixels);
+            mScreen = new TerminalBuffer(mClient, columns, Math.max(rows, mMainBuffer.mTotalRows), rows);
+            mScreen.setSnapshotLoader(this::ensureGhosttyRow);
+            ghosttyViewport = Integer.MAX_VALUE;
+            updateGhosttyScreen(0);
+            return;
+        }
         this.mCellWidthPixels = cellWidthPixels;
         this.mCellHeightPixels = cellHeightPixels;
 
@@ -971,15 +1055,18 @@ public final class TerminalEmulator {
     }
 
     public int getCursorRow() {
+        if (ghostty != null) return ghostty.cursorRow();
         return mCursorRow;
     }
 
     public int getCursorCol() {
+        if (ghostty != null) return ghostty.cursorColumn();
         return mCursorCol;
     }
 
     /** Get the terminal cursor style. It will be one of {@link #TERMINAL_CURSOR_STYLES_LIST} */
     public int getCursorStyle() {
+        if (ghostty != null) return ghostty.cursorStyle();
         return mCursorStyle;
     }
 
@@ -1020,9 +1107,11 @@ public final class TerminalEmulator {
 
 
     public boolean isCursorEnabled() {
+        if (ghostty != null) return ghostty.cursorVisible();
         return isDecsetInternalBitSet(DECSET_BIT_CURSOR_ENABLED);
     }
     public boolean shouldCursorBeVisible() {
+        if (ghostty != null) return ghostty.cursorVisible() && (!mCursorBlinkingEnabled || mCursorBlinkState);
         if (!isCursorEnabled())
             return false;
         else
@@ -1044,11 +1133,13 @@ public final class TerminalEmulator {
     }
 
     public boolean isCursorKeysApplicationMode() {
+        if (ghostty != null) return ghostty.mode(2);
         return isDecsetInternalBitSet(DECSET_BIT_APPLICATION_CURSOR_KEYS);
     }
 
     /** If mouse events are being sent as escape codes to the terminal. */
     public boolean isMouseTrackingActive() {
+        if (ghostty != null) return ghostty.mode(8);
         return isDecsetInternalBitSet(DECSET_BIT_MOUSE_TRACKING_PRESS_RELEASE) || isDecsetInternalBitSet(DECSET_BIT_MOUSE_TRACKING_BUTTON_EVENT);
     }
 
@@ -1064,6 +1155,14 @@ public final class TerminalEmulator {
      * @param length the number of bytes in the array to process
      */
     public void append(byte[] buffer, int length) {
+        if (ghostty != null) {
+            int previousHistory = ghostty.historyRows();
+            ghostty.feed(buffer, length);
+            mScrollCounter += Math.max(0, ghostty.historyRows() - previousHistory);
+            ghosttyViewport = Integer.MAX_VALUE;
+            updateGhosttyScreen(0);
+            return;
+        }
         for (int i = 0; i < length; i++)
             processByte(buffer[i]);
     }
@@ -4834,12 +4933,19 @@ public final class TerminalEmulator {
     }
 
     public void setTopRow(int topRow) {
+        if (ghostty != null) updateGhosttyScreen(topRow);
         mTopRow = topRow;
     }
 
 
     /** Reset terminal state so user can interact with it regardless of present state. */
     public void reset() {
+        if (ghostty != null) {
+            ghostty.reset();
+            ghosttyViewport = Integer.MAX_VALUE;
+            updateGhosttyScreen(0);
+            return;
+        }
         setCursorStyle();
         mArgIndex = 0;
         mContinueSequence = false;
@@ -4886,6 +4992,7 @@ public final class TerminalEmulator {
 
     /** Get the terminal session's title (null if not set). */
     public String getTitle() {
+        if (ghostty != null) return ghostty.title;
         return mTitle;
     }
 
@@ -4900,6 +5007,10 @@ public final class TerminalEmulator {
 
     /** If DECSET 2004 is set, prefix paste with "\033[200~" and suffix with "\033[201~". */
     public void paste(String text) {
+        if (ghostty != null) {
+            ghostty.paste(text);
+            return;
+        }
         // First: Always remove escape key and C1 control characters [0x80,0x9F]:
         text = text.replaceAll("(\u001B|[\u0080-\u009F])", "");
         // Second: Replace all newlines (\n) or CRLF (\r\n) with carriage returns (\r).

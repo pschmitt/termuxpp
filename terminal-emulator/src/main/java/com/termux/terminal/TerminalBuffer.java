@@ -37,6 +37,10 @@ public final class TerminalBuffer {
     private int mActiveTranscriptRows = 0;
     /** The index in the circular buffer where the visible screen starts. */
     private int mScreenFirstRow = 0;
+    interface SnapshotLoader {
+        void load(int externalRow);
+    }
+    private SnapshotLoader mSnapshotLoader;
 
 
     /**
@@ -156,7 +160,7 @@ public final class TerminalBuffer {
             } else {
                 x2 = columns;
             }
-            TerminalRow lineObject = mLines[externalToInternalRow(row)];
+            TerminalRow lineObject = allocateFullLineIfNecessary(externalToInternalRow(row));
             int x1Index = lineObject.findStartOfColumn(x1);
             int x2Index = (x2 < mColumns) ? lineObject.findStartOfColumn(x2) : lineObject.getSpaceUsed();
             if (x2Index == x1Index) {
@@ -227,6 +231,14 @@ public final class TerminalBuffer {
         return text.substring(x1 + 1, x2);
     }
 
+    void setSnapshotLoader(SnapshotLoader loader) {
+        mSnapshotLoader = loader;
+    }
+
+    void setSnapshotHistoryRows(int rows) {
+        mActiveTranscriptRows = Math.min(rows, mTotalRows - mScreenRows);
+    }
+
     public int getActiveTranscriptRows() {
         return mActiveTranscriptRows;
     }
@@ -268,7 +280,7 @@ public final class TerminalBuffer {
     }
 
     public boolean getLineWrap(int row) {
-        return mLines[externalToInternalRow(row)].mLineWrap;
+        return allocateFullLineIfNecessary(externalToInternalRow(row)).mLineWrap;
     }
 
     public void clearLineWrap(int row) {
@@ -564,6 +576,14 @@ public final class TerminalBuffer {
     }
 
     public TerminalRow allocateFullLineIfNecessary(int row) {
+        if (mSnapshotLoader != null) {
+            // Snapshot buffers keep screen row zero at array index zero.
+            mSnapshotLoader.load(row >= mScreenRows ? row - mTotalRows : row);
+        }
+        return allocateSnapshotLine(row);
+    }
+
+    TerminalRow allocateSnapshotLine(int row) {
         return (mLines[row] == null) ? (mLines[row] = new TerminalRow(mColumns, 0)) : mLines[row];
     }
 

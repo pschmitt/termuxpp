@@ -283,6 +283,10 @@ public abstract class TermuxSharedProperties {
                 return (int) getTerminalMarginHorizontalInternalPropertyValueFromValue(value);
             case TermuxPropertyConstants.KEY_TERMINAL_MARGIN_VERTICAL:
                 return (int) getTerminalMarginVerticalInternalPropertyValueFromValue(value);
+            case TermuxPropertyConstants.KEY_TERMINAL_ENGINE:
+                return TermuxPropertyConstants.TERMINAL_ENGINE_GHOSTTY.equalsIgnoreCase(value)
+                    ? TermuxPropertyConstants.TERMINAL_ENGINE_GHOSTTY
+                    : TermuxPropertyConstants.TERMINAL_ENGINE_TERMUX;
             case TermuxPropertyConstants.KEY_TERMINAL_TRANSCRIPT_ROWS:
                 return (int) getTerminalTranscriptRowsInternalPropertyValueFromValue(value);
 
@@ -1188,6 +1192,11 @@ public abstract class TermuxSharedProperties {
 
     public int getTerminalMarginVertical() {
         return (int) getInternalPropertyValue(TermuxPropertyConstants.KEY_TERMINAL_MARGIN_VERTICAL, true);
+    }
+
+    public boolean shouldUseLibghostty() {
+        return TermuxPropertyConstants.TERMINAL_ENGINE_GHOSTTY.equals(
+            getInternalPropertyValue(TermuxPropertyConstants.KEY_TERMINAL_ENGINE, true));
     }
 
     public int getTerminalTranscriptRows() {

@@ -167,6 +167,7 @@ public class ExecutionCommand {
 
     /** The terminal transcript rows for the {@link ExecutionCommand}. */
     public Integer terminalTranscriptRows;
+    public boolean useLibghostty;
 
 
     /** The {@link Runner} for the {@link ExecutionCommand}. */
