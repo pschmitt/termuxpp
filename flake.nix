@@ -174,6 +174,23 @@
       # `inputs.termuxpp.lib.adbShell.packagesFor pkgs`).
       lib.adbShell.packagesFor = adbShellFor;
 
+      circus.consumerBuilds.nixos-config = {
+        repository = "pschmitt/nixos-config";
+        ref = "main";
+        input = "termuxpp";
+        follows = [
+          "nixpkgs"
+        ];
+        packages.aarch64-linux = [
+          "nixpp"
+          "termuxpp-api"
+          "termuxpp-ip"
+          "termuxpp-rish"
+          "termuxpp-storage"
+          "tpp-adb-shell"
+        ];
+      };
+
       # Circus builds the available packages and checks on each Linux system.
       hydraJobs = nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-linux" ] (target: {
         packages = self.packages.${target};
