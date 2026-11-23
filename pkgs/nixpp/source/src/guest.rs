@@ -8,8 +8,9 @@ use crate::controller::Generation;
 use crate::error::{Error, Result};
 use crate::fsutil::{canonical_json, is_symlink, path_str, read_bounded};
 use crate::store::{guest_store_path, is_candidate_name, is_host_name, is_user_name};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
+use std::collections::HashMap;
 use std::fs::{self, DirBuilder, OpenOptions};
 use std::io::{self, Read, Write};
 use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt, symlink};
@@ -482,6 +483,76 @@ pub fn diff_generations(
     command.extend([format!("/nix/store/{from}"), format!("/nix/store/{to}")]);
     let diff = builder.output(&command)?;
     Ok((from, to, diff))
+}
+
+#[derive(Serialize)]
+pub struct GenerationUsage {
+    #[serde(flatten)]
+    pub generation: Generation,
+    pub closure_bytes: u64,
+    pub exclusive_bytes: u64,
+}
+
+#[derive(Serialize)]
+pub struct DiskUsage {
+    pub generations: Vec<GenerationUsage>,
+    pub total_bytes: u64,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct StorePathSize {
+    nar_size: u64,
+}
+
+/// Measure retained closures while holding the same lock as generation GC.
+pub fn disk_usage(runtime: &Path, builder: &mut dyn Builder) -> Result<DiskUsage> {
+    let _lock = crate::fsutil::FileLock::acquire(&runtime.join(crate::controller::CONTROL_LOCK))?;
+    measure_generations(crate::controller::generations(runtime)?, builder)
+}
+
+fn measure_generations(
+    generations: Vec<Generation>,
+    builder: &mut dyn Builder,
+) -> Result<DiskUsage> {
+    let mut closures = Vec::new();
+    let mut paths = HashMap::new();
+    for generation in generations {
+        let mut command = [
+            "nix",
+            "path-info",
+            "--recursive",
+            "--json",
+            "--json-format",
+            "1",
+        ]
+        .map(str::to_owned)
+        .to_vec();
+        command.push(format!("/nix/store/{}", generation.generation));
+        let closure: HashMap<String, StorePathSize> =
+            serde_json::from_str(&builder.output(&command)?)?;
+        for (path, size) in &closure {
+            let (_, uses) = paths.entry(path.clone()).or_insert((size.nar_size, 0usize));
+            *uses += 1;
+        }
+        closures.push((generation, closure));
+    }
+
+    Ok(DiskUsage {
+        total_bytes: paths.values().map(|(size, _)| size).sum(),
+        generations: closures
+            .into_iter()
+            .map(|(generation, closure)| GenerationUsage {
+                generation,
+                closure_bytes: closure.values().map(|size| size.nar_size).sum(),
+                exclusive_bytes: closure
+                    .iter()
+                    .filter(|(path, _)| paths[*path].1 == 1)
+                    .map(|(_, size)| size.nar_size)
+                    .sum(),
+            })
+            .collect(),
+    })
 }
 
 /// The real builder: stdout is captured, stdin and stderr stay attached so
@@ -1391,6 +1462,49 @@ mod tests {
             self.commands.push(command.to_vec());
             Ok(self.output.clone())
         }
+    }
+
+    #[test]
+    fn generation_usage_counts_shared_paths_once() {
+        struct Closures;
+        impl Builder for Closures {
+            fn output(&mut self, command: &[String]) -> Result<String> {
+                assert_eq!(
+                    command[..6],
+                    [
+                        "nix",
+                        "path-info",
+                        "--recursive",
+                        "--json",
+                        "--json-format",
+                        "1"
+                    ]
+                );
+                let root = &command[6];
+                let bytes = if root.ends_with("/current") { 200 } else { 300 };
+                Ok(json!({
+                    root: { "narSize": bytes },
+                    "/nix/store/shared": { "narSize": 1000 }
+                })
+                .to_string())
+            }
+        }
+        let generations = [true, false]
+            .map(|current| Generation {
+                number: None,
+                date: None,
+                generation: if current { "current" } else { "previous" }.into(),
+                home_manager: String::new(),
+                current,
+                previous: !current,
+            })
+            .to_vec();
+        let report = measure_generations(generations, &mut Closures).unwrap();
+        assert_eq!(report.total_bytes, 1500);
+        assert_eq!(report.generations[0].closure_bytes, 1200);
+        assert_eq!(report.generations[0].exclusive_bytes, 200);
+        assert_eq!(report.generations[1].closure_bytes, 1300);
+        assert_eq!(report.generations[1].exclusive_bytes, 300);
     }
 
     fn system_path() -> String {

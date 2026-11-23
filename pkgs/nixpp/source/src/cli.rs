@@ -237,6 +237,8 @@ pub enum Command {
     /// List prepared system generations
     #[command(visible_alias = "generations")]
     ListGenerations,
+    /// Show store usage by generation and the deduplicated total
+    Df,
     /// Activate the retained previous generation
     Rollback,
     /// Restore the generation recorded before an interrupted activation
@@ -813,6 +815,15 @@ fn guest_command(
             ui.ok("interrupted activation recovered");
             print_response(ui, &response);
         }
+        Command::Df => {
+            let runtime = require(runtime, "df requires NIXPP_RUNTIME or --runtime")?;
+            let usage = guest::disk_usage(&runtime, &mut ProcessBuilder)?;
+            if ui.json() {
+                ui.print(&canonical_json(&serde_json::to_value(usage)?));
+            } else {
+                ui.print(&disk_usage_table(ui, &usage));
+            }
+        }
         Command::ListGenerations | Command::Status { .. } => {
             let response = guest::manage(&socket, "list-generations", None)?;
             let list = guest::generations(&response)?;
@@ -905,6 +916,64 @@ fn generations_table(ui: &Ui, generations: &[controller::Generation]) -> String 
             (4, "previous") => Some(Style::Yellow),
             _ => None,
         },
+    )
+}
+
+fn disk_usage_table(ui: &Ui, usage: &guest::DiskUsage) -> String {
+    let size = |bytes: u64| {
+        if bytes < 1024 {
+            return format!("{bytes} B");
+        }
+        let mut value = bytes as f64;
+        for unit in ["KiB", "MiB", "GiB", "TiB", "PiB", "EiB"] {
+            value /= 1024.0;
+            if value < 1024.0 || unit == "EiB" {
+                return format!("{value:.1} {unit}");
+            }
+        }
+        unreachable!()
+    };
+    let mut rows: Vec<_> = usage
+        .generations
+        .iter()
+        .map(|item| {
+            let generation = &item.generation;
+            let state = match (generation.current, generation.previous) {
+                (true, true) => "current, previous",
+                (true, false) => "current",
+                (false, true) => "previous",
+                (false, false) => "retained",
+            };
+            vec![
+                generation
+                    .number
+                    .map_or_else(|| "-".into(), |n| n.to_string()),
+                generation.date.as_deref().unwrap_or("-").into(),
+                size(item.closure_bytes),
+                size(item.exclusive_bytes),
+                state.into(),
+            ]
+        })
+        .collect();
+    rows.push(vec![
+        "TOTAL".into(),
+        String::new(),
+        size(usage.total_bytes),
+        String::new(),
+        String::new(),
+    ]);
+    let table = ui.table(
+        &["GEN", "DATE (UTC)", "CLOSURE", "EXCLUSIVE", "STATE"],
+        &rows,
+        &|column, text| match (column, text) {
+            (0, "TOTAL") => Some(Style::Bold),
+            (4, text) if text.starts_with("current") => Some(Style::Green),
+            (4, "previous") => Some(Style::Yellow),
+            _ => None,
+        },
+    );
+    format!(
+        "{table}\n\nUncompressed NAR sizes. Total counts shared paths once.\nExclusive is relative to the other retained generations."
     )
 }
 
@@ -1123,6 +1192,7 @@ mod tests {
                 "check",
                 "completions",
                 "controller",
+                "df",
                 "diff",
                 "doctor",
                 "fetch",
