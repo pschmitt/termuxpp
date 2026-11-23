@@ -42,6 +42,25 @@ source-code change. Recheck both implementations when updating this page.
 
 The public CLI spells out actions such as `tpp dialog list`, `tpp job-scheduler list`, `tpp job-scheduler cancel ID`, `tpp audio stop`, and `tpp saf list DIRECTORY`. Additional actions include `tpp sms conversations`, `tpp media play`, and `tpp location watch`. Invalid volume, NFC and dialog arguments fail with a nonzero exit status. Help and completion use descriptive options such as `--provider`, `--limit` and `--title`. Use `tpp help` to discover commands. A unique prefix selects a command or built-in action, for example `tpp not l` selects `tpp notification list`. Exact names take precedence and ambiguous prefixes print their matches. Help uses terminal colors and respects `NO_COLOR`. Commands that wait for Android, including dialog and location requests, report what they are waiting for on stderr in human mode. `--json` keeps progress off the output. If Android denies notification listener access, `tpp notification list` points Nix guest users to `tpp permissions grant notification-access`.
 
+## Termux Bash in the Nix guest
+
+On aarch64, the TermuxPP flake exposes the upstream Termux Bash binary and its
+shared libraries as a Nix package. From the guest, register the flake once and
+use `nix shell` to make its Bash available on `PATH`.
+
+```sh
+nix registry add termuxPkgs github:pschmitt/termuxpp
+nix shell 'termuxPkgs#bash' -c bash --version
+nix shell 'termuxPkgs#bash' -c bash -i
+```
+
+The wrapper uses Android's linker and the libraries in the Nix store. It runs
+in the guest's working directory and skips Bash startup files, which in Termux
+assume the native prefix. The package is assembled from SHA-256-pinned
+`.deb` payloads without running package scripts or installing into the native
+APT prefix. [Nix package](../../pkgs/termux-bash/default.nix) ·
+[Upstream Bash recipe](https://github.com/termux/termux-packages/tree/master/packages/bash)
+
 ## Bootstrap tools and garbage collection
 
 The managed Nix runtime registers permanent store roots for its static BusyBox

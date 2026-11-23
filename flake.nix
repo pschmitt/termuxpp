@@ -202,7 +202,10 @@
           "nixpp-runtime-termux"
           "nixpp-runtime-termux-seed"
         ]
-        // adbShellFor nixpkgs.legacyPackages.aarch64-linux;
+        // adbShellFor nixpkgs.legacyPackages.aarch64-linux
+        // {
+          bash = nixpkgs.legacyPackages.aarch64-linux.callPackage ./pkgs/termux-bash { };
+        };
       # Only what builds here: the guest helpers are aarch64-only (packages.aarch64-linux)
       # and Circus builds every attribute of this set.
       packages.${system} =
