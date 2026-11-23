@@ -5,6 +5,8 @@ import android.view.View;
 import android.widget.EditText;
 
 import androidx.fragment.app.Fragment;
+import androidx.appcompat.app.AlertDialog;
+import androidx.preference.ListPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
 
@@ -17,6 +19,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.Robolectric;
 import org.robolectric.RobolectricTestRunner;
+
+import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -71,6 +75,45 @@ public class SettingsActivitySearchTest {
         Fragment dialog = activity.getSupportFragmentManager().findFragmentByTag("property_choice");
         assertTrue(dialog instanceof PropertyChoiceDialog);
         assertEquals("terminal-triple-tap-action", dialog.requireArguments().getString("key"));
+    }
+
+    @Test
+    public void gestureStylePickerPreviewsBeforeSaving() {
+        SettingsActivity activity = Robolectric.buildActivity(SettingsActivity.class).setup().get();
+        PreferenceFragmentCompat root = (PreferenceFragmentCompat)
+            activity.getSupportFragmentManager().findFragmentById(R.id.settings);
+        activity.startSearch(root);
+        activity.filterSearch("gesture feedback style");
+        Preference result = root.findPreference("settings-search-result-0");
+        assertNotNull(result);
+        result.performClick();
+        activity.getSupportFragmentManager().executePendingTransactions();
+        PropertiesPreferencesFragment properties = (PropertiesPreferencesFragment)
+            activity.getSupportFragmentManager().findFragmentById(R.id.settings);
+        ListPreference preference = properties.findPreference("gesture-feedback-style");
+        assertNotNull(preference);
+        AtomicReference<String> saved = new AtomicReference<>();
+        preference.setOnPreferenceChangeListener((p, value) -> {
+            saved.set(value.toString());
+            return false;
+        });
+        shadowOf(Looper.getMainLooper()).idle();
+        activity.getSupportFragmentManager().executePendingTransactions();
+        PropertyChoiceDialog fragment = (PropertyChoiceDialog)
+            activity.getSupportFragmentManager().findFragmentByTag("property_choice");
+        assertNotNull(fragment);
+        AlertDialog dialog = (AlertDialog) fragment.requireDialog();
+        assertNotNull(dialog.getListView());
+        assertNotNull(dialog.getButton(AlertDialog.BUTTON_POSITIVE));
+        assertNotNull(dialog.getWindow().getDecorView().findViewWithTag("gesture-terminal-preview"));
+        dialog.getListView().performItemClick(dialog.getListView().getChildAt(2), 2,
+            dialog.getListView().getAdapter().getItemId(2));
+        assertTrue(dialog.isShowing());
+        assertNull(saved.get());
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
+        shadowOf(Looper.getMainLooper()).idle();
+        activity.getSupportFragmentManager().executePendingTransactions();
+        assertEquals("touch-ripples", saved.get());
     }
 
     @Test

@@ -26,7 +26,7 @@ import com.google.android.material.color.MaterialColors;
 import com.termux.R;
 
 /** An action label drawn above the terminal keys without intercepting touch. */
-final class GestureFeedback {
+public final class GestureFeedback {
     private View anchor;
     private Pill pill;
     private Effect effect;
@@ -43,7 +43,7 @@ final class GestureFeedback {
         show(terminal, label, armed, true);
     }
 
-    void confirm(View terminal, String label, String style, float x, float y) {
+    public void confirm(View terminal, String label, String style, float x, float y) {
         if (!show(terminal, "✓  " + label, true, false)) return;
         if (Settings.Global.getFloat(terminal.getContext().getContentResolver(),
             Settings.Global.ANIMATOR_DURATION_SCALE, 1f) <= 0f) {
@@ -84,7 +84,7 @@ final class GestureFeedback {
         return true;
     }
 
-    private void clear() {
+    public void clear() {
         ValueAnimator previous = running;
         running = null;
         if (previous != null) previous.cancel();

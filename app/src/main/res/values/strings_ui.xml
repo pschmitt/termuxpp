@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="gesture_feedback_preview_label">Open sidebar</string>
+    <string name="gesture_feedback_preview_description">Terminal preview. Tap to replay the selected effect.</string>
+    <string name="gesture_feedback_preview_replay">Tap the terminal to replay</string>
     <!-- Drawer -->
     <string name="ui_gesture_focus_session">Focus session</string>
     <string name="ui_drawer_title">Sessions</string>
