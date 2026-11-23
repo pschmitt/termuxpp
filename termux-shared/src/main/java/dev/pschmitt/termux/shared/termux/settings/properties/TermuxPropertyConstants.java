@@ -403,6 +403,10 @@ public final class TermuxPropertyConstants {
     public static final String KEY_ADB_SHELL_ALLOWED_SSIDS = "adb-shell-allowed-ssids";
 
     public static final String KEY_GESTURE_ANIMATIONS = "gesture-animations";
+    public static final String KEY_GESTURE_FEEDBACK_STYLE = "gesture-feedback-style";
+    public static final String DEFAULT_GESTURE_FEEDBACK_STYLE = "soft-flash";
+    public static final String[] GESTURE_FEEDBACK_STYLES = {"soft-flash", "touch-ripples", "edge-glow",
+        "light-sweep", "touch-bloom", "corner-brackets"};
 
     /** Defines the key for whether "Acquire wakelock" also holds a high-performance Wi-Fi lock, which
      * keeps the Wi-Fi radio out of power save. Default: false, the CPU wake lock alone. */
@@ -584,6 +588,7 @@ public final class TermuxPropertyConstants {
     public static final Set<String> TERMUX_APP_PROPERTIES_LIST = new HashSet<>(Arrays.asList(
         /* boolean */
         KEY_GESTURE_ANIMATIONS,
+        KEY_GESTURE_FEEDBACK_STYLE,
         KEY_WAKE_LOCK_WIFI,
         KEY_ADB_SHELL_ALLOWED_SSIDS,
         KEY_DISABLE_FILE_SHARE_RECEIVER,

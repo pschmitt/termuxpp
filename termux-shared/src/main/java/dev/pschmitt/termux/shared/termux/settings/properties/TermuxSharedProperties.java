@@ -283,6 +283,11 @@ public abstract class TermuxSharedProperties {
                 return (int) getTerminalMarginHorizontalInternalPropertyValueFromValue(value);
             case TermuxPropertyConstants.KEY_TERMINAL_MARGIN_VERTICAL:
                 return (int) getTerminalMarginVerticalInternalPropertyValueFromValue(value);
+            case TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_STYLE:
+                for (String style : TermuxPropertyConstants.GESTURE_FEEDBACK_STYLES) {
+                    if (style.equalsIgnoreCase(value)) return style;
+                }
+                return TermuxPropertyConstants.DEFAULT_GESTURE_FEEDBACK_STYLE;
             case TermuxPropertyConstants.KEY_TERMINAL_ENGINE:
                 return TermuxPropertyConstants.TERMINAL_ENGINE_GHOSTTY.equalsIgnoreCase(value)
                     ? TermuxPropertyConstants.TERMINAL_ENGINE_GHOSTTY

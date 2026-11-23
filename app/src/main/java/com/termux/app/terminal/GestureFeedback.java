@@ -6,6 +6,9 @@ import android.animation.ValueAnimator;
 import android.graphics.Canvas;
 import android.graphics.ColorFilter;
 import android.graphics.Paint;
+import android.graphics.LinearGradient;
+import android.graphics.RadialGradient;
+import android.graphics.Shader;
 import android.graphics.PixelFormat;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
@@ -25,6 +28,7 @@ import com.termux.R;
 final class GestureFeedback {
     private View anchor;
     private Pill pill;
+    private Effect effect;
     private ValueAnimator running;
     private boolean preview;
     private final Runnable expire = this::clear;
@@ -38,14 +42,20 @@ final class GestureFeedback {
         show(terminal, label, armed, true);
     }
 
-    void confirm(View terminal, String label) {
+    void confirm(View terminal, String label, String style, float x, float y) {
         if (!show(terminal, "✓  " + label, true, false)) return;
         if (Settings.Global.getFloat(terminal.getContext().getContentResolver(),
             Settings.Global.ANIMATOR_DURATION_SCALE, 1f) <= 0f) {
             terminal.postDelayed(expire, 600);
             return;
         }
+        effect = new Effect(terminal, style, x, y);
+        terminal.getOverlay().add(effect);
+        // Keep the confirmation label above the effect.
+        terminal.getOverlay().remove(pill);
+        terminal.getOverlay().add(pill);
         Pill shown = pill;
+        Effect shownEffect = effect;
         ValueAnimator animator = ValueAnimator.ofFloat(0f, 1f);
         running = animator;
         animator.setDuration(700);
@@ -53,6 +63,7 @@ final class GestureFeedback {
             float time = animation.getAnimatedFraction();
             float opacity = Math.min(1f, Math.min(time / .13f, (1f - time) / .24f));
             shown.setAlpha(Math.round(255 * opacity));
+            shownEffect.setProgress(time);
         });
         animator.addListener(new AnimatorListenerAdapter() {
             @Override public void onAnimationEnd(Animator animation) {
@@ -79,10 +90,96 @@ final class GestureFeedback {
         if (anchor != null) {
             anchor.removeCallbacks(expire);
             if (pill != null) anchor.getOverlay().remove(pill);
+            if (effect != null) anchor.getOverlay().remove(effect);
         }
         anchor = null;
         pill = null;
+        effect = null;
         preview = false;
+    }
+
+    /** Transient overlay; it never handles touch or modifies terminal content. */
+    private static final class Effect extends Drawable {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final String style;
+        private final float x, y, density;
+        private final int color;
+        private float progress;
+
+        Effect(View view, String style, float x, float y) {
+            this.style = style == null ? "soft-flash" : style.toLowerCase(java.util.Locale.ROOT);
+            this.x = Float.isNaN(x) ? view.getWidth() / 2f : x;
+            this.y = Float.isNaN(y) ? view.getHeight() / 2f : y;
+            density = view.getResources().getDisplayMetrics().density;
+            color = MaterialColors.getColor(view, R.attr.termuxUiPrimary);
+            setBounds(0, 0, view.getWidth(), view.getHeight());
+        }
+
+        void setProgress(float progress) {
+            this.progress = progress;
+            invalidateSelf();
+        }
+
+        @Override public void draw(@NonNull Canvas canvas) {
+            float w = getBounds().width(), h = getBounds().height();
+            float fade = 1f - progress;
+            paint.reset();
+            paint.setAntiAlias(true);
+            paint.setColor(color);
+            switch (style) {
+                case "touch-ripples":
+                    paint.setStyle(Paint.Style.STROKE);
+                    paint.setStrokeWidth(2 * density);
+                    for (int i = 0; i < 2; i++) {
+                        float t = Math.max(0f, Math.min(1f, (progress - i * .13f) / .87f));
+                        if (progress < i * .13f) continue;
+                        paint.setAlpha(Math.round(210 * (1f - t)));
+                        canvas.drawCircle(x, y, (10 * density + t * Math.max(w, h)), paint);
+                    }
+                    break;
+                case "edge-glow":
+                    paint.setStyle(Paint.Style.STROKE);
+                    paint.setStrokeWidth(4 * density);
+                    paint.setShadowLayer(18 * density, 0, 0, color);
+                    paint.setAlpha(Math.round(210 * fade));
+                    canvas.drawRect(2 * density, 2 * density, w - 2 * density, h - 2 * density, paint);
+                    break;
+                case "corner-brackets":
+                    paint.setStyle(Paint.Style.STROKE);
+                    paint.setStrokeWidth(2 * density);
+                    paint.setAlpha(Math.round(220 * fade));
+                    float inset = 10 * density, len = 24 * density;
+                    for (int sx : new int[]{-1, 1}) for (int sy : new int[]{-1, 1}) {
+                        float cx = sx == 1 ? inset : w - inset, cy = sy == 1 ? inset : h - inset;
+                        canvas.drawLine(cx, cy, cx + sx * len, cy, paint);
+                        canvas.drawLine(cx, cy, cx, cy + sy * len, paint);
+                    }
+                    break;
+                case "light-sweep":
+                    float center = -w + progress * w * 3;
+                    paint.setShader(new LinearGradient(center - w * .4f, 0, center + w * .4f, h,
+                        new int[]{android.graphics.Color.TRANSPARENT, color, android.graphics.Color.TRANSPARENT},
+                        null, Shader.TileMode.CLAMP));
+                    paint.setAlpha(Math.round(120 * fade));
+                    canvas.drawRect(0, 0, w, h, paint);
+                    break;
+                case "touch-bloom":
+                    float radius = Math.max(w, h) * (.35f + .45f * progress);
+                    paint.setShader(new RadialGradient(x, y, radius,
+                        new int[]{color, color, android.graphics.Color.TRANSPARENT},
+                        new float[]{0f, .15f, 1f}, Shader.TileMode.CLAMP));
+                    paint.setAlpha(Math.round(150 * fade));
+                    canvas.drawRect(0, 0, w, h, paint);
+                    break;
+                default:
+                    paint.setAlpha(Math.round(90 * fade));
+                    canvas.drawRect(0, 0, w, h, paint);
+            }
+        }
+
+        @Override public void setAlpha(int alpha) {}
+        @Override public void setColorFilter(@Nullable ColorFilter filter) {}
+        @Override public int getOpacity() { return PixelFormat.TRANSLUCENT; }
     }
 
     private static final class Pill extends Drawable {

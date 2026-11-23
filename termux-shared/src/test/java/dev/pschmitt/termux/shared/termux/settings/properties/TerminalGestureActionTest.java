@@ -15,6 +15,16 @@ import dev.pschmitt.termux.shared.termux.settings.properties.GestureCommandConte
 public class TerminalGestureActionTest {
 
     @Test
+    public void feedbackStyleDefaultsAndParses() {
+        String key = TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_STYLE;
+        assertEquals("soft-flash", TermuxSharedProperties.getInternalTermuxPropertyValueFromValue(null, key, null));
+        assertEquals("soft-flash", TermuxSharedProperties.getInternalTermuxPropertyValueFromValue(null, key, "invalid"));
+        for (String style : TermuxPropertyConstants.GESTURE_FEEDBACK_STYLES) {
+            assertEquals(style, TermuxSharedProperties.getInternalTermuxPropertyValueFromValue(null, key, style.toUpperCase(java.util.Locale.ROOT)));
+        }
+    }
+
+    @Test
     public void parsesEveryValue() {
         assertSame(TerminalGestureAction.NONE, TerminalGestureAction.parse("none"));
         assertSame(TerminalGestureAction.SHOW_KEYBOARD, TerminalGestureAction.parse("show-keyboard"));

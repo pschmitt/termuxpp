@@ -110,6 +110,9 @@ public class PropertyInputSpecTest {
         invalid("night-mode", "auto");
         valid("soft-keyboard-toggle-behaviour", "show/hide", "enable/disable");
         invalid("soft-keyboard-toggle-behaviour", "show", "enable-disable");
+        valid(TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_STYLE, "soft-flash", "touch-ripples",
+            "edge-glow", "light-sweep", "touch-bloom", "corner-brackets", "SOFT-FLASH");
+        invalid(TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_STYLE, "sparkles");
         valid("volume-keys", "virtual", "volume");
         invalid("volume-keys", "mute");
         valid(TermuxPropertyConstants.KEY_GESTURE_COMMAND_CONTEXT, "session", "nix", "outer");
@@ -259,6 +262,9 @@ public class PropertyInputSpecTest {
             PropertyInputSpec.choices("extra-keys-style"));
         assertArrayEquals(new String[] {"session", "nix", "outer"},
             PropertyInputSpec.choices(TermuxPropertyConstants.KEY_GESTURE_COMMAND_CONTEXT));
+        String feedbackKey = TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_STYLE;
+        assertArrayEquals(new String[] {"soft-flash", "touch-ripples", "edge-glow", "light-sweep",
+            "touch-bloom", "corner-brackets"}, PropertyInputSpec.choices(feedbackKey));
         String engineKey = TermuxPropertyConstants.KEY_TERMINAL_ENGINE;
         assertArrayEquals(new String[] {"termux", "libghostty"}, PropertyInputSpec.choices(engineKey));
         valid(engineKey, "termux", "libghostty", "LIBGHOSTTY");
@@ -273,7 +279,7 @@ public class PropertyInputSpecTest {
         invalid(toastKey, "top", "center-top", "bottom right");
         for (String key : TermuxPropertyConstants.TERMUX_APP_PROPERTIES_LIST) {
             if (key.equals("extra-keys-style") || key.equals(TermuxPropertyConstants.KEY_GESTURE_COMMAND_CONTEXT)
-                || key.equals(toastKey) || key.equals(engineKey)) continue;
+                || key.equals(toastKey) || key.equals(engineKey) || key.equals(feedbackKey)) continue;
             assertEquals(key, 0, PropertyInputSpec.choices(key).length);
         }
         assertEquals(0, PropertyInputSpec.choices(null).length);

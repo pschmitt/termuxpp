@@ -168,6 +168,8 @@ public final class PropertyInputSpec {
                 return "Also keep the Wi-Fi radio out of power save while a wake lock is held (a high-performance"
                     + " Wi-Fi lock). Costs battery; the wake lock alone keeps programs and SSH sessions running."
                     + " Disabled by default.";
+            case TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_STYLE:
+                return "Visual effect shown when a gesture is recognized. Default: soft flash.";
             case TermuxPropertyConstants.KEY_GESTURE_ANIMATIONS:
                 return "Show visual feedback for custom taps, extra-key swipes, and volume button actions. Enabled by default.";
 
@@ -330,6 +332,11 @@ public final class PropertyInputSpec {
         switch (key) {
             case TermuxPropertyConstants.KEY_BELL_BEHAVIOUR:
                 return inMap(TermuxPropertyConstants.MAP_BELL_BEHAVIOUR, value);
+            case TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_STYLE:
+                for (String style : choices(key)) {
+                    if (style.equalsIgnoreCase(value)) return null;
+                }
+                return "Choose one of the available feedback styles";
             case TermuxPropertyConstants.KEY_TERMINAL_ENGINE:
                 for (String engine : choices(key)) {
                     if (engine.equalsIgnoreCase(value)) return null;
@@ -495,6 +502,8 @@ public final class PropertyInputSpec {
      */
     @NonNull
     public static String[] choices(@Nullable String key) {
+        if (TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_STYLE.equals(key))
+            return TermuxPropertyConstants.GESTURE_FEEDBACK_STYLES.clone();
         if (TermuxPropertyConstants.KEY_TERMINAL_ENGINE.equals(key))
             return new String[] {TermuxPropertyConstants.TERMINAL_ENGINE_TERMUX, TermuxPropertyConstants.TERMINAL_ENGINE_GHOSTTY};
         if (TermuxPropertyConstants.KEY_EXTRA_KEYS_STYLE.equals(key)) return EXTRA_KEYS_STYLES.clone();

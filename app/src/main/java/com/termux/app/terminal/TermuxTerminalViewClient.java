@@ -220,7 +220,7 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
         // not report anything.
         TerminalGestureAction singleTapAction = mActivity.getProperties().getTerminalSingleTapAction();
         if (shouldActOnSingleTapUp(e, getMaxTapActionCount(), singleTapAction))
-            performTerminalTapAction(1, singleTapAction);
+            performTerminalTapAction(1, singleTapAction, e.getX(), e.getY());
     }
 
     /** How many rows above and below a tapped row are searched for the rest of a URL that was broken over rows. */
@@ -339,27 +339,34 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
      * double or triple tap action is configured, see {@link #getMaxTapActionCount()}.
      */
     @Override
-    public void onTapCount(int tapCount) {
+    public void onTapCount(int tapCount, float x, float y) {
         if (tapCount == 3 && focusTripleTapSession()) {
-            showGestureFeedback(mActivity.getString(R.string.ui_gesture_focus_session));
+            showGestureFeedback(mActivity.getString(R.string.ui_gesture_focus_session), x, y);
             return;
         }
-        performTerminalTapAction(tapCount, mActivity.getProperties().getTerminalTapAction(tapCount));
+        performTerminalTapAction(tapCount, mActivity.getProperties().getTerminalTapAction(tapCount), x, y);
     }
 
     public void showGestureFeedback(String label) {
-        if (mActivity.getProperties().areGestureAnimationsEnabled())
-            mGestureFeedback.confirm(mActivity.getTerminalView(), label);
+        showGestureFeedback(label, Float.NaN, Float.NaN);
+    }
+
+    private void showGestureFeedback(String label, float x, float y) {
+        if (mActivity.getProperties().areGestureAnimationsEnabled()) {
+            String style = (String) mActivity.getProperties().getInternalPropertyValue(
+                TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_STYLE, true);
+            mGestureFeedback.confirm(mActivity.getTerminalView(), label, style, x, y);
+        }
     }
 
     public void previewGesture(@Nullable String label, boolean armed) {
         mGestureFeedback.preview(mActivity.getTerminalView(), label, armed);
     }
 
-    private void performTerminalTapAction(int tapCount, TerminalGestureAction action) {
+    private void performTerminalTapAction(int tapCount, TerminalGestureAction action, float x, float y) {
         if (action != TerminalGestureAction.NONE
             && (tapCount != 1 || action != TermuxPropertyConstants.DEFAULT_TERMINAL_SINGLE_TAP_ACTION))
-            showGestureFeedback(action.getLabel());
+            showGestureFeedback(action.getLabel(), x, y);
         performGestureAction(action,
             mActivity.getProperties().getTerminalTapKeys(tapCount),
             mActivity.getProperties().getTerminalTapCommand(tapCount),

@@ -54,6 +54,11 @@ public interface TerminalViewClient {
     default void onTapCount(int tapCount) {
     }
 
+    /** Tap sequence with the terminal-relative location of the final tap. */
+    default void onTapCount(int tapCount, float x, float y) {
+        onTapCount(tapCount);
+    }
+
     boolean shouldBackButtonBeMappedToEscape();
 
     boolean shouldEnforceCharBasedInput();

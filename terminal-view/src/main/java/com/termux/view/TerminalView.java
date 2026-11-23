@@ -144,6 +144,7 @@ public final class TerminalView extends View {
     public final static int KEY_EVENT_SOURCE_SOFT_KEYBOARD = 0;
 
     private static final String LOG_TAG = "TerminalView";
+    private float mLastTapX, mLastTapY;
 
     public TerminalView(Context context, AttributeSet attributes) { // NO_UCD (unused code)
         super(context, attributes);
@@ -167,7 +168,7 @@ public final class TerminalView extends View {
             new TapActionResolver.Listener() {
                 @Override
                 public void onTap(int tapCount) {
-                    if (mClient != null) mClient.onTapCount(tapCount);
+                    if (mClient != null) mClient.onTapCount(tapCount, mLastTapX, mLastTapY);
                 }
             });
         mGestureRecognizer = new GestureAndScaleRecognizer(context, new GestureAndScaleRecognizer.Listener() {
@@ -749,6 +750,8 @@ public final class TerminalView extends View {
                 mTapActionResolver.onMove(event.getX(), event.getY());
                 break;
             case MotionEvent.ACTION_UP:
+                mLastTapX = event.getX();
+                mLastTapY = event.getY();
                 mTapActionResolver.onUp(event.getEventTime(), event.getX(), event.getY(),
                     mClient.getMaxTapActionCount());
                 break;

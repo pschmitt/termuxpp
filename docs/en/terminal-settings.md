@@ -136,7 +136,13 @@ short terminal messages such as the session number. The default is
 Custom taps, extra-key swipes, and volume-button actions show visual feedback
 by default. Turn **gesture-animations** off in **Settings → Properties →
 Gestures**, or set `gesture-animations = false` in `termuxpp.properties`.
-The assigned actions still run.
+The assigned actions still run. Choose **gesture-feedback-style** in the same
+settings group to select `soft-flash` (default), `touch-ripples`, `edge-glow`,
+`light-sweep`, `touch-bloom`, or `corner-brackets`. You can also set, for
+example, `gesture-feedback-style = touch-ripples` in `termuxpp.properties`.
+Ripples and bloom start at the tap location; other actions use the terminal center.
+When Android animations are disabled, the action label remains visible briefly
+without an animated effect.
 
 
 | Key | Gesture | Default |

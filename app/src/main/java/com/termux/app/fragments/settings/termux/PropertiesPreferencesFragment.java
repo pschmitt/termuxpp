@@ -98,7 +98,8 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
                 String current = values.getProperty(key, "");
                 entries.add(isBoolean ? getString(R.string.properties_default_boolean,
                     getString(defaultTrue ? R.string.properties_enabled : R.string.properties_disabled))
-                    : getString(R.string.properties_default));
+                    : key.equals(TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_STYLE)
+                        ? "Default (Soft flash)" : getString(R.string.properties_default));
                 entryValues.add("");
                 if (isBoolean) {
                     entries.add(getString(R.string.properties_enabled));
@@ -164,7 +165,8 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
         if (key.startsWith("extra-keys") || key.endsWith("-action") || key.endsWith("-keys")
             || key.endsWith("-command") || key.equals(TermuxPropertyConstants.KEY_GESTURE_COMMAND_CONTEXT)
             || key.equals(TermuxPropertyConstants.KEY_TERMINAL_TRIPLE_TAP_FOCUS_TITLE)
-            || key.equals(TermuxPropertyConstants.KEY_GESTURE_ANIMATIONS))
+            || key.equals(TermuxPropertyConstants.KEY_GESTURE_ANIMATIONS)
+            || key.equals(TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_STYLE))
             return R.string.properties_gestures;
         if (key.contains("keyboard") || key.startsWith("shortcut.") || key.equals("back-key")
             || key.equals("volume-keys") || key.equals("ctrl-space-workaround")
@@ -192,6 +194,10 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
     }
 
     private String choiceLabel(String key, String value) {
+        if (TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_STYLE.equals(key)) {
+            String label = value.replace('-', ' ');
+            return Character.toUpperCase(label.charAt(0)) + label.substring(1);
+        }
         if (TermuxPropertyConstants.KEY_TERMINAL_ENGINE.equals(key))
             return TermuxPropertyConstants.TERMINAL_ENGINE_GHOSTTY.equals(value) ? "libghostty" : "Termux";
         if (!key.endsWith("-action")) return value;
