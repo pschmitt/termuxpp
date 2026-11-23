@@ -19,6 +19,8 @@ nixpp rebuild --flake path:/config --host example
 nixpp prepare /nix/store/STOREHASH-termuxpp-system-example
 nixpp check STOREHASH-termuxpp-system-example
 nixpp switch STOREHASH-termuxpp-system-example
+nixpp reapply
+nixpp hm --help
 nixpp rollback
 nixpp recover
 ```
@@ -29,7 +31,11 @@ Activation journals the previous system/Home Manager pair and publishes selectio
 only after the activation and checks succeed. A retained failure journal blocks
 another switch until explicit recovery.
 
-`switch`, `rebuild`, `upgrade` and `fetch latest` accept `--backup[=EXT]` (default
+`nixpp reapply` reruns activation for the active closure. It uses the native
+controller's checks and recovery journal and preserves generation history.
+`nixpp hm` forwards arguments directly to the installed `home-manager`.
+
+`switch`, `reapply`, `rebuild`, `upgrade` and `fetch latest` accept `--backup[=EXT]` (default
 `EXT` is `nixpp.bak`): the controller runs the Home Manager activation with
 `HOME_MANAGER_BACKUP_EXT=EXT`, so an existing unmanaged file in its way is moved
 to `<file>.EXT` instead of failing with "would be clobbered". An existing

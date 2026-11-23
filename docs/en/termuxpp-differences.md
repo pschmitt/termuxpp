@@ -57,6 +57,11 @@ For cache-backed upgrades, `nixpp upgrade` reports the verified target system
 path on stderr before copying it. The dry run reports the same target, and
 `--json` keeps the machine-readable result on stdout.
 
+`nixpp reapply` reruns the active guest generation's activation and restores
+managed files such as `termuxpp.properties`. The controller preserves the
+current and previous generation selections. `nixpp hm` invokes the guest's
+installed Home Manager CLI. [Guest command reference](../../pkgs/nixpp/source/README.md)
+
 ## Session sidebar
 
 Both apps use an edge drawer for switching sessions. TermuxPP presents it as a

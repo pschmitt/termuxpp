@@ -23,6 +23,7 @@ use clap::builder::styling::AnsiColor;
 use clap::{Args, CommandFactory, Parser, Subcommand};
 use serde_json::{Value, json};
 use std::io::{self, Write};
+use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
@@ -154,6 +155,17 @@ pub struct UpgradeArgs {
 #[derive(Debug, Subcommand)]
 #[command(next_display_order = None)]
 pub enum Command {
+    /// Reapply the currently active generation
+    Reapply {
+        #[command(flatten)]
+        backup: BackupArgs,
+    },
+    /// Run the installed Home Manager CLI
+    #[command(disable_help_flag = true)]
+    Hm {
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        args: Vec<std::ffi::OsString>,
+    },
     /// Prepare a candidate without selecting or activating it
     Prepare {
         /// Store path of the system generation
@@ -313,6 +325,11 @@ pub struct LoginArgs {
 #[derive(Debug, Subcommand)]
 #[command(next_display_order = None)]
 pub enum Operation {
+    /// Reapply the currently active generation
+    Reapply {
+        #[command(flatten)]
+        backup: BackupArgs,
+    },
     /// Check a candidate without activating or selecting it
     Check {
         candidate: String,
@@ -420,6 +437,10 @@ fn execute(cli: &Cli, ui: &Ui) -> Exit {
     let runtime = non_empty(&cli.runtime);
     let socket = non_empty(&cli.socket);
     match &cli.command {
+        Command::Hm { args } => {
+            let error = std::process::Command::new("home-manager").args(args).exec();
+            Exit::failure(format!("cannot execute home-manager: {error}"))
+        }
         Command::Completions { shell } => {
             let mut script = Vec::new();
             clap_complete::generate(*shell, &mut Cli::command(), "nixpp", &mut script);
@@ -771,6 +792,12 @@ fn guest_command(
             ui.ok(&format!("switched to {candidate}"));
             print_response(ui, &response);
         }
+        Command::Reapply { backup } => {
+            let backup = backup_extension(backup)?;
+            let response = guest::manage_with_backup(&socket, "reapply", None, backup.as_deref())?;
+            ui.ok("active generation reapplied");
+            print_response(ui, &response);
+        }
         Command::Check { candidate } => {
             let response = guest::manage(&socket, "check", Some(candidate))?;
             ui.ok(&format!("{candidate} passed the runtime check"));
@@ -805,6 +832,7 @@ fn guest_command(
             ui.print(&render_generations(ui, &list, table)?);
         }
         Command::Completions { .. }
+        | Command::Hm { .. }
         | Command::Serve
         | Command::Controller { .. }
         | Command::Init(_)
@@ -929,6 +957,9 @@ fn operate(runtime: Option<PathBuf>, operation: &Operation, ui: &Ui) -> Result<u
             backup.backup.as_deref(),
         )?,
         Operation::Recover => controller::recover(&runtime, &mut runner)?,
+        Operation::Reapply { backup } => {
+            controller::reapply(&runtime, backup.backup.as_deref(), &mut runner)?
+        }
         Operation::Rollback => controller::rollback(&runtime, &mut runner)?,
         Operation::ListGenerations => {
             let list = serde_json::to_value(controller::generations(&runtime)?)?;
@@ -1097,11 +1128,13 @@ mod tests {
                 "fetch",
                 "gc",
                 "help",
+                "hm",
                 "init",
                 "list-generations",
                 "login",
                 "native-shell",
                 "prepare",
+                "reapply",
                 "rebuild",
                 "recover",
                 "rollback",
@@ -1111,6 +1144,18 @@ mod tests {
                 "upgrade",
             ]
         );
+    }
+
+    #[test]
+    fn hm_forwards_home_manager_options_and_arguments() {
+        for args in [["--help", ""].as_slice(), ["switch", "--flake"].as_slice()] {
+            let args: Vec<_> = args.iter().copied().filter(|arg| !arg.is_empty()).collect();
+            let argv = [&["hm"][..], &args].concat();
+            let Command::Hm { args: forwarded } = parse(&argv).unwrap().command else {
+                panic!("expected hm");
+            };
+            assert_eq!(forwarded, args);
+        }
     }
 
     #[test]

@@ -453,28 +453,72 @@ pub fn switch_with_backup(
         previous: old.current.clone(),
         previous_home_manager: old.home_manager.clone(),
     };
+    activate_selection(&runtime, name, &old, &new, backup, runner)
+}
+
+/// Activate the installed generation again while preserving selection history.
+pub fn reapply(runtime: &Path, backup: Option<&str>, runner: &mut dyn Runner) -> Result<i32> {
+    if let Some(extension) = backup {
+        validate_backup_extension(extension)?;
+    }
+    let runtime = resolve(runtime)?;
+    let _lock = FileLock::acquire(&runtime.join(CONTROL_LOCK))?;
+    if pending_exists(&runtime)? {
+        return Err(Error::invalid(
+            "an unfinished activation exists; run recover first",
+        ));
+    }
+    let state =
+        read_state(&runtime)?.ok_or_else(|| Error::invalid("no active system generation"))?;
+    let name = state
+        .current
+        .as_deref()
+        .ok_or_else(|| Error::invalid("no active system generation"))?;
+    let data = candidate_manifest(&runtime, name)?;
+    if !data.activation_supported
+        || state.home_manager.as_deref() != Some(data.home_manager.as_str())
+    {
+        return Err(Error::invalid("active generation cannot be reapplied"));
+    }
+    let status = check(&runtime, name, true, runner)?;
+    if status != 0 {
+        return Ok(status);
+    }
+    activate_selection(&runtime, name, &state, &state, backup, runner)
+}
+
+fn activate_selection(
+    runtime: &Path,
+    name: &str,
+    old: &State,
+    new: &State,
+    backup: Option<&str>,
+    runner: &mut dyn Runner,
+) -> Result<i32> {
     let journal = |phase| Journal {
-        before: &old,
-        after: &new,
+        before: old,
+        after: new,
         phase,
     };
-    write_json(&runtime, PENDING_FILE, &journal("activating"))?;
+    write_json(runtime, PENDING_FILE, &journal("activating"))?;
     activate_home(
-        &runtime,
+        runtime,
         Some(name),
-        Some(&data.home_manager),
+        new.home_manager.as_deref(),
         backup,
         runner,
     )?;
-    let status = check(&runtime, name, true, runner)?;
+    let status = check(runtime, name, true, runner)?;
     if status != 0 {
         return Err(Error::invalid(format!(
             "post-activation check failed with status {status}; recovery is required"
         )));
     }
-    write_json(&runtime, PENDING_FILE, &journal("publishing"))?;
-    publish_selection(&runtime, &new)?;
-    remove_journal(&runtime)?;
+    if old != new {
+        write_json(runtime, PENDING_FILE, &journal("publishing"))?;
+        publish_selection(runtime, new)?;
+    }
+    remove_journal(runtime)?;
     Ok(0)
 }
 
@@ -646,7 +690,7 @@ fn utc_date(time: SystemTime) -> Option<String> {
     ))
 }
 
-/// Serve one management request: an allowlist of exactly five commands.
+/// Serve one management request from the controller's command allowlist.
 pub fn dispatch(runtime: &Path, request: &Value, runner: &mut dyn Runner) -> Result<Value> {
     let object = request
         .as_object()
@@ -659,7 +703,7 @@ pub fn dispatch(runtime: &Path, request: &Value, runner: &mut dyn Runner) -> Res
     let command = object.get("command").and_then(Value::as_str);
     let backup = match object.get("backupExtension") {
         None => None,
-        Some(Value::String(extension)) if command == Some("switch") => {
+        Some(Value::String(extension)) if matches!(command, Some("switch" | "reapply")) => {
             validate_backup_extension(extension)?;
             Some(extension.as_str())
         }
@@ -688,6 +732,7 @@ pub fn dispatch(runtime: &Path, request: &Value, runner: &mut dyn Runner) -> Res
         })),
         Some("rollback") => Ok(json!({ "status": rollback(runtime, runner)? })),
         Some("recover") => Ok(json!({ "status": recover(runtime, runner)? })),
+        Some("reapply") => Ok(json!({ "status": reapply(runtime, backup, runner)? })),
         _ => Err(Error::invalid("unsupported management command")),
     }
 }
@@ -998,6 +1043,28 @@ mod tests {
                 .unwrap(),
             Path::new(&fixture.baseline)
         );
+    }
+
+    #[test]
+    fn reapply_runs_activation_and_preserves_generation_history() {
+        let fixture = Fixture::new();
+        assert_eq!(
+            do_switch(&fixture, &mut MockRunner::returning(0)).unwrap(),
+            0
+        );
+        let before = fixture.read("system-state.json");
+        let mut runner = MockRunner::returning(0);
+        let response =
+            dispatch(&fixture.runtime, &json!({"command":"reapply"}), &mut runner).unwrap();
+        assert_eq!(response["status"], 0);
+        assert!(
+            runner
+                .calls
+                .iter()
+                .any(|(args, _)| args.last() == Some(&format!("{}/activate", fixture.home)))
+        );
+        assert_eq!(fixture.read("system-state.json"), before);
+        assert!(!fixture.exists("system-pending.json"));
     }
 
     #[test]
