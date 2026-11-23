@@ -6,6 +6,7 @@ import android.animation.ValueAnimator;
 import android.graphics.Canvas;
 import android.graphics.ColorFilter;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.LinearGradient;
 import android.graphics.RadialGradient;
 import android.graphics.Shader;
@@ -104,6 +105,7 @@ final class GestureFeedback {
         private final String style;
         private final float x, y, density;
         private final int color;
+        private final Path[] brackets = new Path[4];
         private float progress;
 
         Effect(View view, String style, float x, float y) {
@@ -113,6 +115,18 @@ final class GestureFeedback {
             density = view.getResources().getDisplayMetrics().density;
             color = MaterialColors.getColor(view, R.attr.termuxUiPrimary);
             setBounds(0, 0, view.getWidth(), view.getHeight());
+            float inset = 10 * density, len = 24 * density, radius = 10 * density;
+            int index = 0;
+            for (int sx : new int[]{-1, 1}) for (int sy : new int[]{-1, 1}) {
+                float cx = sx == 1 ? inset : view.getWidth() - inset;
+                float cy = sy == 1 ? inset : view.getHeight() - inset;
+                Path bracket = new Path();
+                bracket.moveTo(cx + sx * len, cy);
+                bracket.lineTo(cx + sx * radius, cy);
+                bracket.quadTo(cx, cy, cx, cy + sy * radius);
+                bracket.lineTo(cx, cy + sy * len);
+                brackets[index++] = bracket;
+            }
         }
 
         void setProgress(float progress) {
@@ -142,18 +156,16 @@ final class GestureFeedback {
                     paint.setStrokeWidth(4 * density);
                     paint.setShadowLayer(18 * density, 0, 0, color);
                     paint.setAlpha(Math.round(210 * fade));
-                    canvas.drawRect(2 * density, 2 * density, w - 2 * density, h - 2 * density, paint);
+                    float edgeRadius = Math.min(20 * density, Math.min(w, h) / 2f);
+                    canvas.drawRoundRect(2 * density, 2 * density, w - 2 * density, h - 2 * density,
+                        edgeRadius, edgeRadius, paint);
                     break;
                 case "corner-brackets":
                     paint.setStyle(Paint.Style.STROKE);
                     paint.setStrokeWidth(2 * density);
                     paint.setAlpha(Math.round(220 * fade));
-                    float inset = 10 * density, len = 24 * density;
-                    for (int sx : new int[]{-1, 1}) for (int sy : new int[]{-1, 1}) {
-                        float cx = sx == 1 ? inset : w - inset, cy = sy == 1 ? inset : h - inset;
-                        canvas.drawLine(cx, cy, cx + sx * len, cy, paint);
-                        canvas.drawLine(cx, cy, cx, cy + sy * len, paint);
-                    }
+                    paint.setStrokeCap(Paint.Cap.ROUND);
+                    for (Path bracket : brackets) canvas.drawPath(bracket, paint);
                     break;
                 case "light-sweep":
                     float center = -w + progress * w * 3;
