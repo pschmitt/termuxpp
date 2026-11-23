@@ -137,6 +137,13 @@ let
       export TPP_API_PATH_CMD=${androidPath}
       PATH=${termux-am}/bin:"$PATH"
       export PATH
+      if [[ ''${1:-} != --complete ]] &&
+        { read -r apk_version < "${androidApp.dataDir}/files/usr/share/tpp/source-version"; } 2>/dev/null &&
+        [[ "$apk_version" =~ ^[0-9a-f]{64}$ && "$apk_version" != "${tppCli.sourceVersion}" ]]
+      then
+        printf 'tpp: warning: Nix guest build %.12s differs from APK build %.12s\n' \
+          "${tppCli.sourceVersion}" "$apk_version" >&2
+      fi
       exec ${tppCli}/bin/tpp "$@"
     '';
   };

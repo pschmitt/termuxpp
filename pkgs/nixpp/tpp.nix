@@ -9,6 +9,26 @@
 }:
 let
   root = ../..;
+  # Keep the input set and digest format in sync with app/tpp-native.gradle.
+  versionFiles = [
+    (root + "/Cargo.toml")
+    (root + "/Cargo.lock")
+    (root + "/pkgs/tpp-cli/Cargo.toml")
+    (root + "/pkgs/tpp-api/Cargo.toml")
+    (root + "/pkgs/tpp-session/Cargo.toml")
+  ]
+  ++ lib.concatMap (dir: lib.filesystem.listFilesRecursive (root + dir)) [
+    "/pkgs/tpp-cli/src"
+    "/pkgs/tpp-api/src"
+    "/pkgs/tpp-api/help"
+    "/pkgs/tpp-session/src"
+    "/pkgs/tpp-session/assets"
+  ];
+  sourceVersion = builtins.hashString "sha256" (
+    lib.concatMapStrings (
+      file: "${lib.removePrefix "${toString root}/" (toString file)} ${builtins.hashFile "sha256" file}\n"
+    ) (lib.sort (a: b: toString a < toString b) versionFiles)
+  );
 in
 rustPlatform.buildRustPackage {
   pname = "tpp";
@@ -33,6 +53,7 @@ rustPlatform.buildRustPackage {
   # The parity tests of tpp-api run the former scripts (tpp-api/tests/oracle)
   # as the reference; those need getopt, which the sandbox lacks otherwise.
   nativeCheckInputs = [ util-linux ];
+  passthru = { inherit sourceVersion; };
 
   meta = {
     description = "TermuxPP command line: Android API commands, terminal session control";

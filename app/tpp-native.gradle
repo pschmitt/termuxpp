@@ -20,6 +20,7 @@ import groovy.json.JsonOutput
 
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
+import java.security.MessageDigest
 
 def apiPackage = rootProject.file("pkgs/tpp-api-bridge")
 def generated = layout.buildDirectory.dir("generated/tppNative").get().asFile
@@ -27,11 +28,21 @@ def assetsRoot = new File(generated, "assets")
 def jniLibsRoot = new File(generated, "jniLibs")
 def rustLibsRoot = new File(generated, "rustLibs")
 
+// Keep the input set and digest format in sync with pkgs/nixpp/tpp.nix.
+def tppVersionSources = rootProject.fileTree(rootProject.projectDir) {
+    include "Cargo.toml", "Cargo.lock",
+        "pkgs/tpp-cli/Cargo.toml", "pkgs/tpp-api/Cargo.toml", "pkgs/tpp-session/Cargo.toml",
+        "pkgs/tpp-cli/src/**", "pkgs/tpp-api/src/**", "pkgs/tpp-api/help/**",
+        "pkgs/tpp-session/src/**", "pkgs/tpp-session/assets/**"
+}
+
 tasks.register("stageTppNative") {
     inputs.dir(apiPackage).withPropertyName("apiPackage")
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.dir(rootProject.file("pkgs/tpp-session/assets/session-completions"))
         .withPropertyName("sessionCompletions").withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.files(tppVersionSources).withPropertyName("tppVersionSources")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
     outputs.dir(assetsRoot)
 
     doLast {
@@ -58,6 +69,17 @@ tasks.register("stageTppNative") {
         asset("share/zsh/site-functions/_tpp-session", new File(sessionCompletions, "zsh"), false, false)
         asset("share/fish/vendor_completions.d/tpp-session.fish", new File(sessionCompletions, "fish"), false, false)
 
+        def sha256 = { byte[] bytes -> MessageDigest.getInstance("SHA-256").digest(bytes).encodeHex().toString() }
+        def sources = new TreeMap<String, File>()
+        tppVersionSources.visit { details ->
+            if (!details.directory) sources.put(details.relativePath.pathString, details.file)
+        }
+        def sourceHashes = sources.collect { path, file -> path + " " + sha256(file.bytes) + "\n" }.join()
+        def versionFile = new File(files, "share/tpp/source-version")
+        versionFile.parentFile.mkdirs()
+        versionFile.setText(sha256(sourceHashes.getBytes("UTF-8")) + "\n", "UTF-8")
+        entries << [path: "share/tpp/source-version", type: "asset", source: "tpp-native/files/share/tpp/source-version"]
+
         // One executable for the dispatcher, the API commands and the session control; there
         // are no command scripts
         entries << [path: "bin/tpp", type: "lib", source: "libtpp.so", executable: true]
@@ -77,6 +99,7 @@ tasks.register("buildTppRust") {
     def crates = ["tpp-cli", "tpp-session", "tpp-api"].collect { new File(workspace, "pkgs/$it") }
     inputs.files(crates.collect { fileTree(it) { exclude "target/**" } })
     inputs.file(new File(workspace, "Cargo.toml"))
+    inputs.file(new File(workspace, "Cargo.lock"))
     inputs.property("minSdk", project.properties.minSdkVersion)
     outputs.dir(rustLibsRoot)
 
