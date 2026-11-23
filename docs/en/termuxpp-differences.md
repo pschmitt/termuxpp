@@ -53,9 +53,10 @@ nix shell 'github:pschmitt/termuxpp#termuxPkgs.htop' -c htop
 ```
 
 The `termuxPkgs.` namespace selects packages from the Termux APT catalog.
-Add a `termuxPkgs` registry alias to use the shorter reference. If Home Manager
-manages your registry, set `nix.registry.termuxPkgs.to` to a GitHub reference
-with owner `pschmitt` and repo `termuxpp`.
+For the shorter spelling, add a `termuxPkgs` alias. In a managed guest, point
+the alias at the locked TermuxPP flake input with
+`nix.registry.termuxPkgs.flake = inputs.termuxpp`. If you manage your registry
+directly, add a GitHub alias with the Nix CLI.
 
 ```sh
 nix registry add termuxPkgs github:pschmitt/termuxpp
