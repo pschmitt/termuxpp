@@ -45,16 +45,17 @@ The public CLI spells out actions such as `tpp dialog list`, `tpp job-scheduler 
 ## Termux APT packages in the Nix guest
 
 On aarch64, the TermuxPP flake exposes package names from a pinned snapshot of
-the upstream Termux main, X11, and root APT repositories. From the guest, use `nix shell` to run
-tools from that snapshot.
+the upstream Termux main, X11, and root APT repositories. From the guest, use
+`nix shell` to run tools from that snapshot.
 
 ```sh
-nix shell 'github:pschmitt/termuxpp#htop' -c htop
+nix shell 'github:pschmitt/termuxpp#termuxPkgs.htop' -c htop
 ```
 
-Add a `termuxPkgs` alias to use the shorter reference. If Home Manager manages
-your registry, set `nix.registry.termuxPkgs.to` to a GitHub reference with owner
-`pschmitt` and repo `termuxpp`.
+The `termuxPkgs.` namespace selects packages from the Termux APT catalog.
+Add a `termuxPkgs` registry alias to use the shorter reference. If Home Manager
+manages your registry, set `nix.registry.termuxPkgs.to` to a GitHub reference
+with owner `pschmitt` and repo `termuxpp`.
 
 ```sh
 nix registry add termuxPkgs github:pschmitt/termuxpp
