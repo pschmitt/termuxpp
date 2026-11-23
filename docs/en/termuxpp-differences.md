@@ -45,8 +45,14 @@ The public CLI spells out actions such as `tpp dialog list`, `tpp job-scheduler 
 ## Termux Bash in the Nix guest
 
 On aarch64, the TermuxPP flake exposes the upstream Termux Bash binary and its
-shared libraries as a Nix package. From the guest, register the flake once and
-use `nix shell` to make its Bash available on `PATH`.
+shared libraries as a Nix package. From the guest, run it with `nix shell`.
+
+```sh
+nix shell 'github:pschmitt/termuxpp#bash' -c bash -i
+```
+
+Add a `termuxPkgs` alias to use the shorter reference. If Home Manager manages
+your registry, add the alias in your Home Manager configuration.
 
 ```sh
 nix registry add termuxPkgs github:pschmitt/termuxpp
