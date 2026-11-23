@@ -87,7 +87,7 @@ fn list_prints_the_table_and_sends_one_request() {
     assert_eq!(status(&output), 0);
     assert_eq!(
         text(&output.stdout),
-        "  POS  ID                                    STATE    NAME / TITLE\n*   1  abc  running  bash\n    2  def  running  Session 2\n"
+        "  POS  ID                                    STATE    NAME\n*   1  abc  running  bash\n    2  def  running  Session 2\n"
     );
     assert_eq!(text(&output.stderr), "");
 }

@@ -190,7 +190,7 @@ fn outcome(command: &Command) -> Value {
 
 /// The session table, or `None` when the reply is not a list of sessions.
 fn table(sessions: &Value, color: bool) -> Option<String> {
-    let header = "  POS  ID                                    STATE    NAME / TITLE";
+    let header = "  POS  ID                                    STATE    NAME";
     let mut text = if color {
         format!("\x1b[1;34m{header}\x1b[0m\n")
     } else {
@@ -336,7 +336,7 @@ mod tests {
         assert_eq!(result.requests, ["[\"list\"]"]);
         assert_eq!(
             result.out,
-            "  POS  ID                                    STATE    NAME / TITLE\n\
+            "  POS  ID                                    STATE    NAME\n\
              *   1  11111111-1111-1111-1111-111111111111  running  bash\n\
              \x20\x20 10  22222222-2222-2222-2222-222222222222  exited   Build ?bell\n"
         );
@@ -356,7 +356,7 @@ mod tests {
         let result = ran(r#"{"result": []}"#, "list");
         assert_eq!(
             result.out,
-            "  POS  ID                                    STATE    NAME / TITLE\n"
+            "  POS  ID                                    STATE    NAME\n"
         );
     }
 
