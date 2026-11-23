@@ -1,6 +1,8 @@
 package com.termux.app.activities;
 
 import androidx.fragment.app.Fragment;
+import androidx.appcompat.app.AlertDialog;
+import com.termux.app.fragments.settings.termux.PropertyChoiceDialog;
 import androidx.preference.ListPreference;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceFragmentCompat;
@@ -60,6 +62,27 @@ public class CompanionAppsPreferencesTest {
         Assert.assertNotNull(display.findPreference("app_accent"));
         Assert.assertNotNull(display.findPreference("terminal_margin_adjustment"));
         Assert.assertNull(display.findPreference("termux_styling"));
+    }
+
+    @Test
+    public void accentPickerShowsPreviewWithoutApplyingUntilConfirmed() {
+        SettingsActivity activity = Robolectric.buildActivity(SettingsActivity.class).setup().get();
+        TerminalViewPreferencesFragment display = new TerminalViewPreferencesFragment();
+        activity.getSupportFragmentManager().beginTransaction().replace(R.id.settings, display).commitNow();
+        ListPreference accent = display.findPreference("app_accent");
+        String before = accent.getValue();
+        display.onDisplayPreferenceDialog(accent);
+        activity.getSupportFragmentManager().executePendingTransactions();
+        PropertyChoiceDialog fragment = (PropertyChoiceDialog)
+            activity.getSupportFragmentManager().findFragmentByTag("property_choice");
+        Assert.assertNotNull(fragment);
+        AlertDialog dialog = (AlertDialog) fragment.requireDialog();
+        Assert.assertNotNull(dialog.getWindow().getDecorView().findViewWithTag("property-visual-preview"));
+        dialog.getListView().performItemClick(dialog.getListView().getChildAt(2), 2,
+            dialog.getListView().getAdapter().getItemId(2));
+        Assert.assertEquals(before, accent.getValue());
+        fragment.dismissNow();
+        Assert.assertEquals(before, accent.getValue());
     }
 
     @Test

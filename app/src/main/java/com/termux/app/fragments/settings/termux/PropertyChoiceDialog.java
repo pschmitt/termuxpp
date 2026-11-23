@@ -17,6 +17,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.preference.ListPreference;
 import androidx.preference.ListPreferenceDialogFragmentCompat;
+import androidx.preference.PreferenceFragmentCompat;
 
 import com.termux.R;
 import com.termux.app.terminal.GestureFeedback;
@@ -32,7 +33,7 @@ public class PropertyChoiceDialog extends ListPreferenceDialogFragmentCompat {
     private SettingsPreview settingsPreview;
     private MediaPlayer bellPlayer;
 
-    static void show(PropertiesPreferencesFragment parent, ListPreference preference) {
+    static void show(PreferenceFragmentCompat parent, ListPreference preference) {
         PropertyChoiceDialog dialog = new PropertyChoiceDialog();
         Bundle args = new Bundle();
         args.putString("key", preference.getKey());

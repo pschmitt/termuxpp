@@ -44,7 +44,7 @@ public class PropertyTextDialog extends DialogFragment {
         if (SettingsPreview.supports(key)) {
             SettingsPreview preview = new SettingsPreview(requireContext(), key);
             preview.setTag("property-visual-preview");
-            int height = Math.round((key.startsWith("extra-keys") ? 48 : 124) * getResources().getDisplayMetrics().density);
+            int height = Math.round((key.equals("terminal-toolbar-height") ? 140 : key.startsWith("extra-keys") ? 48 : 124) * getResources().getDisplayMetrics().density);
             LinearLayout container = (LinearLayout) ((ScrollView) editor).getChildAt(0);
             LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, height);
             layout.topMargin = Math.round(12 * getResources().getDisplayMetrics().density);

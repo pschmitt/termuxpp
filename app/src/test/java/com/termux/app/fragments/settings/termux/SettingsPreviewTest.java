@@ -40,6 +40,10 @@ public class SettingsPreviewTest {
     }
 
     @Test public void supportsOnlyVisualProperties() {
+        assertTrue(SettingsPreview.supports("terminal-toolbar-height"));
+        assertTrue(SettingsPreview.supports("app_accent"));
+        assertTrue(SettingsPreview.supports("night-mode"));
+        assertTrue(SettingsPreview.supports("terminal-triple-tap-action"));
         assertTrue(SettingsPreview.supports("terminal-cursor-style"));
         assertTrue(SettingsPreview.supports("terminal-toast-position"));
         assertTrue(SettingsPreview.supports("terminal-margin-horizontal"));
@@ -68,6 +72,34 @@ public class SettingsPreviewTest {
         assertEquals(good, imageHash(margin));
         margin.setValue("0");
         assertNotEquals(good, imageHash(margin));
+    }
+
+    @Test public void toolbarHeightChangesActualKeyboardHeight() {
+        SettingsPreview keys = preview("terminal-toolbar-height");
+        keys.setValue("1");
+        int normal = keys.getChildAt(0).getLayoutParams().height;
+        keys.setValue("2");
+        assertEquals(normal * 2, keys.getChildAt(0).getLayoutParams().height, 2);
+        keys.setValue("99");
+        assertEquals(normal * 2, keys.getChildAt(0).getLayoutParams().height, 2);
+    }
+
+    @Test public void actionAndThemePreviewsReflectTheSelection() {
+        SettingsPreview action = preview("terminal-triple-tap-action");
+        action.setValue("none");
+        int none = imageHash(action);
+        action.setValue("show-keyboard");
+        assertNotEquals(none, imageHash(action));
+        SettingsPreview accent = preview("app_accent");
+        accent.setValue("blue");
+        int blue = imageHash(accent);
+        accent.setValue("rose");
+        assertNotEquals(blue, imageHash(accent));
+        SettingsPreview night = preview("night-mode");
+        night.setValue("true");
+        int dark = imageHash(night);
+        night.setValue("false");
+        assertNotEquals(dark, imageHash(night));
     }
 
     @Test public void extraKeysUsesTheRealKeyboardView() {

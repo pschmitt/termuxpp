@@ -125,8 +125,9 @@ directory order. A custom `motd.sh` can override the welcome message.
 ## Setting previews
 
 The cursor shape and blink rate, terminal margins, feedback position, and extra-key
-style and appearance settings show a preview while you edit. The bell setting has
-a **Try bell** button. Changes take effect after you save; cancelling leaves the
+style, appearance and toolbar height settings show a preview while you edit.
+Accent color and night mode show a sample interface; gesture actions show an
+illustration without running the action. The bell setting has a **Try bell** button. Changes take effect after you save; cancelling leaves the
 existing setting unchanged.
 
 ## Terminal feedback position

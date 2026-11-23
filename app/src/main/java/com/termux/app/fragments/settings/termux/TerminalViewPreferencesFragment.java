@@ -80,6 +80,14 @@ public class TerminalViewPreferencesFragment extends GroupedPreferencesFragment 
         }
     }
 
+    @Override public void onDisplayPreferenceDialog(Preference preference) {
+        if (preference instanceof ListPreference && AppAccent.KEY.equals(preference.getKey())) {
+            PropertyChoiceDialog.show(this, (ListPreference) preference);
+        } else {
+            super.onDisplayPreferenceDialog(preference);
+        }
+    }
+
     @Override
     public void onResume() {
         super.onResume();

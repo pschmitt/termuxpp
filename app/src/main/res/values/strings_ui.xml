@@ -1,5 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="settings_theme_preview_title">Appearance</string>
+    <string name="settings_theme_preview_button">Sample</string>
+    <string name="settings_preview_modifier">Modifier</string>
+    <string name="settings_action_keyboard">Show or hide the on-screen keyboard.</string>
+    <string name="settings_action_text_input">Switch between the extra keys and text input.</string>
+    <string name="settings_action_switch_session">Move to an adjacent terminal session.</string>
+    <string name="settings_action_new_session">Open a new terminal session.</string>
+    <string name="settings_action_sidebar">Open the session shelf.</string>
+    <string name="settings_action_picker">Open the session picker.</string>
+    <string name="settings_action_menu">Open the terminal menu.</string>
+    <string name="settings_action_font">Change the terminal font size.</string>
+    <string name="settings_action_command">Run the configured command in a new session.</string>
+    <string name="settings_action_keys">Send the configured keys to the terminal.</string>
+    <string name="settings_action_modifier">Use the volume button as a modifier key.</string>
+    <string name="settings_action_none">No action is assigned.</string>
     <string name="settings_visual_preview">Preview of the selected terminal setting</string>
     <string name="settings_preview_toast">Session 1</string>
     <string name="settings_try_bell">Try bell</string>
