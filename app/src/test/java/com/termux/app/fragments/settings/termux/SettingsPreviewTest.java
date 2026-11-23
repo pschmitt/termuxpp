@@ -46,6 +46,7 @@ public class SettingsPreviewTest {
         assertTrue(SettingsPreview.supports("terminal-triple-tap-action"));
         assertTrue(SettingsPreview.supports("terminal-cursor-style"));
         assertTrue(SettingsPreview.supports("terminal-toast-position"));
+        assertTrue(SettingsPreview.supports("gesture-feedback-position"));
         assertTrue(SettingsPreview.supports("terminal-margin-horizontal"));
         assertTrue(SettingsPreview.supports("extra-keys-button-corner-radius"));
         assertFalse(SettingsPreview.supports("terminal-engine"));
@@ -62,6 +63,14 @@ public class SettingsPreviewTest {
         int top = imageHash(toast);
         toast.setValue("bottom-right");
         assertNotEquals(top, imageHash(toast));
+    }
+
+    @Test public void gesturePillPositionChangesTheSample() {
+        SettingsPreview pill = preview("gesture-feedback-position");
+        pill.setValue("top-left");
+        int top = imageHash(pill);
+        pill.setValue("bottom-right");
+        assertNotEquals(top, imageHash(pill));
     }
 
     @Test public void invalidEditsKeepTheLastValidPreview() {

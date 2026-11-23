@@ -99,7 +99,8 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
                 entries.add(isBoolean ? getString(R.string.properties_default_boolean,
                     getString(defaultTrue ? R.string.properties_enabled : R.string.properties_disabled))
                     : key.equals(TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_STYLE)
-                        ? "Default (Soft flash)" : getString(R.string.properties_default));
+                        ? "Default (Soft flash)" : key.equals(TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_POSITION)
+                        ? "Default (Bottom center)" : getString(R.string.properties_default));
                 entryValues.add("");
                 if (isBoolean) {
                     entries.add(getString(R.string.properties_enabled));
@@ -166,7 +167,8 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
             || key.endsWith("-command") || key.equals(TermuxPropertyConstants.KEY_GESTURE_COMMAND_CONTEXT)
             || key.equals(TermuxPropertyConstants.KEY_TERMINAL_TRIPLE_TAP_FOCUS_TITLE)
             || key.equals(TermuxPropertyConstants.KEY_GESTURE_ANIMATIONS)
-            || key.equals(TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_STYLE))
+            || key.equals(TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_STYLE)
+            || key.equals(TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_POSITION))
             return R.string.properties_gestures;
         if (key.contains("keyboard") || key.startsWith("shortcut.") || key.equals("back-key")
             || key.equals("volume-keys") || key.equals("ctrl-space-workaround")

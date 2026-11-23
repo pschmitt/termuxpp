@@ -157,6 +157,8 @@ public final class PropertyInputSpec {
                     + number(ExtraKeysColorParser.MAX_CORNER_RADIUS_DP) + ", like 8 or 6.5, without a sign or a unit."
                     + " Default: not set, the corners of the current theme.";
 
+            case TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_POSITION:
+                return "Where gesture action labels appear in the terminal. Default: bottom-center.";
             case TermuxPropertyConstants.KEY_TERMINAL_TOAST_POSITION:
                 return "Where terminal feedback appears, including session-switch indicators. Default: top-center.";
 
@@ -352,6 +354,7 @@ public final class PropertyInputSpec {
                 return inMap(TermuxPropertyConstants.MAP_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR, value);
             case TermuxPropertyConstants.KEY_VOLUME_KEYS_BEHAVIOUR:
                 return inMap(TermuxPropertyConstants.MAP_VOLUME_KEYS_BEHAVIOUR, value);
+            case TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_POSITION:
             case TermuxPropertyConstants.KEY_TERMINAL_TOAST_POSITION:
                 return inMap(TermuxPropertyConstants.MAP_TERMINAL_TOAST_POSITION, value);
             case TermuxPropertyConstants.KEY_GESTURE_COMMAND_CONTEXT:
@@ -508,7 +511,8 @@ public final class PropertyInputSpec {
             return new String[] {TermuxPropertyConstants.TERMINAL_ENGINE_TERMUX, TermuxPropertyConstants.TERMINAL_ENGINE_GHOSTTY};
         if (TermuxPropertyConstants.KEY_EXTRA_KEYS_STYLE.equals(key)) return EXTRA_KEYS_STYLES.clone();
         if (TermuxPropertyConstants.KEY_GESTURE_COMMAND_CONTEXT.equals(key)) return new String[] {"session", "nix", "outer"};
-        if (TermuxPropertyConstants.KEY_TERMINAL_TOAST_POSITION.equals(key))
+        if (TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_POSITION.equals(key)
+            || TermuxPropertyConstants.KEY_TERMINAL_TOAST_POSITION.equals(key))
             return TermuxPropertyConstants.MAP_TERMINAL_TOAST_POSITION.keySet().toArray(new String[0]);
         return new String[0];
     }

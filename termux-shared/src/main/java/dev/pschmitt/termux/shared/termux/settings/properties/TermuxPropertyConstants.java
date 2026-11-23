@@ -403,6 +403,8 @@ public final class TermuxPropertyConstants {
     public static final String KEY_ADB_SHELL_ALLOWED_SSIDS = "adb-shell-allowed-ssids";
 
     public static final String KEY_GESTURE_ANIMATIONS = "gesture-animations";
+    public static final String KEY_GESTURE_FEEDBACK_POSITION = "gesture-feedback-position";
+    public static final int DEFAULT_GESTURE_FEEDBACK_GRAVITY = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
     public static final String KEY_GESTURE_FEEDBACK_STYLE = "gesture-feedback-style";
     public static final String DEFAULT_GESTURE_FEEDBACK_STYLE = "soft-flash";
     public static final String[] GESTURE_FEEDBACK_STYLES = {"soft-flash", "touch-ripples", "edge-glow",
@@ -589,6 +591,7 @@ public final class TermuxPropertyConstants {
         /* boolean */
         KEY_GESTURE_ANIMATIONS,
         KEY_GESTURE_FEEDBACK_STYLE,
+        KEY_GESTURE_FEEDBACK_POSITION,
         KEY_WAKE_LOCK_WIFI,
         KEY_ADB_SHELL_ALLOWED_SSIDS,
         KEY_DISABLE_FILE_SHARE_RECEIVER,

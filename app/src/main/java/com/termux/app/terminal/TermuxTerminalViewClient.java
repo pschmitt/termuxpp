@@ -355,12 +355,14 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
         if (mActivity.getProperties().areGestureAnimationsEnabled()) {
             String style = (String) mActivity.getProperties().getInternalPropertyValue(
                 TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_STYLE, true);
-            mGestureFeedback.confirm(mActivity.getTerminalView(), label, style, x, y);
+            mGestureFeedback.confirm(mActivity.getTerminalView(), label, style, x, y,
+                mActivity.getProperties().getGestureFeedbackGravity());
         }
     }
 
     public void previewGesture(@Nullable String label, boolean armed) {
-        mGestureFeedback.preview(mActivity.getTerminalView(), label, armed);
+        mGestureFeedback.preview(mActivity.getTerminalView(), label, armed,
+            mActivity.getProperties().getGestureFeedbackGravity());
     }
 
     private void performTerminalTapAction(int tapCount, TerminalGestureAction action, float x, float y) {

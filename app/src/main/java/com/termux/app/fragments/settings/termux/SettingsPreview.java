@@ -44,7 +44,7 @@ final class SettingsPreview extends FrameLayout {
 
     static boolean supports(String key) {
         return key.equals("terminal-cursor-style") || key.equals("terminal-cursor-blink-rate")
-            || key.equals("terminal-toast-position") || key.equals("terminal-margin-horizontal")
+            || key.equals("terminal-toast-position") || key.equals("gesture-feedback-position") || key.equals("terminal-margin-horizontal")
             || key.equals("terminal-margin-vertical") || key.equals("extra-keys-style")
             || key.equals("extra-keys-text-all-caps") || key.equals("extra-keys-button-active-text-color")
             || key.equals("extra-keys-button-active-background-color") || key.equals("extra-keys-button-corner-radius")
@@ -152,7 +152,7 @@ final class SettingsPreview extends FrameLayout {
             else canvas.drawRect(cursorX, cursorY - dp(12), cursorX + dp(8), cursorY + dp(2), paint);
         }
         if (blink > 0 && animations && isAttachedToWindow()) postInvalidateDelayed(Math.max(50, blink));
-        if (key.equals("terminal-toast-position")) drawToast(canvas, w, h);
+        if (key.equals("terminal-toast-position") || key.equals("gesture-feedback-position")) drawToast(canvas, w, h);
     }
 
     private void drawTheme(Canvas canvas) {
@@ -267,7 +267,8 @@ final class SettingsPreview extends FrameLayout {
     }
 
     private void drawToast(Canvas canvas, float w, float h) {
-        String position = value("terminal-toast-position", "top-center");
+        boolean gesture = key.equals("gesture-feedback-position");
+        String position = value(key, gesture ? "bottom-center" : "top-center");
         float width = Math.min(dp(100), w - dp(12)), height = dp(27), inset = dp(6);
         float left = position.endsWith("left") ? inset : position.endsWith("right") ? w - width - inset : (w - width) / 2;
         float top = position.startsWith("top") ? inset : position.startsWith("bottom") ? h - height - inset : (h - height) / 2;
@@ -276,7 +277,8 @@ final class SettingsPreview extends FrameLayout {
         paint.setColor(MaterialColors.getColor(this, R.attr.termuxUiOnPrimary));
         paint.setTypeface(Typeface.DEFAULT_BOLD);
         paint.setTextSize(dp(12));
-        String text = getContext().getString(R.string.settings_preview_toast);
+        String text = gesture ? "✓  " + getContext().getString(R.string.gesture_feedback_preview_label)
+            : getContext().getString(R.string.settings_preview_toast);
         canvas.drawText(text, left + (width - paint.measureText(text)) / 2, top + dp(18), paint);
     }
 

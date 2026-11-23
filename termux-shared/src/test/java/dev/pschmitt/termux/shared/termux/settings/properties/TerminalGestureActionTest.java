@@ -15,6 +15,18 @@ import dev.pschmitt.termux.shared.termux.settings.properties.GestureCommandConte
 public class TerminalGestureActionTest {
 
     @Test
+    public void gestureFeedbackPositionHasIndependentBottomCenterDefault() {
+        assertEquals(TermuxPropertyConstants.DEFAULT_GESTURE_FEEDBACK_GRAVITY,
+            TermuxSharedProperties.getGestureFeedbackGravityFromValue(null));
+        assertEquals(TermuxPropertyConstants.DEFAULT_GESTURE_FEEDBACK_GRAVITY,
+            TermuxSharedProperties.getGestureFeedbackGravityFromValue("invalid"));
+        for (String value : TermuxPropertyConstants.MAP_TERMINAL_TOAST_POSITION.keySet()) {
+            assertEquals((int) TermuxPropertyConstants.MAP_TERMINAL_TOAST_POSITION.get(value),
+                TermuxSharedProperties.getGestureFeedbackGravityFromValue(value.toUpperCase(java.util.Locale.ROOT)));
+        }
+    }
+
+    @Test
     public void feedbackStyleDefaultsAndParses() {
         String key = TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_STYLE;
         assertEquals("soft-flash", TermuxSharedProperties.getInternalTermuxPropertyValueFromValue(null, key, null));

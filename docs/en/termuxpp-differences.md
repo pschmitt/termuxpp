@@ -399,7 +399,8 @@ and [gesture documentation](terminal-settings.md#tap-and-swipe-actions).
 Configured tap, volume-button and extra-key swipe actions briefly confirm the
 chosen action in a pill above the keys. Motion respects Android's animation
 setting. Six selectable confirmation effects are available through `gesture-feedback-style`,
-with soft flash as the default. [Gesture feedback implementation](../../app/src/main/java/com/termux/app/terminal/GestureFeedback.java).
+with soft flash as the default. `gesture-feedback-position` independently places the gesture pill
+at any of nine positions, with bottom center as the default. [Gesture feedback implementation](../../app/src/main/java/com/termux/app/terminal/GestureFeedback.java).
 
 Upstream Termux opens the toolbar's text input by dragging the extra keys row
 from right to left. In TermuxPP both swipe directions over the extra keys row

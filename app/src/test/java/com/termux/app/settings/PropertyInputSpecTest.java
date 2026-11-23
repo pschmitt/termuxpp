@@ -275,11 +275,16 @@ public class PropertyInputSpecTest {
             "bottom-left", "bottom-center", "bottom-right"
         };
         assertArrayEquals(toastPositions, PropertyInputSpec.choices(toastKey));
+        String gesturePositionKey = TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_POSITION;
+        assertArrayEquals(toastPositions, PropertyInputSpec.choices(gesturePositionKey));
+        valid(gesturePositionKey, toastPositions);
+        invalid(gesturePositionKey, "top", "center-top", "bottom right");
         valid(toastKey, toastPositions);
         invalid(toastKey, "top", "center-top", "bottom right");
         for (String key : TermuxPropertyConstants.TERMUX_APP_PROPERTIES_LIST) {
             if (key.equals("extra-keys-style") || key.equals(TermuxPropertyConstants.KEY_GESTURE_COMMAND_CONTEXT)
-                || key.equals(toastKey) || key.equals(engineKey) || key.equals(feedbackKey)) continue;
+                || key.equals(toastKey) || key.equals(engineKey) || key.equals(feedbackKey)
+                || key.equals(gesturePositionKey)) continue;
             assertEquals(key, 0, PropertyInputSpec.choices(key).length);
         }
         assertEquals(0, PropertyInputSpec.choices(null).length);

@@ -149,6 +149,10 @@ settings group to select `soft-flash` (default), `touch-ripples`, `edge-glow`,
 `light-sweep`, `touch-bloom`, or `corner-brackets`. You can also set, for
 example, `gesture-feedback-style = touch-ripples` in `termuxpp.properties`.
 Ripples and bloom start at the tap location; other actions use the terminal center.
+Choose **gesture-feedback-position** to place the gesture action pill at any of
+the nine terminal positions. Its default is `bottom-center`; it is independent
+of `terminal-toast-position`. For example, set
+`gesture-feedback-position = top-right` in `termuxpp.properties`.
 When Android animations are disabled, the action label remains visible briefly
 without an animated effect.
 

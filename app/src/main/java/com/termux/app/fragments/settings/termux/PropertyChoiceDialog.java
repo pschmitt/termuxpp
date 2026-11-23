@@ -21,6 +21,10 @@ import androidx.preference.PreferenceFragmentCompat;
 
 import com.termux.R;
 import com.termux.app.terminal.GestureFeedback;
+import com.termux.app.settings.TermuxPropertiesEditor;
+
+import java.io.IOException;
+import java.util.Locale;
 
 import dev.pschmitt.termux.shared.termux.settings.properties.TermuxPropertyConstants;
 import dev.pschmitt.termux.shared.termux.terminal.io.BellHandler;
@@ -150,8 +154,15 @@ public class PropertyChoiceDialog extends ListPreferenceDialogFragmentCompat {
         if (selectedIndex >= values.length) return;
         String style = values[selectedIndex].toString();
         if (style.isEmpty()) style = TermuxPropertyConstants.DEFAULT_GESTURE_FEEDBACK_STYLE;
+        int gravity = TermuxPropertyConstants.DEFAULT_GESTURE_FEEDBACK_GRAVITY;
+        try {
+            String position = new TermuxPropertiesEditor().read().getProperty(
+                TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_POSITION, "bottom-center");
+            Integer configured = TermuxPropertyConstants.MAP_TERMINAL_TOAST_POSITION.get(position.toLowerCase(Locale.ROOT));
+            if (configured != null) gravity = configured;
+        } catch (IOException | IllegalArgumentException ignored) { }
         feedback.confirm(terminalPreview, getString(R.string.gesture_feedback_preview_label), style,
-            Float.NaN, Float.NaN);
+            Float.NaN, Float.NaN, gravity);
     }
 
     private String selectedValue() {
