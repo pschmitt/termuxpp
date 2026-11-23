@@ -20,6 +20,13 @@
     { self, nixpkgs, ... }@inputs:
     let
       nixppFor = pkgs: import ./pkgs/nixpp/packages.nix { inherit inputs pkgs; };
+      termuxPackages = nixpkgs.legacyPackages.aarch64-linux.callPackage ./pkgs/termux-packages { };
+      armPackages =
+        removeAttrs (nixppFor nixpkgs.legacyPackages.aarch64-linux) [
+          "nixpp-runtime-termux"
+          "nixpp-runtime-termux-seed"
+        ]
+        // adbShellFor nixpkgs.legacyPackages.aarch64-linux;
       # Host-side ADB client built with a caller's Nixpkgs.
       adbShellFor = pkgs: {
         tpp-adb-shell = pkgs.callPackage ./pkgs/tpp-adb-shell { };
@@ -191,21 +198,17 @@
         ];
       };
 
-      # Circus builds the available packages and checks on each Linux system.
+      # Cache the Android smoke-test packages. Other APT packages build on demand.
       hydraJobs = nixpkgs.lib.genAttrs [ "x86_64-linux" "aarch64-linux" ] (target: {
-        packages = self.packages.${target};
+        packages =
+          if target == "aarch64-linux" then
+            armPackages // { inherit (termuxPackages) bash htop; }
+          else
+            self.packages.${target};
         checks = self.checks.${target} or { };
       });
 
-      packages.aarch64-linux =
-        removeAttrs (nixppFor nixpkgs.legacyPackages.aarch64-linux) [
-          "nixpp-runtime-termux"
-          "nixpp-runtime-termux-seed"
-        ]
-        // adbShellFor nixpkgs.legacyPackages.aarch64-linux
-        // {
-          bash = nixpkgs.legacyPackages.aarch64-linux.callPackage ./pkgs/termux-bash { };
-        };
+      packages.aarch64-linux = termuxPackages // armPackages;
       # Only what builds here: the guest helpers are aarch64-only (packages.aarch64-linux)
       # and Circus builds every attribute of this set.
       packages.${system} =
