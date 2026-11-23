@@ -7,11 +7,13 @@
 use crate::error::{Error, Result};
 use crate::fsutil::{FileLock, read_bounded, regular_file_size};
 use crate::store::{is_candidate_name, is_store_root};
+use std::ffi::{OsStr, OsString};
 use std::fs::{self, OpenOptions};
 use std::io;
+use std::os::fd::AsRawFd;
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
 use std::thread::sleep;
 use std::time::Duration;
 
@@ -31,13 +33,9 @@ pub fn run(runtime: &Path) -> Result<()> {
         return Ok(());
     };
     let log = open_log(&state)?;
-    loop {
-        if crate::runtime_apk::replaced(runtime) {
-            drop(lock);
-            return crate::runtime_apk::restart(runtime, &["--services"]);
-        }
-        supervise_once(runtime, &log, None)?;
-    }
+    supervise(runtime, &log, None)?;
+    drop(lock);
+    crate::runtime_apk::restart(runtime, &["--services"])
 }
 
 /// Supervise the guest services from a thread of the native daemon.
@@ -70,7 +68,7 @@ pub fn spawn(runtime: &Path) -> Result<()> {
             let owner = std::process::id();
             loop {
                 let result =
-                    open_log(&state).and_then(|log| supervise_once(&runtime, &log, Some(owner)));
+                    open_log(&state).and_then(|log| supervise(&runtime, &log, Some(owner)));
                 if let Err(error) = result {
                     eprintln!("nixpp: service supervision failed: {error}");
                     sleep(Duration::from_secs(5));
@@ -89,49 +87,104 @@ fn open_log(state: &Path) -> Result<fs::File> {
         .open(state.join(SUPERVISOR_LOG))?)
 }
 
-/// Run the guest's `svc supervise` once for the selected generation.
-fn supervise_once(runtime: &Path, log: &fs::File, owner: Option<u32>) -> Result<()> {
-    {
-        let apk_marker = crate::runtime_apk::marker(runtime).unwrap_or_default();
-        let Some((name, _generation)) = selected_candidate(runtime)? else {
-            sleep(Duration::from_secs(1));
-            return Ok(());
-        };
-        let mut child = Command::new(runtime.join("session.sh"))
-            .arg("--system")
-            .arg(&name)
-            .arg("--")
-            // Fix the APK snapshot before entering the guest so a replacement
-            // during startup also retires this service tree.
-            .args([
-                "/bin/sh",
-                "-c",
-                r#"export NIXPP_SVC_APK_LIBRARY="$1" NIXPP_SVC_OWNER_PID="$2"; shift 2; exec "$@""#,
-                "svc",
-            ])
-            .arg(apk_marker)
-            .arg(owner.map(|pid| pid.to_string()).unwrap_or_default())
-            .arg(SERVICE_COMMAND)
-            .arg("supervise")
-            .stdin(Stdio::null())
-            .stdout(Stdio::from(log.try_clone()?))
-            .stderr(Stdio::from(log.try_clone()?))
-            .spawn()?;
-        let status = child.wait()?;
-
-        // 76 means another guest root still owns the guest-side lock. This can
-        // happen if the native manager died but its child is still retiring.
-        if status.code() == Some(76) {
-            sleep(Duration::from_secs(1));
+/// A retiring launcher must stay alive while its SSH sessions still use it.
+/// The guest supervisor lock serializes release of the listeners and startup
+/// of the replacement. Exit 76 is retried when that lock is still held.
+fn supervise(runtime: &Path, log: &fs::File, owner: Option<u32>) -> Result<()> {
+    let mut active: Option<((String, OsString), Child)> = None;
+    let mut retiring: Vec<Child> = Vec::new();
+    let mut watch = crate::watch::Watch::new(
+        runtime,
+        vec![b"current-system".to_vec(), b"apk-library".to_vec()],
+    );
+    loop {
+        if owner.is_none() && crate::runtime_apk::replaced(runtime) {
             return Ok(());
         }
-
-        if selected_candidate(runtime)?.is_some_and(|(current, _)| current == name) {
-            // Avoid a hot loop if the guest launcher or runsv exits abnormally.
-            sleep(Duration::from_secs(1));
+        let mut index = 0;
+        while index < retiring.len() {
+            if retiring[index].try_wait()?.is_some() {
+                let mut child = retiring.swap_remove(index);
+                child.wait()?;
+            } else {
+                index += 1;
+            }
+        }
+        if let Some((_, child)) = &mut active
+            && child.try_wait()?.is_some()
+        {
+            active = None;
+        }
+        match selected_candidate(runtime) {
+            Ok(candidate) => {
+                let selected = candidate.map(|(name, _)| {
+                    (
+                        name,
+                        crate::runtime_apk::marker(runtime).unwrap_or_default(),
+                    )
+                });
+                if active.as_ref().map(|(selection, _)| selection) != selected.as_ref() {
+                    if let Some((_, child)) = active.take() {
+                        retiring.push(child);
+                    }
+                    if let Some(selection) = selected {
+                        match launch(runtime, log, owner, &selection.0, &selection.1) {
+                            Ok(child) => active = Some((selection, child)),
+                            Err(error) => {
+                                eprintln!("nixpp: could not launch guest services: {error}")
+                            }
+                        }
+                    }
+                }
+            }
+            Err(error) => {
+                eprintln!("nixpp: could not read the selected service generation: {error}")
+            }
+        }
+        let wait_seconds = if active.is_some() { 5 } else { 1 };
+        if let Some(watch) = &mut watch {
+            let mut ready = libc::pollfd {
+                fd: watch.fd().as_raw_fd(),
+                events: libc::POLLIN,
+                revents: 0,
+            };
+            // SAFETY: poll borrows one initialized descriptor for a bounded wait.
+            if unsafe { libc::poll(&mut ready, 1, wait_seconds * 1000) } > 0 {
+                watch.drain();
+            }
+        } else {
+            sleep(Duration::from_secs(wait_seconds as u64));
         }
     }
-    Ok(())
+}
+
+fn launch(
+    runtime: &Path,
+    log: &fs::File,
+    owner: Option<u32>,
+    name: &str,
+    apk_marker: &OsStr,
+) -> Result<Child> {
+    Ok(Command::new(runtime.join("session.sh"))
+        .arg("--system")
+        .arg(name)
+        .arg("--")
+        // Fix the APK snapshot before entering the guest so a replacement
+        // during startup also retires this service tree.
+        .args([
+            "/bin/sh",
+            "-c",
+            r#"export NIXPP_SVC_APK_LIBRARY="$1" NIXPP_SVC_OWNER_PID="$2"; shift 2; exec "$@""#,
+            "svc",
+        ])
+        .arg(apk_marker)
+        .arg(owner.map(|pid| pid.to_string()).unwrap_or_default())
+        .arg(SERVICE_COMMAND)
+        .arg("supervise")
+        .stdin(Stdio::null())
+        .stdout(Stdio::from(log.try_clone()?))
+        .stderr(Stdio::from(log.try_clone()?))
+        .spawn()?)
 }
 
 fn selected_candidate(runtime: &Path) -> Result<Option<(String, String)>> {

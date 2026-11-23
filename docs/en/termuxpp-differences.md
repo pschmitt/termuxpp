@@ -42,6 +42,14 @@ source-code change. Recheck both implementations when updating this page.
 
 The public CLI spells out actions such as `tpp dialog list`, `tpp job-scheduler list`, `tpp job-scheduler cancel ID`, `tpp audio stop`, and `tpp saf list DIRECTORY`. Additional actions include `tpp sms conversations`, `tpp media play`, and `tpp location watch`. Invalid volume, NFC and dialog arguments fail with a nonzero exit status. Help and completion use descriptive options such as `--provider`, `--limit` and `--title`. Use `tpp help` to discover commands. A unique prefix selects a command or built-in action, for example `tpp not l` selects `tpp notification list`. Exact names take precedence and ambiguous prefixes print their matches. Help uses terminal colors and respects `NO_COLOR`. Commands that wait for Android, including dialog and location requests, report what they are waiting for on stderr in human mode. `--json` keeps progress off the output. If Android denies notification listener access, `tpp notification list` points Nix guest users to `tpp permissions grant notification-access`.
 
+## Guest SSH handoff
+
+The native guest service manager can keep a retiring service launcher alive
+while it starts the launcher for a newly selected generation. This lets an
+established guest SSH session keep its generation and logger while the new
+listener accepts connections. The guest service configuration coordinates
+release of the listeners. [Native service manager](../../pkgs/nixpp/source/src/services.rs)
+
 ## Termux APT packages in the Nix guest
 
 On aarch64, the TermuxPP flake exposes package names from a pinned snapshot of
