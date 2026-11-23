@@ -9,7 +9,8 @@ use std::fs;
 use std::io::Write;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Child, Command, Stdio};
+use std::sync::Mutex;
 use tpp_api::testing::{run_with, Answer, FakeTransport, Outcome, Recorded};
 
 const FAKE_API: &str = r#"#!/bin/sh
@@ -45,7 +46,17 @@ fn oracle_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/oracle")
 }
 
+// A parallel fork can inherit a writable script descriptor until exec.
+// Linux rejects executing a script while any process holds it open for writing.
+static EXEC_FIXTURES: Mutex<()> = Mutex::new(());
+
+pub fn spawn_fixture_command(command: &mut Command) -> std::io::Result<Child> {
+    let _guard = EXEC_FIXTURES.lock().unwrap();
+    command.spawn()
+}
+
 fn write_exec(path: &Path, content: &str) {
+    let _guard = EXEC_FIXTURES.lock().unwrap();
     fs::write(path, content).unwrap();
     fs::set_permissions(path, fs::Permissions::from_mode(0o755)).unwrap();
 }
@@ -107,7 +118,8 @@ impl Harness {
             fs::write(dir.join("reply.last"), last).unwrap();
         }
         let sys_path = std::env::var("PATH").unwrap_or_default();
-        let mut child = Command::new(self.root.join("scripts").join(imp))
+        let mut command = Command::new(self.root.join("scripts").join(imp));
+        command
             .args(args)
             .current_dir(self.work_dir())
             .env_clear()
@@ -117,9 +129,8 @@ impl Harness {
             .env("TMPDIR", self.root.join("tmp"))
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .unwrap();
+            .stderr(Stdio::piped());
+        let mut child = spawn_fixture_command(&mut command).unwrap();
         let mut sin = child.stdin.take().unwrap();
         let data = stdin.to_vec();
         let writer = std::thread::spawn(move || {

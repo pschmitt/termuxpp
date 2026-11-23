@@ -4,7 +4,7 @@
 //! direct tests for it.
 
 mod common;
-use common::{parity, Case, Harness};
+use common::{parity, spawn_fixture_command, Case, Harness};
 use std::process::{Command, Stdio};
 use tpp_api::testing::{run_with, Answer, FakeTransport, Outcome};
 
@@ -17,11 +17,13 @@ fn harness(tag: &str) -> Option<Harness> {
 }
 
 fn have_base64() -> bool {
-    Command::new("base64")
+    let mut command = Command::new("base64");
+    command
         .arg("--version")
         .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
+        .stderr(Stdio::null());
+    spawn_fixture_command(&mut command)
+        .and_then(|mut child| child.wait())
         .map(|s| s.success())
         .unwrap_or(false)
 }
