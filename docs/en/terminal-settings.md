@@ -122,6 +122,13 @@ Run `tpp-session reload-settings` after editing a file. In native sessions, Term
 adapted `termux-tools` also reads `shell` and `motd.sh` in the same
 directory order. A custom `motd.sh` can override the welcome message.
 
+## Setting previews
+
+The cursor shape and blink rate, terminal margins, feedback position, and extra-key
+style and appearance settings show a preview while you edit. The bell setting has
+a **Try bell** button. Changes take effect after you save; cancelling leaves the
+existing setting unchanged.
+
 ## Terminal feedback position
 
 Use **Settings → Properties → Appearance → terminal-toast-position** to move

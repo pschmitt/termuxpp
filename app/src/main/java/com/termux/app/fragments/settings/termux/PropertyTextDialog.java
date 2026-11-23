@@ -2,6 +2,10 @@ package com.termux.app.fragments.settings.termux;
 
 import dev.pschmitt.termux.shared.interact.DialogUtils;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.EditText;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -37,6 +41,21 @@ public class PropertyTextDialog extends DialogFragment {
         text.setText(state == null ? requireArguments().getString("value", "") : state.getString("value"));
         ((TextView) editor.findViewById(R.id.property_help)).setText(PropertyInputSpec.help(key));
         ((TextView) editor.findViewById(R.id.property_key)).setText(key);
+        if (SettingsPreview.supports(key)) {
+            SettingsPreview preview = new SettingsPreview(requireContext(), key);
+            preview.setTag("property-visual-preview");
+            int height = Math.round((key.startsWith("extra-keys") ? 48 : 124) * getResources().getDisplayMetrics().density);
+            LinearLayout container = (LinearLayout) ((ScrollView) editor).getChildAt(0);
+            LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, height);
+            layout.topMargin = Math.round(12 * getResources().getDisplayMetrics().density);
+            container.addView(preview, 1, layout);
+            preview.setValue(text.getText().toString());
+            text.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) { preview.setValue(s.toString()); }
+                @Override public void afterTextChanged(Editable s) {}
+            });
+        }
         return DialogUtils.builder(requireContext()).setTitle(SettingsSearchIndex.propertyTitle(key))
             .setView(editor)
             .setPositiveButton(R.string.extra_save, null)

@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="settings_visual_preview">Preview of the selected terminal setting</string>
+    <string name="settings_preview_toast">Session 1</string>
+    <string name="settings_try_bell">Try bell</string>
+    <string name="settings_bell_ignored">The bell is silent</string>
     <string name="gesture_feedback_preview_label">Open sidebar</string>
     <string name="gesture_feedback_preview_description">Terminal preview. Tap to replay the selected effect.</string>
     <string name="gesture_feedback_preview_replay">Tap the terminal to replay</string>
