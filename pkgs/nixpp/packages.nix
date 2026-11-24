@@ -26,6 +26,11 @@ in
     inherit inputs pkgs;
     inherit (pkgs) lib;
   };
+  # rbw for the Android prefix (bin/rbw, bin/rbw-agent), from source.
+  rbw-termux = import ./rbw-android.nix {
+    inherit inputs pkgs;
+    inherit (pkgs) lib;
+  };
   nixpp-runtime-termux-seed = import ./bootstrap-seed.nix {
     inherit inputs pkgs;
     inherit (pkgs) lib;

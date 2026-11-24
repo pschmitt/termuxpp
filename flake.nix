@@ -8,6 +8,13 @@
       url = "github:nix-community/fenix/monthly";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    # rbw fork (Android Keystore unlock, Termux support), built from source for
+    # the bootstrap's prefix (pkgs/nixpp/rbw-android.nix). Not a flake input
+    # proper: only its source is used, so its own inputs stay out of the lock.
+    rbw-src = {
+      url = "github:pschmitt/rbw";
+      flake = false;
+    };
     # Sources (MIT) of the nixpp launcher, bootstrap seed and Android API
     # bridge (pkgs/nixpp/bootstrap-seed.nix); no droid-nix binary is used.
     droid-nix-src = {
@@ -25,6 +32,7 @@
         removeAttrs (nixppFor nixpkgs.legacyPackages.aarch64-linux) [
           "nixpp-runtime-termux"
           "nixpp-runtime-termux-seed"
+          "rbw-termux"
         ]
         // adbShellFor nixpkgs.legacyPackages.aarch64-linux;
       # Host-side ADB client built with a caller's Nixpkgs.
