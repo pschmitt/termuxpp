@@ -63,5 +63,8 @@ in
   # (ring): the same driver the linker uses, and the NDK's llvm-ar.
   cc = linker;
   ar =
-    if system == "x86_64-linux" then "${ndkToolchain}/bin/llvm-ar" else "${pkgs.llvmPackages.llvm}/bin/llvm-ar";
+    if system == "x86_64-linux" then
+      "${ndkToolchain}/bin/llvm-ar"
+    else
+      "${pkgs.llvmPackages.llvm}/bin/llvm-ar";
 }
