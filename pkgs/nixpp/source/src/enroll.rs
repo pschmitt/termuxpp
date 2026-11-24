@@ -1,5 +1,6 @@
 //! Enroll a new managed guest beside the current runtime.
 
+use crate::lease::{self, Agent, Build, CacheOptions, Controller, Profile, Scratch, Side};
 use crate::{bootstrap, controller, fsutil, guest, provision, runner::SessionRunner, store};
 use anyhow::{Context, Result, ensure};
 use sha2::{Digest, Sha256};
@@ -8,12 +9,53 @@ use std::os::unix::fs::DirBuilderExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
+/// Where the first system comes from.
+pub enum Origin {
+    /// `nixpp bootstrap`: a build host that the credentials' ssh_config names.
+    BuildHost,
+    /// `nixpp setup`: a freshly leased rworker builds the latest flake.
+    Lease(Box<LeaseOrigin>),
+    /// `nixpp setup --published`: the system CI pinned in the binary cache.
+    Published(Box<PublishedOrigin>),
+}
+
+pub struct LeaseOrigin {
+    pub controller: Controller,
+    pub profiles: Vec<Profile>,
+    pub ttl: String,
+    pub queue_timeout: std::time::Duration,
+    /// `user@host`: names the leases of this phone.
+    pub owner: String,
+    pub ssh_inputs: Vec<String>,
+    pub github_known_hosts: String,
+    /// Put the key on runners that cannot forward the ssh-agent.
+    pub allow_key_upload: bool,
+}
+
+pub struct PublishedOrigin {
+    pub pin_url: String,
+    pub region: String,
+    pub store: String,
+    pub public_keys: Vec<String>,
+}
+
 pub fn enroll(
     runtime: &Path,
     user: &str,
     flake: &str,
     host: &str,
     credentials: &Path,
+) -> Result<()> {
+    enroll_with(runtime, user, flake, host, credentials, &Origin::BuildHost)
+}
+
+pub fn enroll_with(
+    runtime: &Path,
+    user: &str,
+    flake: &str,
+    host: &str,
+    credentials: &Path,
+    origin: &Origin,
 ) -> Result<()> {
     ensure!(
         cfg!(target_os = "android"),
@@ -22,13 +64,19 @@ pub fn enroll(
     ensure!(runtime.is_absolute(), "the runtime path must be absolute");
     ensure!(store::is_user_name(user), "invalid guest user");
     let build = guest::build_command(flake, host, guest::Worker::Builders)?;
-    let build_host = fsutil::read_bounded(&credentials.join("build_host"), 4096)
-        .context("missing initial build worker")?;
-    let build_host = std::str::from_utf8(&build_host)?.trim();
-    ensure!(
-        store::is_host_name(build_host),
-        "invalid initial build worker SSH alias"
-    );
+    let build_host = match origin {
+        Origin::BuildHost => {
+            let build_host = fsutil::read_bounded(&credentials.join("build_host"), 4096)
+                .context("missing initial build worker")?;
+            let build_host = std::str::from_utf8(&build_host)?.trim().to_owned();
+            ensure!(
+                store::is_host_name(&build_host),
+                "invalid initial build worker SSH alias"
+            );
+            build_host
+        }
+        _ => String::new(),
+    };
     let target = build.last().context("missing Nix build target")?;
     let parent = runtime
         .parent()
@@ -92,14 +140,26 @@ pub fn enroll(
     // Enrollment only writes into the newly created private guest home.
     let home = staged.join("root/home").join(user);
     let cache = EnrollmentCache::read(credentials)?;
-    install_credentials(&home, credentials)?;
+    install_credentials(&home, credentials, matches!(origin, Origin::BuildHost))?;
     let activate_result = if !staged.join("current-system").is_file()
         || fs::read_to_string(staged.join("current-system"))?
             .trim()
             .is_empty()
         || staged.join("system-pending.json").exists()
     {
-        activate(&staged, user, build_host, target, cache.as_ref())
+        activate(
+            &staged,
+            Activation {
+                user,
+                host,
+                home: &home,
+                credentials,
+                origin,
+                build_host: &build_host,
+                target,
+                cache: cache.as_ref(),
+            },
+        )
     } else {
         Ok(())
     };
@@ -181,6 +241,8 @@ fn use_short_tmp(staged: &Path, runtime: &Path) -> Result<()> {
 struct EnrollmentCache {
     store: String,
     public_keys: String,
+    /// AWS shared credentials file (the `niks3` profile the store names).
+    credentials: String,
 }
 
 impl EnrollmentCache {
@@ -203,7 +265,12 @@ impl EnrollmentCache {
             !public_keys.is_empty(),
             "enrollment cache signing keys are missing"
         );
-        Ok(Some(Self { store, public_keys }))
+        let credentials = read("cache_credentials")?;
+        Ok(Some(Self {
+            store,
+            public_keys,
+            credentials: format!("{credentials}\n"),
+        }))
     }
 
     fn copy(&self, runtime: &Path, user: &str, generation: &str) -> Result<()> {
@@ -231,12 +298,17 @@ impl EnrollmentCache {
     }
 }
 
-fn install_credentials(home: &Path, source: &Path) -> Result<()> {
+fn install_credentials(home: &Path, source: &Path, legacy: bool) -> Result<()> {
     for (input, target, required) in [
         ("id_ed25519", ".ssh/id_ed25519", true),
         ("id_ed25519.pub", ".ssh/id_ed25519.pub", true),
-        ("ssh_config", ".config/nixpp-enrollment/ssh_config", true),
-        ("known_hosts", ".config/nixpp-enrollment/known_hosts", true),
+        // Only a build host named by the credentials needs these.
+        ("ssh_config", ".config/nixpp-enrollment/ssh_config", legacy),
+        (
+            "known_hosts",
+            ".config/nixpp-enrollment/known_hosts",
+            legacy,
+        ),
         ("age_key", ".config/sops/age/keys.txt", false),
         (
             "cache_credentials",
@@ -266,68 +338,31 @@ fn install_credentials(home: &Path, source: &Path) -> Result<()> {
     Ok(())
 }
 
-fn activate(
-    runtime: &Path,
-    user: &str,
-    build_host: &str,
-    target: &str,
-    cache: Option<&EnrollmentCache>,
-) -> Result<()> {
+/// What `activate` needs besides the runtime.
+struct Activation<'a> {
+    user: &'a str,
+    host: &'a str,
+    /// The guest user's home, as the native side sees it.
+    home: &'a Path,
+    credentials: &'a Path,
+    origin: &'a Origin,
+    build_host: &'a str,
+    target: &'a str,
+    cache: Option<&'a EnrollmentCache>,
+}
+
+fn activate(runtime: &Path, activation: Activation<'_>) -> Result<()> {
     let mut runner = SessionRunner::new();
     if runtime.join("system-pending.json").exists() {
         let status = controller::recover(runtime, &mut runner)?;
         ensure!(status == 0, "enrollment recovery failed ({status})");
     }
-    eprintln!("Building the guest configuration through Nix…");
-    // Keep private flake access on the initial worker. OpenSSH passes a
-    // command string to the remote shell, so quote the validated target.
-    let target = target.replace('\'', "'\"'\"'");
-    let command = format!("nix build --no-link --print-out-paths -- '{target}'");
-    let ssh_config = format!("/home/{user}/.config/nixpp-enrollment/ssh_config");
-    let output = session(
-        runtime,
-        &[
-            "ssh",
-            "-F",
-            &ssh_config,
-            "-oBatchMode=yes",
-            build_host,
-            &command,
-        ],
-    )?;
-    let generation = std::str::from_utf8(&output.stdout)?.trim();
-    ensure!(
-        store::is_store_root(generation),
-        "Nix returned an invalid generation"
-    );
-    let copied_from_cache = cache.is_some_and(|cache| {
-        eprintln!("Checking the signed enrollment cache…");
-        match cache.copy(runtime, user, generation) {
-            Ok(()) => true,
-            Err(_) => {
-                eprintln!("Could not use the signed cache. Copying from the pinned worker.");
-                false
-            }
-        }
-    });
-    if !copied_from_cache {
-        // This is the same pinned worker that returned the verified store path.
-        // Its disposable store does not sign locally built outputs.
-        let store = format!("ssh://{build_host}");
-        session(
-            runtime,
-            &[
-                "env",
-                &format!("NIX_SSHOPTS=-F {ssh_config}"),
-                "nix",
-                "copy",
-                "--no-check-sigs",
-                "--from",
-                &store,
-                generation,
-            ],
-        )?;
-    }
+    let generation = match activation.origin {
+        Origin::BuildHost => from_build_host(runtime, &activation)?,
+        Origin::Lease(lease) => from_lease(runtime, &activation, lease)?,
+        Origin::Published(published) => from_published(runtime, &activation, published)?,
+    };
+    let generation = generation.as_str();
     let candidate = generation
         .strip_prefix("/nix/store/")
         .context("invalid candidate path")?;
@@ -365,6 +400,328 @@ exec "$1/activate""#,
     Ok(())
 }
 
+/// Copy `generation` from the signed enrollment cache when it has it.
+fn copy_from_cache(
+    runtime: &Path,
+    user: &str,
+    cache: Option<&EnrollmentCache>,
+    generation: &str,
+) -> bool {
+    cache.is_some_and(|cache| {
+        eprintln!("Checking the signed enrollment cache…");
+        match cache.copy(runtime, user, generation) {
+            Ok(()) => true,
+            Err(_) => {
+                eprintln!("Could not use the signed cache. Copying from the pinned worker.");
+                false
+            }
+        }
+    })
+}
+
+/// The initial worker of `nixpp bootstrap`: built and copied over its ssh_config.
+fn from_build_host(runtime: &Path, activation: &Activation<'_>) -> Result<String> {
+    let Activation {
+        user,
+        build_host,
+        target,
+        cache,
+        ..
+    } = *activation;
+    eprintln!("Building the guest configuration through Nix…");
+    // Keep private flake access on the initial worker. OpenSSH passes a
+    // command string to the remote shell, so quote the validated target.
+    let target = target.replace('\'', "'\"'\"'");
+    let command = format!("nix build --no-link --print-out-paths -- '{target}'");
+    let ssh_config = format!("/home/{user}/.config/nixpp-enrollment/ssh_config");
+    let output = session(
+        runtime,
+        &[
+            "ssh",
+            "-F",
+            &ssh_config,
+            "-oBatchMode=yes",
+            build_host,
+            &command,
+        ],
+    )?;
+    let generation = std::str::from_utf8(&output.stdout)?.trim().to_owned();
+    ensure!(
+        store::is_store_root(&generation),
+        "Nix returned an invalid generation"
+    );
+    if !copy_from_cache(runtime, user, cache, &generation) {
+        // This is the same pinned worker that returned the verified store path.
+        // Its disposable store does not sign locally built outputs.
+        let store = format!("ssh://{build_host}");
+        session(
+            runtime,
+            &[
+                "env",
+                &format!("NIX_SSHOPTS=-F {ssh_config}"),
+                "nix",
+                "copy",
+                "--no-check-sigs",
+                "--from",
+                &store,
+                &generation,
+            ],
+        )?;
+    }
+    Ok(generation)
+}
+
+/// Build the latest flake on a freshly leased worker, then copy the result.
+fn from_lease(runtime: &Path, activation: &Activation<'_>, origin: &LeaseOrigin) -> Result<String> {
+    let Activation {
+        user,
+        host,
+        home,
+        credentials,
+        cache,
+        ..
+    } = *activation;
+    let scratch = Scratch::new("nixpp-lease")?;
+    let key = credentials.join("id_ed25519");
+    let native = Side {
+        key: key.clone(),
+        known_hosts: credentials.join("known_hosts"),
+    };
+    let guest_dir = format!("/home/{user}/.config/nixpp-enrollment");
+    let guest = Side {
+        key: PathBuf::from(format!("/home/{user}/.ssh/id_ed25519")),
+        known_hosts: PathBuf::from(format!("{guest_dir}/known_hosts")),
+    };
+    let request = lease::Request {
+        public_key: String::from_utf8(fsutil::read_bounded(
+            &credentials.join("id_ed25519.pub"),
+            8192,
+        )?)?
+        .trim()
+        .to_owned(),
+        owner: origin.owner.clone(),
+        topic: format!("nixpp setup {host}"),
+        ttl: origin.ttl.clone(),
+    };
+    ensure!(
+        !request.public_key.is_empty() && !request.public_key.contains('\n'),
+        "invalid enrollment public key"
+    );
+    // GitHub runners cannot forward the ssh-agent; private inputs then need
+    // the key on the runner, which the user may have forbidden.
+    let needs_key = !origin.ssh_inputs.is_empty();
+    let profiles: Vec<Profile> = origin
+        .profiles
+        .iter()
+        .filter(|profile| {
+            let usable = origin.allow_key_upload || !needs_key || !profile.is_hosted();
+            if !usable {
+                eprintln!(
+                    "Skipping {profile:?}: it cannot forward the ssh-agent and --no-key-upload is set."
+                );
+            }
+            usable
+        })
+        .cloned()
+        .collect();
+    let mut lease = lease::lease(
+        &origin.controller,
+        &native,
+        &request,
+        &profiles,
+        origin.queue_timeout,
+    )?;
+    // The worker is pinned under its name, on both sides.
+    let worker_line = format!("{}\n", lease.worker().known_hosts_line());
+    append(&native.known_hosts, &worker_line)?;
+    let enrollment = home.join(".config/nixpp-enrollment");
+    append(&enrollment.join("known_hosts"), &worker_line)?;
+    fsutil::atomic_write(
+        &enrollment.join("ssh_config"),
+        &lease.worker().ssh_config(&guest, &origin.controller),
+    )?;
+
+    let upload = needs_key && lease.worker().is_hosted();
+    let agent = if upload {
+        None
+    } else {
+        Some(Agent::start(scratch.path(), &key)?)
+    };
+    let spec = Build {
+        flake: activation.flake_of_target()?,
+        target_attribute: format!("termuxppConfigurations.{host}.system"),
+        ssh_inputs: origin.ssh_inputs.clone(),
+        cache: cache.map(|cache| CacheOptions {
+            store: cache.store.clone(),
+            public_keys: cache.public_keys.clone(),
+            credentials: cache.credentials.clone(),
+        }),
+        github_known_hosts: origin.github_known_hosts.clone(),
+        uploaded_key: if upload {
+            Some(String::from_utf8(fsutil::read_bounded(&key, 64 * 1024)?)?)
+        } else {
+            None
+        },
+    };
+    let generation = lease::build(&lease, agent.as_ref(), &spec)?;
+    if !copy_from_cache(runtime, user, cache, &generation) {
+        eprintln!("Copying the system from {}…", lease.worker().destination());
+        session(
+            runtime,
+            &[
+                "env",
+                &format!("NIX_SSHOPTS=-F {guest_dir}/ssh_config"),
+                "nix",
+                "copy",
+                "--no-check-sigs",
+                "--from",
+                &lease.worker().store_uri(),
+                &generation,
+            ],
+        )?;
+    }
+    lease.release();
+    drop(agent);
+    Ok(generation)
+}
+
+fn append(path: &Path, line: &str) -> Result<()> {
+    use std::io::Write;
+    let mut file = fs::OpenOptions::new()
+        .append(true)
+        .create(true)
+        .open(path)?;
+    file.write_all(line.as_bytes())?;
+    Ok(())
+}
+
+/// Install the system CI published for this host, verified like `nixpp upgrade`.
+fn from_published(
+    runtime: &Path,
+    activation: &Activation<'_>,
+    origin: &PublishedOrigin,
+) -> Result<String> {
+    let Activation {
+        user,
+        host,
+        credentials,
+        ..
+    } = *activation;
+    let scratch = Scratch::new("nixpp-pin")?;
+    let cache = EnrollmentCache::read(credentials)?
+        .context("the published system needs the cache credentials")?;
+    // curl reads the SigV4 settings from a private file, not from arguments.
+    let credentials_text = &cache.credentials;
+    let value = |name: &str| {
+        credentials_text
+            .lines()
+            .find_map(|line| line.strip_prefix(name))
+            .and_then(|rest| rest.trim_start().strip_prefix('='))
+            .map(|rest| rest.trim().to_owned())
+            .with_context(|| format!("cache credentials have no {name}"))
+    };
+    let curl_config = scratch.path().join("pin.curl");
+    {
+        use std::io::Write;
+        use std::os::unix::fs::OpenOptionsExt;
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(&curl_config)?;
+        writeln!(file, "aws-sigv4 = \"aws:amz:{}:s3\"", origin.region)?;
+        writeln!(
+            file,
+            "user = \"{}:{}\"",
+            value("aws_access_key_id")?,
+            value("aws_secret_access_key")?
+        )?;
+    }
+    let target = guest::UpgradeTarget {
+        flake: activation.flake_of_target()?,
+        host: host.to_owned(),
+        cache: Some(guest::UpgradeCache {
+            store: origin.store.clone(),
+            pin_reader: PathBuf::from("/nixpp-setup-pin"),
+            public_keys: origin.public_keys.clone(),
+            credentials_file: Some(PathBuf::from(format!(
+                "/home/{user}/.config/nixpp-enrollment/cache_credentials"
+            ))),
+        }),
+    };
+    let mut builder = SetupBuilder {
+        runtime,
+        pin_url: &origin.pin_url,
+        curl_config: &curl_config,
+    };
+    let path = guest::cached_upgrade(&target, false, &mut builder, |path| {
+        eprintln!("Installing the published system {}", path.display());
+    })?;
+    Ok(path
+        .to_str()
+        .context("the published system path is not UTF-8")?
+        .to_owned())
+}
+
+/// Runs the commands of `cached_upgrade` in the guest, except the pin read,
+/// which happens here with the native curl.
+struct SetupBuilder<'a> {
+    runtime: &'a Path,
+    pin_url: &'a str,
+    curl_config: &'a Path,
+}
+
+impl guest::Builder for SetupBuilder<'_> {
+    fn output(&mut self, command: &[String]) -> crate::error::Result<String> {
+        let invalid = |message: String| crate::error::Error::invalid(message);
+        if command == ["/nixpp-setup-pin"] {
+            let output = Command::new("curl")
+                .args(["--disable", "--config"])
+                .arg(self.curl_config)
+                .args([
+                    "--fail",
+                    "--silent",
+                    "--show-error",
+                    "--compressed",
+                    "--proto",
+                    "=https",
+                    "--max-time",
+                    "30",
+                    "--max-filesize",
+                    "4096",
+                    self.pin_url,
+                ])
+                .stdin(Stdio::null())
+                .stderr(Stdio::inherit())
+                .output()
+                .map_err(|error| invalid(format!("cannot run curl: {error}")))?;
+            if !output.status.success() {
+                return Err(invalid(format!(
+                    "cannot read the cache pin ({})",
+                    output.status
+                )));
+            }
+            return String::from_utf8(output.stdout)
+                .map_err(|_| invalid("the cache pin is not UTF-8".to_owned()));
+        }
+        let output =
+            session(self.runtime, command).map_err(|error| invalid(format!("{error:#}")))?;
+        String::from_utf8(output.stdout)
+            .map_err(|_| invalid("command output is not UTF-8".to_owned()))
+    }
+}
+
+impl Activation<'_> {
+    /// The flake URI of the target (`FLAKE#ATTRIBUTE`).
+    fn flake_of_target(&self) -> Result<String> {
+        let (flake, _) = self
+            .target
+            .rsplit_once('#')
+            .context("invalid Nix build target")?;
+        Ok(flake.to_owned())
+    }
+}
+
 fn session(runtime: &Path, args: &[impl AsRef<std::ffi::OsStr>]) -> Result<Output> {
     let output = Command::new(runtime.join("session.sh"))
         .args(["--legacy", "--"])
@@ -395,10 +752,10 @@ mod tests {
         for name in ["id_ed25519", "id_ed25519.pub", "ssh_config", "known_hosts"] {
             fs::write(input.join(name), format!("fixture for {name}\n")).unwrap();
         }
-        install_credentials(&home, &input).unwrap();
+        install_credentials(&home, &input, true).unwrap();
         assert!(!home.join(".config/sops/age/keys.txt").exists());
         fs::write(input.join("age_key"), "fixture age key\n").unwrap();
-        install_credentials(&home, &input).unwrap();
+        install_credentials(&home, &input, true).unwrap();
         for name in [
             ".ssh/id_ed25519",
             ".config/nixpp-enrollment/ssh_config",

@@ -290,6 +290,9 @@ pub enum Command {
         #[arg(long)]
         credentials: PathBuf,
     },
+    /// Enroll this phone: credentials from Bitwarden, a build on a leased
+    /// worker (or the published system), activation and dotfiles
+    Setup(Box<crate::setup::Args>),
     /// Enter the guest or open the native TermuxPP shell
     #[command(visible_alias = "enter")]
     Login(LoginArgs),
@@ -513,6 +516,12 @@ fn execute(cli: &Cli, ui: &Ui) -> Exit {
             {
                 Ok(()) => Exit::success(),
                 Err(error) => Exit::failure(format!("bootstrap: {error:#}")),
+            }
+        }
+        Command::Setup(args) => {
+            match native_runtime(runtime).and_then(|runtime| crate::setup::run(&runtime, args)) {
+                Ok(()) => Exit::success(),
+                Err(error) => Exit::failure(format!("setup: {error:#}")),
             }
         }
         command => {
@@ -853,6 +862,7 @@ fn guest_command(
         | Command::ApkReplaced
         | Command::OuterResume { .. }
         | Command::OuterSupervise { .. }
+        | Command::Setup(_)
         | Command::Bootstrap { .. } => {
             unreachable!("handled before the guest commands")
         }
@@ -1209,6 +1219,7 @@ mod tests {
                 "recover",
                 "rollback",
                 "serve",
+                "setup",
                 "status",
                 "switch",
                 "upgrade",

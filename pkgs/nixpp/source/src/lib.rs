@@ -18,6 +18,7 @@ pub mod error;
 pub mod fsutil;
 mod gc;
 pub mod guest;
+mod lease;
 pub(crate) mod native_update;
 mod outer;
 mod outer_remote;
@@ -27,6 +28,7 @@ pub mod runner;
 pub(crate) mod runtime_apk;
 pub mod server;
 pub mod services;
+mod setup;
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 pub mod signal_stack;
 pub mod store;

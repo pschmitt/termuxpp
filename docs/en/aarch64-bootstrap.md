@@ -6,7 +6,7 @@ page_ref: /docs/apps/termux/aarch64-bootstrap.html
 
 TermuxPP embeds a bootstrap archive per ABI. `app/build.gradle` downloads the upstream archives
 and checks them against hardcoded SHA-256 hashes. For `aarch64` the archive can instead be built
-from the upstream bootstrap plus a few extra packages (`openssh`, `rbw`, `nixpp`, ...) with
+from the upstream bootstrap plus a few extra packages (`openssh`, `nixpp`, ...) with
 `scripts/build-aarch64-bootstrap.py`, and handed to Gradle together with its SHA-256.
 
 Nothing here compiles packages. Packages come from prebuilt `aarch64` `.deb` files (for example
@@ -36,15 +36,19 @@ printf '%s  base.zip\n' ea2aeba8819e517db711f8c32369e89e7c52cee73e07930ff91185e1
 
 # 2. Resolve extra packages, preserving packages already in the base.
 scripts/build-aarch64-bootstrap.py fetch \
-    --base-zip base.zip --package openssh --package rbw --out-dir debs
+    --base-zip base.zip --package openssh --out-dir debs
 
 # 3. Build. --nixpp is an AArch64 Android/Bionic executable using only Android system libraries:
 #    nix build .#nixpp-runtime-termux (bin/nixpp) and .#nixpp-runtime-termux-seed
-#    (share/nixpp), on an x86_64 or aarch64 Linux worker.
+#    (share/nixpp), on an x86_64 or aarch64 Linux worker. --rbw is a directory with
+#    bin/rbw and bin/rbw-agent: nix build .#rbw-termux (the pschmitt fork, built from
+#    source with the same Android toolchain). It replaces the upstream Termux rbw deb.
 scripts/build-aarch64-bootstrap.py build \
     --deb-dir debs --lock debs/debs.lock.json \
     --nixpp /path/to/nixpp --nixpp-version 0.5.0 \
     --nixpp-assets /path/to/seed/share/nixpp \
+    --rbw /path/to/rbw-termux --rbw-version 2.48.2 \
+    --nixpp-setup-config /path/to/private/setup.conf \
     -o out/bootstrap-aarch64.zip
 
 # 4. Build the app with it on a remote worker.
@@ -53,11 +57,17 @@ TERMUX_BOOTSTRAP_AARCH64_SHA256=$(cut -d' ' -f1 out/bootstrap-aarch64.zip.sha256
 ./gradlew assembleDebug
 ```
 
-The `--nixpp` bootstrap includes the `nixpp-setup` command. Run it from a
-native TermuxPP session to enroll the device and clone its dotfiles. From an
-app session that already opened the Nix guest, run
-`nixpp enter --outer -- nixpp-setup`. The launcher fetches yadm-init over
-HTTPS and leaves the terminal attached for Bitwarden authentication.
+The `--nixpp` bootstrap includes `nixpp-setup`, a launcher for `nixpp setup`. Run it from a
+native TermuxPP session as `nixpp-setup --host HOST --user USER` (with `--secrets-file` or at the
+prompt): it reads the enrollment credentials from Bitwarden with the bundled `rbw`, builds the
+system on a leased rworker (or installs the CI-published one with `--published`), activates it and
+clones the dotfiles. See [`nixpp setup`](../../pkgs/nixpp/source/README.md#nixpp-setup). From an
+app session that already opened the Nix guest, run `nixpp enter --outer -- nixpp-setup ...`.
+
+`--nixpp-setup-config` takes a `KEY=VALUE` file that the builder installs as
+`etc/nixpp/setup.conf` (mode 0600) in the `nixpp` package: the rworker controller and its host key,
+the binary cache, the private flake inputs and similar defaults of `nixpp setup`. Keep that file
+out of public repositories and give it only to private builds.
 
 If `--base-zip` is omitted, `build` downloads the pinned upstream archive (the same URL and hash
 as `app/build.gradle`) into `~/.cache/termuxpp-bootstrap`. A custom `--base-zip` needs
@@ -76,6 +86,8 @@ entries).
 | `--deb FILE`, `--deb-dir DIR` | `aarch64`/`all` `.deb` files. Dependencies are installed first. |
 | `--lock FILE` | With `--deb-dir`, use only the locked debs and verify their SHA-256. |
 | `--prefix DIR` | Prepared package prefix laid out like `$PREFIX` (`bin/`, `lib/`, `etc/`, ...). |
+| `--rbw DIR` | Directory with Android/Bionic AArch64 `bin/rbw` and `bin/rbw-agent`, installed as dpkg package `rbw` (replacing a Termux `rbw`). |
+| `--nixpp-setup-config FILE` | Defaults for `nixpp setup`, installed as `etc/nixpp/setup.conf`. |
 | `--nixpp FILE` | AArch64 ELF installed as `bin/nixpp` and registered as dpkg package `nixpp`. |
 | `--upgrade` | Allow a deb to replace an older version of a package bundled in the base. |
 | `--hold-package NAME` | Mark an installed package held against APT upgrades (repeatable). |

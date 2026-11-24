@@ -99,9 +99,99 @@ foreground job, with all three streams attached to the terminal. It is separate
 from the system-management socket. A guest entered through a recovery script
 without a native parent can use the app's failsafe session instead.
 
-For personal device enrollment, close other terminal sessions and open a
-TermuxPP failsafe session. Run `"$PREFIX/bin/nixpp" native-shell` to load the
-native prefix environment, then run:
+### `nixpp setup`
+
+`nixpp setup` enrolls a fresh phone into its guest system. Run it in a native
+TermuxPP session (the custom bootstrap installs it as `nixpp-setup`, which
+just runs `nixpp setup "$@"`):
+
+```sh
+nixpp setup --host PHONE [--user USER] [--flake FLAKE] [--published]
+```
+
+`--host` is required; there is no table of devices. What it does:
+
+1. **Bitwarden.** The bundled `rbw` (built from the pschmitt fork, see
+   [`rbw-android.nix`](../rbw-android.nix)) is reused when it is already
+   unlocked (then it only syncs). Otherwise it logs in with, in order:
+   `--secrets-file FILE` (a regular file, owned by you, mode 0600, with
+   `RBW_MASTER_PASSWORD=` and `RBW_TOTP=` lines, deleted as soon as it is read;
+   refused otherwise), or a prompt without echo on the terminal (password,
+   then TOTP, with one retry on a fresh code). The password is fed to
+   `rbw unlock --stdin` because pinentry does not work in a Termux session.
+   The account email is set with `rbw config set email` only when rbw has none:
+   pass `--email` (or `RBW_EMAIL`).
+2. **Credentials.** From Bitwarden: the phone's SSH key (`{user}@{host}`,
+   fields `private_key` and `public_key`), the optional `age_key` of
+   `nixpp-enrollment-{host}`, the binary cache's access key and secret
+   (`nixpp Niks3 cache`, fields `username` and `password`, written as the AWS
+   profile `niks3`), and the dotfiles deploy key (`yadm-init-deploy-key`,
+   field `private_key`). The item names are options (`--key-item`,
+   `--enrollment-item`, `--cache-item`, `--deploy-key-item`).
+3. **Build.** By default the latest `--flake` target is built on a freshly
+   leased rworker; `--published` installs the system CI pinned in the cache for
+   this host instead (read with SigV4, then verified and copied exactly like
+   `nixpp upgrade`).
+4. **Activation.** The same resumable activation as `nixpp bootstrap`: the
+   system is copied (from the signed cache when it is there, else from the
+   worker), the initial Home Manager generation is activated and the native
+   controller switches. Retry the command to continue an interruption.
+5. **Dotfiles.** With a dotfiles repository configured, the deploy key is
+   used inside the guest to `yadm clone` it (skipped when a checkout exists).
+
+#### Leasing a worker
+
+The phone speaks the rworker controller's plain SSH protocol with its own key
+(`rworker up --ssh-key ... --owner {user}@{host}`; `rworker down` afterwards,
+also on failure). The controller and its SSH host key are not part of the
+sources: pass `--rworker-controller [USER@]HOST[:PORT]` and `--rworker-host-key
+'ssh-ed25519 AAAA...'` (or `NIXPP_SETUP_CONTROLLER`,
+`NIXPP_SETUP_CONTROLLER_HOST_KEY`), or bake them into the bootstrap zip with
+`build-aarch64-bootstrap.py --nixpp-setup-config FILE` (see below). Both the
+controller and the worker host key it returns are pinned; nothing is trusted on
+first use.
+
+Profiles are tried in order (`--worker-profile`, repeatable). The default is
+`gh-aarch64` (a native ARM GitHub runner: the system is aarch64, so builds are
+native, reached through the controller's loopback relay, with `--queue-timeout`
+before the next profile is tried), then the controller's default OpenStack
+profile (x86_64: it relies on cache hits, `cache_store`). `--worker-ttl`
+bounds the lease.
+
+#### Private flake inputs without tokens
+
+No access token is put on the worker. The phone's ssh-agent (which holds only
+the phone key) is forwarded to the worker. For every `--ssh-input NAME` the
+worker first resolves the flake to a revision, reads its `flake.lock`, and
+builds with `--override-input NAME git+ssh://git@github.com/OWNER/REPO?rev=REV`
+at the revision the lock names, so the source is the one the lock records.
+GitHub's SSH host keys are pinned on the worker. Name only inputs that are
+private on GitHub; GitHub must accept the phone's key for them.
+
+GitHub runners (`gh-aarch64`) are reached through the controller's relay, whose
+SSH keys disable agent forwarding. With private inputs, setup therefore puts
+the phone's private key on such a runner as a mode-0600 file for the duration of
+the build (removed by a shell trap, and with the runner when the lease is
+released). That key is already authorized for the controller and for GitHub; it
+still leaves the phone and reaches a third-party runner. `--no-key-upload`
+forbids it: runners are then skipped for flakes with private inputs and only
+OpenStack profiles (agent forwarding) are used, which cannot build the aarch64
+system natively and depend on cache hits.
+
+#### Setup config
+
+Defaults that must not live in the public sources are read from
+`$PREFIX/etc/nixpp/setup.conf` (`--config FILE`, `NIXPP_SETUP_CONFIG`) as
+`KEY=VALUE` lines; options and environment variables win. Keys: `user`,
+`email`, `controller`, `controller_host_key`, `worker_profiles`, `ssh_inputs`,
+`cache_store`, `cache_public_keys`, `cache_pin_url` (with `{host}`),
+`cache_region`, `dotfiles_repo` (an `ssh://` URL through ssh.github.com).
+The bootstrap builder installs the file with `--nixpp-setup-config`.
+
+### Low-level `nixpp bootstrap`
+
+`nixpp bootstrap` is the primitive underneath: it enrolls from a private
+credentials directory and a build host you operate yourself.
 
 ```sh
 nixpp bootstrap --host PHONE --user USER --flake FLAKE --credentials PRIVATE_DIR
