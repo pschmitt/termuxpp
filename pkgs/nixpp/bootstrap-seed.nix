@@ -71,8 +71,11 @@ pkgs.runCommand "termuxpp-nix-bootstrap-seed"
     meta = {
       description = "Launcher and bootstrap seed for the TermuxPP nixpp runtime";
       license = lib.licenses.mit;
-      # Cross-compiles the static AArch64 seed from x86_64 Linux.
-      platforms = [ "x86_64-linux" ];
+      # Builds the static AArch64 seed from x86_64 or AArch64 Linux.
+      platforms = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
     };
   }
   ''

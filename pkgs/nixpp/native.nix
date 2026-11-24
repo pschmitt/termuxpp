@@ -1,6 +1,8 @@
 # nixpp for the Android/Bionic side of TermuxPP (bin/nixpp in the app's
-# prefix): sets up and runs the nixpp guest. Cross-compiled with the NDK,
-# which only runs on x86_64 Linux; the result is the Android/AArch64 executable.
+# prefix): sets up and runs the nixpp guest. Cross-compiled against the NDK's
+# Bionic sysroot; the result is the Android/AArch64 executable. The NDK ships
+# its host toolchain for x86_64 Linux only, so aarch64 Linux hosts link with
+# nixpkgs' clang and lld against the same sysroot and runtime libraries.
 {
   lib,
   inputs,
@@ -35,7 +37,27 @@ let
     includeEmulator = false;
   };
   ndkRoot = "${android.ndk-bundle}/libexec/android-sdk/ndk-bundle";
-  ndkBin = "${ndkRoot}/toolchains/llvm/prebuilt/linux-x86_64/bin";
+  ndkToolchain = "${ndkRoot}/toolchains/llvm/prebuilt/linux-x86_64";
+  linker =
+    if system == "x86_64-linux" then
+      "${ndkToolchain}/bin/aarch64-linux-android24-clang"
+    else
+      # The NDK clang's resource directory holds Android's compiler-rt
+      # builtins and libunwind for the target. nixpkgs' clang sets no default
+      # dynamic linker, and newer clang defaults to 16 KiB pages without a
+      # read-only segment; keep the layout the NDK r27 toolchain produces.
+      "${pkgs.writeShellScript "aarch64-linux-android24-clang" ''
+        resource_dir=$(echo ${ndkToolchain}/lib/clang/*)
+        exec ${pkgs.llvmPackages.clang-unwrapped}/bin/clang \
+          --target=aarch64-linux-android24 \
+          --sysroot=${ndkToolchain}/sysroot \
+          -resource-dir="$resource_dir" \
+          --ld-path=${pkgs.llvmPackages.lld}/bin/ld.lld \
+          -Wl,-dynamic-linker,/system/bin/linker64 \
+          -Wl,-z,max-page-size=4096 \
+          -Wl,--rosegment \
+          "$@"
+      ''}";
 in
 rustPlatform.buildRustPackage {
   pname = "nixpp-runtime-termux";
@@ -45,7 +67,7 @@ rustPlatform.buildRustPackage {
   cargoLock.lockFile = ./source/Cargo.lock;
   doCheck = false;
   env = {
-    CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER = "${ndkBin}/aarch64-linux-android24-clang";
+    CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER = linker;
   };
   # Pin the seed shipped next to this executable; nixpp refuses any other.
   preBuild = ''
@@ -76,7 +98,10 @@ rustPlatform.buildRustPackage {
     description = "Native Android runtime and declarative guest system manager";
     homepage = "https://github.com/pschmitt/termuxpp/tree/main/pkgs/nixpp";
     mainProgram = "nixpp";
-    platforms = [ "x86_64-linux" ];
+    platforms = [
+      "x86_64-linux"
+      "aarch64-linux"
+    ];
     license = lib.licenses.mit;
   };
 }
