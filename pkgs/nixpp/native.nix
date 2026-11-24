@@ -9,7 +9,7 @@
 }:
 let
   seed = import ./bootstrap-seed.nix { inherit lib pkgs inputs; };
-  toolchain = import ./android-toolchain.nix { inherit lib inputs pkgs; };
+  toolchain = import ./android-toolchain.nix { inherit inputs pkgs; };
   inherit (toolchain) rustPlatform linker;
 in
 rustPlatform.buildRustPackage {

@@ -4,7 +4,6 @@
 # host toolchain for x86_64 Linux only, so aarch64 Linux hosts link with
 # nixpkgs' clang and lld against the same sysroot and runtime libraries.
 {
-  lib,
   inputs,
   pkgs,
 }:

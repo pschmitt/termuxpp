@@ -9,7 +9,7 @@
   pkgs,
 }:
 let
-  toolchain = import ./android-toolchain.nix { inherit lib inputs pkgs; };
+  toolchain = import ./android-toolchain.nix { inherit inputs pkgs; };
   inherit (toolchain) rustPlatform linker;
   src = inputs.rbw-src;
   cargoToml = lib.importTOML "${src}/Cargo.toml";
