@@ -29,7 +29,7 @@ use std::fs::{self, DirBuilder, File, OpenOptions};
 use std::io::{ErrorKind, Read, Seek, SeekFrom, Write};
 use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt, PermissionsExt, symlink};
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 use zip::ZipArchive;
 
@@ -510,7 +510,6 @@ pub(crate) fn stage_executable_from(directory: &Path, source: &Path) -> Result<(
 /// stdout carries only JSON. Both streams are read concurrently.
 fn run_reporting(command: &mut Command) -> Result<std::process::ExitStatus> {
     use std::io::{BufRead, BufReader};
-    use std::process::Stdio;
     let mut child = command
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -536,10 +535,19 @@ fn run_reporting(command: &mut Command) -> Result<std::process::ExitStatus> {
 /// Import the pinned packages and run the final checks (also the resume
 /// operation after an interrupted download). Writes `ready` only on success.
 pub fn install(directory: &Path) -> Result<()> {
-    install_with(directory, &mut |directory, args| {
+    install_with(directory, &mut |directory, args, output| {
         let mut command = Command::new(directory.join("session.sh"));
         command.args(args);
-        let status = if progress::json() {
+        let status = if output != Output::Show {
+            command.stdin(Stdio::null());
+            if output == Output::Silent {
+                command.stderr(Stdio::null());
+            }
+            command
+                .stdout(Stdio::null())
+                .status()
+                .context("failed to run session.sh")?
+        } else if progress::json() {
             run_reporting(&mut command)?
         } else {
             command.status().context("failed to run session.sh")?
@@ -553,7 +561,20 @@ pub fn install(directory: &Path) -> Result<()> {
     })
 }
 
-fn install_with(directory: &Path, run: &mut dyn FnMut(&Path, &[&str]) -> Result<()>) -> Result<()> {
+/// How much of a `session.sh` step's output the user gets to see.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Output {
+    /// Everything.
+    Show,
+    /// Errors only: the step's stdout is a result nobody needs.
+    Errors,
+    /// Nothing: the exit status is the answer.
+    Silent,
+}
+
+type Runner<'a> = dyn FnMut(&Path, &[&str], Output) -> Result<()> + 'a;
+
+fn install_with(directory: &Path, run: &mut Runner) -> Result<()> {
     for name in ["session.env", "packages.txt", "session.sh", LAUNCHER_NAME] {
         ensure!(
             directory.join(name).is_file(),
@@ -578,6 +599,9 @@ fn install_with(directory: &Path, run: &mut dyn FnMut(&Path, &[&str]) -> Result<
                 "--check-validity",
                 package,
             ],
+            // A package that is not imported yet is the normal first-start
+            // case: the probe's "path is not valid" is an answer, not an error.
+            Output::Silent,
         )
         .is_err()
         {
@@ -592,6 +616,7 @@ fn install_with(directory: &Path, run: &mut dyn FnMut(&Path, &[&str]) -> Result<
                     "https://cache.nixos.org",
                     package,
                 ],
+                Output::Show,
             )?;
         }
         let gc_root = format!("/{GCROOT_DIR}/{index}");
@@ -606,10 +631,13 @@ fn install_with(directory: &Path, run: &mut dyn FnMut(&Path, &[&str]) -> Result<
                 "--realise",
                 package,
             ],
+            // Only registered once the package is valid; stdout merely
+            // repeats the root's path.
+            Output::Errors,
         )?;
     }
     progress::check();
-    run(directory, &["--", "nix", "--version"])?;
+    run(directory, &["--", "nix", "--version"], Output::Show)?;
     run(
         directory,
         &[
@@ -619,6 +647,7 @@ fn install_with(directory: &Path, run: &mut dyn FnMut(&Path, &[&str]) -> Result<
             "-c",
             "import os; print(os.confstr(\"CS_GNU_LIBC_VERSION\"))",
         ],
+        Output::Show,
     )?;
     write_file(&directory.join("ready"), b"ready\n", 0o600)?;
     progress::ready(directory);
@@ -1783,7 +1812,9 @@ mod tests {
         let second = package('d', "two");
         let dir = prepared_for_install(&[first.as_str(), second.as_str()]);
         let mut calls: Vec<Vec<String>> = Vec::new();
-        install_with(dir.path(), &mut |_, args| {
+        let mut modes = Vec::new();
+        install_with(dir.path(), &mut |_, args, output| {
+            modes.push(output);
             calls.push(args.iter().map(ToString::to_string).collect());
             if args.contains(&"--check-validity") && args.last() == Some(&first.as_str()) {
                 bail!("package is missing");
@@ -1828,6 +1859,20 @@ mod tests {
             fs::read_to_string(dir.path().join("ready")).unwrap(),
             "ready\n"
         );
+        // The expected "not valid yet" probe must not print nix's error, and
+        // the root is only registered after the import (call order above).
+        assert_eq!(
+            modes,
+            [
+                Output::Silent,
+                Output::Show,
+                Output::Errors,
+                Output::Silent,
+                Output::Errors,
+                Output::Show,
+                Output::Show
+            ]
+        );
     }
 
     #[test]
@@ -1835,7 +1880,7 @@ mod tests {
         let first = package('a', "one");
         let dir = prepared_for_install(&[first.as_str()]);
         let mut count = 0;
-        let result = install_with(dir.path(), &mut |_, _| {
+        let result = install_with(dir.path(), &mut |_, _, _| {
             count += 1;
             if count == 2 {
                 bail!("nix-store failed")
@@ -1850,12 +1895,12 @@ mod tests {
     #[test]
     fn install_rejects_unprepared_runtime_and_option_like_packages() {
         let dir = TestDir::new("install-missing");
-        let error = install_with(dir.path(), &mut |_, _| Ok(())).unwrap_err();
+        let error = install_with(dir.path(), &mut |_, _, _| Ok(())).unwrap_err();
         assert!(error.to_string().contains("No prepared runtime"));
 
         let dir = prepared_for_install(&["--option"]);
         let mut ran = false;
-        let error = install_with(dir.path(), &mut |_, _| {
+        let error = install_with(dir.path(), &mut |_, _, _| {
             ran = true;
             Ok(())
         })
