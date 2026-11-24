@@ -24,9 +24,9 @@ use std::time::Duration;
 const DEFAULT_PROFILE: &str = "gh-aarch64";
 const DEFAULT_TTL: &str = "1h";
 const DEFAULT_QUEUE_TIMEOUT: u64 = 420;
-/// The controller's gate (its forced command) accepts only topics of this
-/// form: it is the request `nixpp setup` makes.
-const TOPIC_PREFIX: &str = "nixpp setup";
+/// The lease topic; the controller's gate (its forced command) accepts
+/// `nixpp setup <host>` and `nixpp upgrade <host>`.
+const TOPIC_PREFIX: &str = "nixpp upgrade";
 
 /// What to build and with which settings.
 pub struct Job<'a> {

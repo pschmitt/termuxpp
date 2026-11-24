@@ -56,7 +56,9 @@ rustPlatform.buildRustPackage {
     installShellCompletion --cmd nixpp --bash nixpp --zsh _nixpp --fish nixpp.fish
     # The name of the native launcher, so `nixpp-setup` works in the guest too
     # (where `nixpp setup` hands the invocation to the native side).
-    printf '#!%s\nexec %s setup "$@"\n' "${stdenv.shell}" "$out/bin/nixpp" > "$out/bin/nixpp-setup"
+    # /bin/sh, not stdenv.shell: in a cross build (the bootstrap seed's guest)
+    # that is the build machine's shell. nixpp provides /bin/sh in every guest.
+    printf '#!/bin/sh\nexec %s setup "$@"\n' "$out/bin/nixpp" > "$out/bin/nixpp-setup"
     chmod 0755 "$out/bin/nixpp-setup"
   '';
   NIXPP_REFERENCE_PREPARE = ./tests/prepare-session.py;
