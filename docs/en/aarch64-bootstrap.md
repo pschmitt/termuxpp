@@ -67,7 +67,10 @@ app session that already opened the Nix guest, run `nixpp enter --outer -- nixpp
 `--nixpp-setup-config` takes a `KEY=VALUE` file that the builder installs as
 `etc/nixpp/setup.conf` (mode 0600) in the `nixpp` package: the rworker controller and its host key,
 the binary cache, the private flake inputs and similar defaults of `nixpp setup`. Keep that file
-out of public repositories and give it only to private builds.
+out of public repositories and give it only to private builds. Generate it with Nix rather than
+keeping it by hand, from the private flake that also defines the phones (the keys and their format
+are in [`nixpp setup`](../../pkgs/nixpp/source/README.md#nixpp-setup)); for example a flake output
+`termuxpp-setup-conf` passed as `--nixpp-setup-config "$(nix build --no-link --print-out-paths .#termuxpp-setup-conf)"`.
 
 If `--base-zip` is omitted, `build` downloads the pinned upstream archive (the same URL and hash
 as `app/build.gradle`) into `~/.cache/termuxpp-bootstrap`. A custom `--base-zip` needs
