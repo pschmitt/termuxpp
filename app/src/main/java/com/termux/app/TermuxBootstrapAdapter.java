@@ -135,13 +135,21 @@ final class TermuxBootstrapAdapter {
     }
 
     /**
+     * Zip archives (such as the nixpp seed) are never rewritten either: a replaced path would corrupt
+     * them, and turning a large archive into a string can exhaust the app heap.
+     */
+    static boolean isZip(byte[] bytes) {
+        return bytes.length >= 4 && bytes[0] == 'P' && bytes[1] == 'K' && bytes[2] == 3 && bytes[3] == 4;
+    }
+
+    /**
      * The extracted content of the bootstrap entry {@code name} (relative to the prefix). Returns
      * {@code bytes} itself when nothing changes. Throws when the adapted file does not pass the checks
      * of the table, for example a login whose preload line changed shape upstream.
      */
     @NonNull
     byte[] adaptEntry(@NonNull String name, @NonNull byte[] bytes) throws IOException {
-        if (isStock() || isElf(bytes)) return bytes;
+        if (isStock() || isElf(bytes) || isZip(bytes)) return bytes;
 
         String text = new String(bytes, StandardCharsets.ISO_8859_1);
         String adapted = text;

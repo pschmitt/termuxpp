@@ -158,6 +158,14 @@ public class TermuxBootstrapAdapterTest {
         }
     }
 
+    @Test
+    public void zipArchivesAreNeverRewritten() throws IOException {
+        TermuxBootstrapAdapter adapter = TermuxBootstrapAdapter.withRules(FORK_DIR,
+            Collections.<TermuxHelperRewrites.Rule>emptyList());
+        byte[] zip = bytes("PK\u0003\u0004 stored " + STOCK_DIR + "/files/usr\n");
+        Assert.assertSame(zip, adapter.adaptEntry("share/nixpp/bootstrap-aarch64.zip", zip));
+    }
+
     // ---- the mandatory rewrite stands on its own ----
 
     @Test

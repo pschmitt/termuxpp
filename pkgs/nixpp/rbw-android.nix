@@ -23,6 +23,9 @@ rustPlatform.buildRustPackage {
   doCheck = false;
   env = {
     CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER = linker;
+    # The build platform's strip cannot handle the Android target; let the
+    # linker drop symbols and debug info instead (about 50 MB less).
+    CARGO_PROFILE_RELEASE_STRIP = "symbols";
     # ring compiles C and assembly in its build script.
     CC_aarch64_linux_android = toolchain.cc;
     AR_aarch64_linux_android = toolchain.ar;
