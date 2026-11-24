@@ -19,7 +19,7 @@ import dev.pschmitt.termux.shared.termux.settings.properties.TermuxAppSharedProp
 import dev.pschmitt.termux.shared.termux.settings.properties.TermuxPropertyConstants;
 
 /**
- * The full-Nix guest that a provisioning bootstrap ships: {@code $PREFIX/bin/nixpp} with its
+ * The nixpp guest that a provisioning bootstrap ships: {@code $PREFIX/bin/nixpp} with its
  * launcher, bootstrap seed and session manifest in {@code $PREFIX/share/nixpp}. {@code nixpp init}
  * sets up the runtime in {@link #RUNTIME_DIR_PATH}; {@code nixpp login} finishes an interrupted
  * setup and enters the guest.

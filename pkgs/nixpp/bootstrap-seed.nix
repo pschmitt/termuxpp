@@ -1,4 +1,4 @@
-# The full-Nix runtime's launcher and bootstrap seed, built from the pinned
+# The nixpp runtime's launcher and bootstrap seed, built from the pinned
 # droid-nix sources (MIT, see the droid-nix-src flake input) instead of taking them from
 # a prebuilt droid-nix APK.
 #
@@ -69,7 +69,7 @@ pkgs.runCommand "termuxpp-nix-bootstrap-seed"
         ;
     };
     meta = {
-      description = "Launcher and bootstrap seed for the TermuxPP full-Nix runtime";
+      description = "Launcher and bootstrap seed for the TermuxPP nixpp runtime";
       license = lib.licenses.mit;
       # Cross-compiles the static AArch64 seed from x86_64 Linux.
       platforms = [ "x86_64-linux" ];

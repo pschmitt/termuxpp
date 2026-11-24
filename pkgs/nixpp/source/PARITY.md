@@ -12,7 +12,7 @@ dependencies.
 Parity is measured at candidate filesystem artifacts, persisted controller state,
 management socket requests and responses, subprocess arguments, and exit status.
 The reference implementations are the guest `system/prepare-session.py` and
-runtime `system-control.py` from the experimental full-Nix branches.
+runtime `system-control.py` from the experimental pre-nixpp branches.
 
 Required preserved behavior includes:
 
@@ -49,7 +49,7 @@ Delete obsolete production Python setup/controller entry points only after their
 callers and tests are migrated. Reference fixtures may remain explicitly test-only.
 The older Rust native bundle manager is a different product contract: existing
 unmigrated bootstrap/recovery consumers remain supported during migration, but
-migrated full-Nix hosts must not use it as a second configuration layer.
+migrated nixpp hosts must not use it as a second configuration layer.
 
 ## Legacy cleanup after both phone migrations
 

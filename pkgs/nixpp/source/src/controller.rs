@@ -210,7 +210,7 @@ pub fn check(runtime: &Path, name: &str, thorough: bool, runner: &mut dyn Runner
     let candidate = candidate_manifest(&runtime, name)?;
     let home = candidate.home_manager;
     let mut arguments = vec![
-        format!("{home}/home-path/bin/full-nix-check-runtime"),
+        format!("{home}/home-path/bin/nixpp-check-runtime"),
         "--isolated".to_owned(),
         "--generation".to_owned(),
         home,
@@ -793,7 +793,7 @@ mod tests {
                 "--system".to_owned(),
                 fixture.name.clone(),
                 "--".to_owned(),
-                format!("{}/home-path/bin/full-nix-check-runtime", fixture.home),
+                format!("{}/home-path/bin/nixpp-check-runtime", fixture.home),
                 "--isolated".to_owned(),
                 "--generation".to_owned(),
                 fixture.home.clone(),

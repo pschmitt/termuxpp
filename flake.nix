@@ -8,7 +8,7 @@
       url = "github:nix-community/fenix/monthly";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    # Sources (MIT) of the full-Nix launcher, bootstrap seed and Android API
+    # Sources (MIT) of the nixpp launcher, bootstrap seed and Android API
     # bridge (pkgs/nixpp/bootstrap-seed.nix); no droid-nix binary is used.
     droid-nix-src = {
       url = "github:lassulus/droid-nix/bb08d50117568e9994b6d87c918c4c2d7b5de9b1";

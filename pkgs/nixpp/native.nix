@@ -1,5 +1,5 @@
 # nixpp for the Android/Bionic side of TermuxPP (bin/nixpp in the app's
-# prefix): sets up and runs the full-Nix guest. Cross-compiled with the NDK,
+# prefix): sets up and runs the nixpp guest. Cross-compiled with the NDK,
 # which only runs on x86_64 Linux; the result is the Android/AArch64 executable.
 {
   lib,

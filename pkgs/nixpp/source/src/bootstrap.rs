@@ -1,4 +1,4 @@
-//! Native preparation of the isolated full-Nix runtime.
+//! Native preparation of the isolated nixpp runtime.
 //!
 //! Nothing here touches the normal Termux prefix. A runtime lives in one
 //! caller-provided directory:

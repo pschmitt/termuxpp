@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- First-start setup of the full-Nix guest -->
+    <!-- First-start setup of the nixpp guest -->
     <string name="nix_setup_ready">Nix is ready.</string>
     <!-- First-start overlay -->
     <string name="bootstrap_overlay_title">Setting up TermuxPP</string>
