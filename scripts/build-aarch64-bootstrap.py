@@ -42,6 +42,7 @@ UPSTREAM_URL = (
 UPSTREAM_SHA256 = "ea2aeba8819e517db711f8c32369e89e7c52cee73e07930ff91185e1ab93f4f3"
 
 DEFAULT_REPO = "https://packages.termux.dev/apt/termux-main"
+SETUP_CONFIG = "etc/nixpp/setup.conf"
 DEFAULT_REQUIRED = ["openssh", "curl", "ca-certificates", "gzip", "xz-utils"]
 ELF_MAGIC = b"\x7fELF"
 EM_AARCH64 = 183
@@ -640,7 +641,7 @@ def overlay_prefix(tree, root):
     log("overlaid prepared prefix %s (%d entries, %d package stanzas)" % (root, count, len(overlay_status)))
 
 
-def install_nixpp(tree, path, version, assets=None):
+def install_nixpp(tree, path, version, assets=None, setup_config=None):
     with open(path, "rb") as f:
         data = f.read()
     if is_aarch64_elf(data) is not True:
@@ -649,18 +650,25 @@ def install_nixpp(tree, path, version, assets=None):
     version = version or "0+%s" % digest[:12]
     if "nixpp" in tree.installed():
         remove_package(tree, "nixpp")
+    # The enrollment logic is native: nixpp reads the credentials from Bitwarden
+    # with the bundled rbw, leases a build worker and activates the system.
     launcher = f"""#!{PREFIX_ABS}/bin/bash
-set -euo pipefail
-
-download=$(mktemp)
-trap 'rm -f -- "$download"' EXIT
-curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
-  --output "$download" https://y.brkn.lol
-bash "$download" --nixpp "$@"
+exec nixpp setup "$@"
 
 # vim: set ft=sh et ts=2 sw=2 :
 """.encode()
     files = {"bin/nixpp": data, "bin/nixpp-setup": launcher}
+    if setup_config:
+        # Defaults of `nixpp setup` that stay out of the public source: the rworker
+        # controller and its host key, the binary cache and the private inputs.
+        try:
+            with open(setup_config, "rb") as f:
+                config = f.read()
+        except OSError as error:
+            raise BootstrapError(f"cannot read nixpp setup config {setup_config}: {error}") from error
+        if not config.strip():
+            raise BootstrapError(f"empty nixpp setup config: {setup_config}")
+        files[SETUP_CONFIG] = config
     if assets:
         for name in ("launcher", "manifest.json", "bootstrap-aarch64.zip"):
             source = os.path.join(assets, name)
@@ -678,6 +686,8 @@ bash "$download" --nixpp "$@"
         if tree.exists(relative):
             raise BootstrapError("nixpp cannot overwrite existing " + relative)
         mode = 0o700 if relative.startswith("bin/") or relative == "share/nixpp/launcher" else 0o644
+        if relative == SETUP_CONFIG:
+            mode = 0o600
         tree.add_file(relative, content, mode)
     checksums = "".join(
         f"{hashlib.md5(content).hexdigest()}  {PREFIX_DATA}/{relative}\n"
@@ -699,6 +709,50 @@ bash "$download" --nixpp "$@"
     ]
     tree.set_status_stanzas(tree.status_stanzas() + [stanza])
     log("installed nixpp %s (sha256 %s)" % (version, digest))
+
+
+def install_rbw(tree, root, version):
+    """Install the Android build of rbw (bin/rbw and bin/rbw-agent of ROOT) as package rbw."""
+    files = {}
+    for name in ("rbw", "rbw-agent"):
+        path = os.path.join(root, "bin", name)
+        try:
+            with open(path, "rb") as f:
+                data = f.read()
+        except OSError as error:
+            raise BootstrapError(f"cannot read {path}: {error}") from error
+        if is_aarch64_elf(data) is not True:
+            raise BootstrapError("%s is not a little-endian AArch64 ELF executable" % path)
+        files[f"bin/{name}"] = data
+    license_path = os.path.join(root, "share/licenses/rbw/LICENSE")
+    if os.path.isfile(license_path):
+        with open(license_path, "rb") as f:
+            files["share/licenses/rbw/LICENSE"] = f.read()
+    version = version or "0+%s" % sha256_bytes(files["bin/rbw"])[:12]
+    if "rbw" in tree.installed():
+        remove_package(tree, "rbw")
+    for relative, content in files.items():
+        if tree.exists(relative):
+            raise BootstrapError("rbw cannot overwrite existing " + relative)
+        tree.add_file(relative, content, 0o700 if relative.startswith("bin/") else 0o644)
+    checksums = "".join(
+        f"{hashlib.md5(content).hexdigest()}  {PREFIX_DATA}/{relative}\n"
+        for relative, content in files.items()
+    )
+    tree.add_file("var/lib/dpkg/info/rbw.md5sums", checksums.encode(), 0o600)
+    listing = ["/."] + _prefix_parents() + [f"/{PREFIX_DATA}/bin/"]
+    listing.extend(f"/{PREFIX_DATA}/{relative}" for relative in files)
+    tree.add_file("var/lib/dpkg/info/rbw.list", ("\n".join(listing) + "\n").encode(), 0o600)
+    stanza = [
+        ("Package", "rbw"), ("Architecture", ARCH),
+        ("Installed-Size", str((sum(map(len, files.values())) + 1023) // 1024)),
+        ("Maintainer", "local"), ("Version", version),
+        ("Depends", "ca-certificates"),
+        ("Description", "rbw Bitwarden client built from source for TermuxPP"),
+        ("Status", "install ok installed"),
+    ]
+    tree.set_status_stanzas(tree.status_stanzas() + [stanza])
+    log("installed rbw %s (sha256 %s)" % (version, sha256_bytes(files["bin/rbw"])))
 
 
 # -------------------------------------------------------------------------- verify
@@ -963,7 +1017,11 @@ def cmd_build(args):
     if args.nixpp_assets and not args.nixpp:
         raise BootstrapError("--nixpp-assets requires --nixpp")
     if args.nixpp:
-        install_nixpp(tree, args.nixpp, args.nixpp_version, args.nixpp_assets)
+        install_nixpp(tree, args.nixpp, args.nixpp_version, args.nixpp_assets, args.nixpp_setup_config)
+    elif args.nixpp_setup_config:
+        raise BootstrapError("--nixpp-setup-config requires --nixpp")
+    if args.rbw:
+        install_rbw(tree, args.rbw, args.rbw_version)
     for package in args.hold_package or []:
         if package not in tree.installed():
             raise BootstrapError("cannot hold missing package: %s" % package)
@@ -976,6 +1034,8 @@ def cmd_build(args):
     required = list(args.require_package) if args.require_package else list(DEFAULT_REQUIRED)
     if args.nixpp and "nixpp" not in required:
         required.append("nixpp")
+    if args.rbw and "rbw" not in required:
+        required.append("rbw")
     errors = verify_tree(tree, required, not args.no_check_deps)
     if errors:
         for e in errors:
@@ -1022,6 +1082,12 @@ def main(argv=None):
     b.add_argument("--nixpp", help="Android/Bionic aarch64 nixpp binary to install as bin/nixpp")
     b.add_argument("--nixpp-assets", help="seed directory containing launcher, manifest.json and bootstrap-aarch64.zip")
     b.add_argument("--nixpp-version", help="dpkg version recorded for nixpp (default 0+<sha256 prefix>)")
+    b.add_argument("--nixpp-setup-config",
+                   help="KEY=VALUE defaults for `nixpp setup` (rworker controller, cache, ...), "
+                        "installed as etc/nixpp/setup.conf; kept out of the public sources")
+    b.add_argument("--rbw", metavar="DIR",
+                   help="directory with bin/rbw and bin/rbw-agent (Android/Bionic aarch64), installed as package rbw")
+    b.add_argument("--rbw-version", help="dpkg version recorded for rbw (default 0+<sha256 prefix>)")
     b.add_argument("--upgrade", action="store_true", help="let debs replace older packages of the base")
     b.add_argument("--force-overwrite", action="store_true", help="allow overwriting files of other packages")
     b.add_argument("--require-package", action="append",

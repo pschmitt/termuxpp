@@ -303,8 +303,9 @@ class BuildTests(Base):
         self.assertIn("/%s/bin/nixpp" % P, t.files["var/lib/dpkg/info/nixpp.list"][0].decode())
         launcher, mode, *_ = t.files["bin/nixpp-setup"]
         self.assertEqual(mode, 0o700)
-        self.assertIn(b"https://y.brkn.lol", launcher)
-        self.assertIn(b'--nixpp "$@"', launcher)
+        self.assertIn(b'exec nixpp setup "$@"', launcher)
+        self.assertNotIn(b"curl", launcher)
+        self.assertNotIn(b"yadm", launcher)
         self.assertIn("bin/nixpp-setup", t.package_files("nixpp"))
         self.assertEqual(bab.verify_tree(t, ["nixpp"]), [])
         assets = os.path.join(self.d, "seed")
@@ -327,6 +328,61 @@ class BuildTests(Base):
         with open(n, "wb") as f:
             f.write(elf(machine=62))  # x86_64
         self.assertEqual(self.build("--nixpp", n), 1)
+
+    def make_rbw_dir(self, **names):
+        root = os.path.join(self.d, "rbw-out")
+        os.makedirs(root + "/bin", exist_ok=True)
+        for name in ("rbw", "rbw-agent"):
+            with open(os.path.join(root, "bin", name), "wb") as f:
+                f.write(elf(pad=name.encode()))
+        return root
+
+    def test_rbw(self):
+        root = self.make_rbw_dir()
+        ca = ("--deb", self.deb("ca-certificates", "1", {}))
+        self.assertEqual(self.build(*ca, "--rbw", root, "--rbw-version", "2.48.2"), 0)
+        t = self.tree()
+        self.assertEqual(t.files["bin/rbw"][1], 0o700)
+        self.assertEqual(t.files["bin/rbw-agent"][1], 0o700)
+        self.assertEqual(bab.stanza_get(t.installed()["rbw"], "Version"), "2.48.2")
+        self.assertTrue({"bin/rbw", "bin/rbw-agent"} <= set(t.package_files("rbw")))
+        self.assertIn("/%s/bin/rbw-agent" % P, t.files["var/lib/dpkg/info/rbw.list"][0].decode())
+        self.assertEqual(bab.verify_tree(t, ["rbw"]), [])
+        # A Termux rbw deb is replaced rather than left with conflicting files.
+        deb = self.deb("rbw", "1", {"bin/rbw": (b"#!/bin/sh\n", 0o755)})
+        self.assertEqual(self.build(*ca, "--deb", deb, "--rbw", root), 0)
+        t = self.tree()
+        self.assertTrue(t.files["bin/rbw"][0].startswith(b"\x7fELF"))
+        self.assertNotEqual(bab.stanza_get(t.installed()["rbw"], "Version"), "1")
+        # Only AArch64 Bionic executables are accepted.
+        with open(os.path.join(root, "bin/rbw"), "wb") as f:
+            f.write(elf(machine=62))
+        self.assertEqual(self.build("--rbw", root), 1)
+        os.unlink(os.path.join(root, "bin/rbw"))
+        self.assertEqual(self.build("--rbw", root), 1)
+
+    def test_nixpp_setup_config(self):
+        n = os.path.join(self.d, "nixpp")
+        with open(n, "wb") as f:
+            f.write(elf(pad=b"nixpp"))
+        deps = []
+        for package in ("bash", "curl", "ca-certificates", "gzip", "xz-utils", "openssh"):
+            deps.extend(("--deb", self.deb(package, "1", {})))
+        config = os.path.join(self.d, "setup.conf")
+        with open(config, "w") as f:
+            f.write("controller=controller.example\n")
+        self.assertEqual(self.build(*deps, "--nixpp", n, "--nixpp-setup-config", config), 0)
+        t = self.tree()
+        content, mode, *_ = t.files["etc/nixpp/setup.conf"]
+        self.assertEqual(content, b"controller=controller.example\n")
+        self.assertEqual(mode, 0o600)
+        self.assertIn("etc/nixpp/setup.conf", t.package_files("nixpp"))
+        self.assertEqual(bab.verify_tree(t, ["nixpp"]), [])
+        # Without --nixpp there is nothing to configure.
+        self.assertEqual(self.build("--nixpp-setup-config", config), 1)
+        with open(config, "w") as f:
+            f.write("\n")
+        self.assertEqual(self.build(*deps, "--nixpp", n, "--nixpp-setup-config", config), 1)
 
     def test_hold_package(self):
         self.assertEqual(self.build("--hold-package", "base"), 0)
