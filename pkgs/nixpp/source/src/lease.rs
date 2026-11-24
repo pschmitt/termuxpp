@@ -24,6 +24,13 @@ const ADHOC_USER: &str = "agent";
 const HOSTED_USER: &str = "rworker-build";
 /// Where the worker keeps the pinned GitHub host keys and cache credentials.
 const WORKER_DIR: &str = ".cache/nixpp-setup";
+/// The daemon a GitHub runner lease serves its own store with (installed
+/// by the rworker job agent).
+const HOSTED_DAEMON: &str = "/home/rworker-build/.local/bin/rworker-nix-daemon";
+/// Selects that store for Nix commands run in a session on the lease. The
+/// build user owns it, so it is trusted and the cache options apply; the
+/// runner's system Nix would ignore them.
+const HOSTED_NIX_CONFIG: &str = "export NIX_CONFIG=\"build-users-group =\nsandbox = true\nstore = $HOME/.local/share/nix/rworker\"\n";
 
 /// The rworker controller: where leases are requested.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -430,9 +437,17 @@ impl Worker {
         format!("{}@{}", self.user, self.name)
     }
 
-    /// The Nix store URI of the worker.
+    /// The Nix store URI of the worker. A GitHub runner keeps the lease's
+    /// store in the build user's home and serves it with its own daemon.
     pub fn store_uri(&self) -> String {
-        format!("ssh-ng://{}", self.destination())
+        if self.is_hosted() {
+            format!(
+                "ssh-ng://{}?remote-program={HOSTED_DAEMON}",
+                self.destination()
+            )
+        } else {
+            format!("ssh-ng://{}", self.destination())
+        }
     }
 
     /// An ssh_config for `side` that reaches only this worker, for tools that
@@ -738,8 +753,12 @@ pub fn build_script(
     overrides: &[(String, String)],
     cache: Option<&CacheOptions>,
     uploaded_key: bool,
+    hosted: bool,
 ) -> String {
     let mut script = String::from("set -eu\n");
+    if hosted {
+        script.push_str(HOSTED_NIX_CONFIG);
+    }
     // A runner that cannot forward the agent gets the key as a file that is
     // removed when the build ends, however it ends.
     let identity = if uploaded_key {
@@ -841,22 +860,28 @@ pub fn build(lease: &Lease, agent: Option<&Agent>, spec: &Build) -> Result<Strin
     let mut overrides = Vec::new();
     if !spec.ssh_inputs.is_empty() {
         eprintln!("Resolving the flake lock on the worker…");
+        let store = if lease.worker.is_hosted() {
+            HOSTED_NIX_CONFIG
+        } else {
+            ""
+        };
         let prefetch = run_on_worker(
             lease,
             None,
             &format!(
-                "exec nix flake prefetch --json -- {}",
+                "{store}exec nix flake prefetch --json -- {}",
                 shell_quote(&spec.flake)
             ),
             None,
             true,
         )?;
         let (pinned, path) = pinned_flake(&prefetch, &spec.flake)?;
+        // Through Nix: a runner's store lives under the build user's home.
         let lock = run_on_worker(
             lease,
             None,
             &format!(
-                "exec cat {}/flake.lock",
+                "{store}exec nix store cat {}/flake.lock",
                 shell_quote(&fsutil::path_str(&path)?)
             ),
             None,
@@ -880,6 +905,7 @@ pub fn build(lease: &Lease, agent: Option<&Agent>, spec: &Build) -> Result<Strin
         &overrides,
         spec.cache.as_ref(),
         spec.uploaded_key.is_some(),
+        lease.worker.is_hosted(),
     );
     let output = run_on_worker(lease, agent, &script, None, true)?;
     let generation = output
@@ -1098,7 +1124,11 @@ mod tests {
         assert!(config.contains("  HostKeyAlias gha-01234567\n"));
         assert!(config.contains("  IdentityFile /guest/id\n"));
         assert!(config.contains("UserKnownHostsFile=/guest/known_hosts"));
-        assert_eq!(worker.store_uri(), "ssh-ng://rworker-build@gha-01234567");
+        // The runner serves the lease's own store with the job agent's daemon.
+        assert_eq!(
+            worker.store_uri(),
+            "ssh-ng://rworker-build@gha-01234567?remote-program=/home/rworker-build/.local/bin/rworker-nix-daemon"
+        );
         let ports = parse_hosted_status(
             r#"{"state":"ready","endpoint":{"port":22,"host_key":"ssh-ed25519 AAAA"}}"#,
             &id,
@@ -1177,6 +1207,7 @@ mod tests {
             )],
             Some(&cache),
             false,
+            false,
         );
         assert!(script.starts_with("set -eu\nexport GIT_SSH_COMMAND=\""));
         assert!(script.contains("\nexec 'nix' ") || script.contains("\nexec nix "));
@@ -1193,15 +1224,19 @@ mod tests {
             !script.contains("[niks3]"),
             "credentials never enter the command line"
         );
-        let uploaded = build_script("f", "a", &[], None, true);
+        let uploaded = build_script("f", "a", &[], None, true, false);
         assert!(uploaded.contains("trap 'rm -f \"$HOME/.cache/nixpp-setup/key\"' EXIT"));
         assert!(uploaded.contains("-oIdentitiesOnly=yes -i $HOME/.cache/nixpp-setup/key"));
         assert!(
             !uploaded.contains("exec "),
             "the trap needs the shell to stay"
         );
-        let plain = build_script("f", "a", &[], None, false);
+        let plain = build_script("f", "a", &[], None, false, false);
         assert!(!plain.contains("AWS_SHARED"));
         assert!(!plain.contains("--override-input"));
+        assert!(!plain.contains("NIX_CONFIG"));
+        let hosted = build_script("f", "a", &[], Some(&cache), false, true);
+        assert!(hosted.starts_with(&format!("set -eu\n{HOSTED_NIX_CONFIG}")));
+        assert!(hosted.contains("store = $HOME/.local/share/nix/rworker"));
     }
 }
