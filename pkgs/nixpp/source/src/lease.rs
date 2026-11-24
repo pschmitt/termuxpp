@@ -5,7 +5,8 @@
 //! client sends), pins the host key the controller returns, forwards its
 //! ssh-agent to the worker and lets Nix fetch private GitHub flake inputs over
 //! `git+ssh` at the revision the target flake's lock file names. No access token
-//! ever leaves the phone.
+//! ever leaves the phone. GitHub runners cannot forward the agent: there the
+//! key is on the runner for the duration of the build (see `Build`).
 
 use crate::bootstrap::shell_quote;
 use crate::{fsutil, store};
