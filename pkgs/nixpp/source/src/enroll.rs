@@ -562,6 +562,7 @@ fn from_lease(runtime: &Path, activation: &Activation<'_>, origin: &LeaseOrigin)
         } else {
             None
         },
+        refresh: false,
     };
     let generation = lease::build(&lease, agent.as_ref(), &spec)?;
     if !copy_from_cache(runtime, user, cache, &generation) {
@@ -648,6 +649,7 @@ fn from_published(
                 "/home/{user}/.config/nixpp-enrollment/cache_credentials"
             ))),
         }),
+        lease: None,
     };
     let mut builder = SetupBuilder {
         runtime,

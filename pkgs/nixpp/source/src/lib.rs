@@ -33,6 +33,7 @@ mod setup;
 pub mod signal_stack;
 pub mod store;
 pub mod ui;
+mod upgrade_lease;
 pub(crate) mod watch;
 
 #[cfg(test)]

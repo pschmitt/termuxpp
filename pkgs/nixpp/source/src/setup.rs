@@ -325,7 +325,7 @@ pub fn resolve(args: &Args, config: &HashMap<String, String>) -> Result<Resolved
     })
 }
 
-fn valid_input_name(name: &str) -> bool {
+pub(crate) fn valid_input_name(name: &str) -> bool {
     !name.is_empty()
         && name
             .bytes()

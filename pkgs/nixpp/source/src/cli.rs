@@ -75,12 +75,15 @@ pub struct BuildArgs {
     #[arg(long)]
     host: String,
 
-    /// Build on the configured disposable worker
+    /// Build on a leased disposable worker: through the rworker controller of
+    /// `lease` in /etc/nixpp/upgrade.json (evaluated and built on the worker),
+    /// else through the `rworker-nix` wrapper
     #[arg(long)]
     rworker: bool,
 
     /// Evaluate where the system is built too: on the first reachable
-    /// configured builder, or on the disposable worker with --rworker
+    /// configured builder, or on the disposable worker with --rworker (the
+    /// lease route always does)
     #[arg(long)]
     remote_eval: bool,
 }
@@ -133,13 +136,16 @@ pub struct UpgradeArgs {
     #[arg(long)]
     host: Option<String>,
 
-    /// Build on the configured disposable worker (implies --build)
+    /// Build the latest system on a leased disposable worker (implies --build):
+    /// through the rworker controller of `lease` in /etc/nixpp/upgrade.json,
+    /// else through the `rworker-nix` wrapper. Never installs an older system;
+    /// a failed lease or build is an error
     #[arg(long, conflicts_with = "dry_run")]
     rworker: bool,
 
     /// Evaluate where the system is built too: on the first reachable
-    /// configured builder, or on the disposable worker with --rworker
-    /// (implies --build)
+    /// configured builder, or on the disposable worker with --rworker (the
+    /// lease route always does; implies --build)
     #[arg(long, conflicts_with = "dry_run")]
     remote_eval: bool,
 
@@ -567,11 +573,15 @@ fn rebuild_system(
     let runtime = require(runtime, "rebuild requires NIXPP_RUNTIME or --runtime")?;
     let backup = backup_extension(&args.backup)?;
     let build = &args.build;
-    let generation = guest::rebuild(
+    let target = guest::upgrade_target(
+        Path::new(UPGRADE_CONFIG),
+        Some(build.flake.clone()),
+        Some(build.host.clone()),
+    )?;
+    let generation = guest::rebuild_target(
         &runtime,
         socket,
-        &build.flake,
-        &build.host,
+        &target,
         guest::Worker::new(build.rworker, build.remote_eval),
         backup.as_deref(),
         &mut ProcessBuilder,
@@ -730,10 +740,15 @@ fn guest_command(
         }
         Command::Build(args) => {
             ui.step(&format!("building {} remotely", args.host));
-            let generation = guest::build_system(
-                &args.flake,
-                &args.host,
+            let target = guest::upgrade_target(
+                Path::new(UPGRADE_CONFIG),
+                Some(args.flake.clone()),
+                Some(args.host.clone()),
+            )?;
+            let generation = guest::build_target(
+                &target,
                 guest::Worker::new(args.rworker, args.remote_eval),
+                false,
                 &mut ProcessBuilder,
             )?;
             ui.print(&path_output(ui, &generation));

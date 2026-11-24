@@ -25,8 +25,11 @@ nixpp rollback
 nixpp recover
 ```
 
-Builds disable local compilation. Add `--rworker` to opt into the existing worker
-integration. Prepared candidates are not selected or activated until `switch`.
+Builds disable local compilation. Add `--rworker` to opt into a disposable
+worker: with a `lease` section in `/etc/nixpp/upgrade.json` (see
+[Upgrading on a leased worker](#upgrading-on-a-leased-worker)) the worker is
+leased through the rworker controller, else the `rworker-nix` wrapper of the
+system configuration is used. Prepared candidates are not selected or activated until `switch`.
 Activation journals the previous system/Home Manager pair and publishes selection
 only after the activation and checks succeed. A retained failure journal blocks
 another switch until explicit recovery.
@@ -193,6 +196,46 @@ native, reached through the controller's loopback relay, with `--queue-timeout`
 before the next profile is tried), then the controller's default OpenStack
 profile (x86_64: it relies on cache hits, `cache_store`). `--worker-ttl`
 bounds the lease.
+
+#### Upgrading on a leased worker
+
+`nixpp upgrade --rworker` (and `rebuild`/`build --rworker`) reuse this lease
+code in the guest when `/etc/nixpp/upgrade.json` has a `lease` section. The
+guest leases a worker with the phone's key, builds `termuxppConfigurations.{host}.system`
+of the configured flake there, tries the signed cache for the result and else
+copies it from the worker, releases the lease and continues with the usual
+prepare and switch. `upgrade` resolves the flake with `--refresh`: it installs
+the latest revision or fails. Nothing falls back to an older, cached or
+published system, and a failed lease or build is a non-zero exit. The lease
+evaluates on the worker, so `--remote-eval` adds nothing. Without a `lease`
+section the wrapper route is unchanged.
+
+```json
+{
+  "flake": "github:example/config/main",
+  "host": "phone",
+  "cache": {"store": "s3://...", "pin_reader": "...", "public_keys": ["..."],
+            "credentials_file": "/home/user/.config/..."},
+  "lease": {
+    "controller": "[USER@]HOST[:PORT]",
+    "controller_host_key": "ssh-ed25519 AAAA...",
+    "owner": "{user}@{host}",
+    "key": "/home/user/.ssh/id_ed25519",
+    "profiles": ["gh-aarch64"],
+    "ttl": "1h",
+    "queue_timeout": 420,
+    "ssh_inputs": ["private-input"]
+  }
+}
+```
+
+`controller`, `controller_host_key` and `owner` are required; `key` defaults
+to `~/.ssh/id_ed25519` (the public half is the same path with `.pub`),
+`profiles` to `gh-aarch64`, `ttl` to `1h`, `queue_timeout` to 420 seconds.
+The cache settings are the top-level `cache` (its `credentials_file` is read
+and uploaded to the runner for the build). The request is the one `setup`
+makes (its topic is `nixpp setup {host}`), which the controller's account
+accepts.
 
 #### Private flake inputs without tokens
 

@@ -735,6 +735,9 @@ pub struct Build {
     /// The private key, for a worker that cannot forward the ssh-agent
     /// (GitHub runners). Only set when the flake has private inputs.
     pub uploaded_key: Option<String>,
+    /// Resolve the flake afresh instead of from Nix's cache of the last hour
+    /// (`nixpp upgrade`: the latest revision or nothing).
+    pub refresh: bool,
 }
 
 /// A read-only binary cache the worker may substitute from.
@@ -754,6 +757,7 @@ pub fn build_script(
     cache: Option<&CacheOptions>,
     uploaded_key: bool,
     hosted: bool,
+    refresh: bool,
 ) -> String {
     let mut script = String::from("set -eu\n");
     if hosted {
@@ -777,6 +781,9 @@ pub fn build_script(
         "--no-link".to_owned(),
         "--print-out-paths".to_owned(),
     ];
+    if refresh {
+        command.push("--refresh".to_owned());
+    }
     if let Some(cache) = cache {
         script.push_str("export AWS_SHARED_CREDENTIALS_FILE=\"$HOME/.cache/nixpp-setup/aws\"\n");
         command.extend(
@@ -869,7 +876,8 @@ pub fn build(lease: &Lease, agent: Option<&Agent>, spec: &Build) -> Result<Strin
             lease,
             None,
             &format!(
-                "{store}exec nix flake prefetch --json -- {}",
+                "{store}exec nix flake prefetch --json {}-- {}",
+                if spec.refresh { "--refresh " } else { "" },
                 shell_quote(&spec.flake)
             ),
             None,
@@ -906,6 +914,7 @@ pub fn build(lease: &Lease, agent: Option<&Agent>, spec: &Build) -> Result<Strin
         spec.cache.as_ref(),
         spec.uploaded_key.is_some(),
         lease.worker.is_hosted(),
+        spec.refresh,
     );
     let output = run_on_worker(lease, agent, &script, None, true)?;
     let generation = output
@@ -1208,8 +1217,10 @@ mod tests {
             Some(&cache),
             false,
             false,
+            false,
         );
         assert!(script.starts_with("set -eu\nexport GIT_SSH_COMMAND=\""));
+        assert!(!script.contains("--refresh"));
         assert!(script.contains("\nexec 'nix' ") || script.contains("\nexec nix "));
         assert!(!script.contains("IdentitiesOnly"));
         assert!(script.contains("-oStrictHostKeyChecking=yes"));
@@ -1224,19 +1235,21 @@ mod tests {
             !script.contains("[niks3]"),
             "credentials never enter the command line"
         );
-        let uploaded = build_script("f", "a", &[], None, true, false);
+        let uploaded = build_script("f", "a", &[], None, true, false, false);
         assert!(uploaded.contains("trap 'rm -f \"$HOME/.cache/nixpp-setup/key\"' EXIT"));
         assert!(uploaded.contains("-oIdentitiesOnly=yes -i $HOME/.cache/nixpp-setup/key"));
         assert!(
             !uploaded.contains("exec "),
             "the trap needs the shell to stay"
         );
-        let plain = build_script("f", "a", &[], None, false, false);
+        let plain = build_script("f", "a", &[], None, false, false, false);
         assert!(!plain.contains("AWS_SHARED"));
         assert!(!plain.contains("--override-input"));
         assert!(!plain.contains("NIX_CONFIG"));
-        let hosted = build_script("f", "a", &[], Some(&cache), false, true);
+        let hosted = build_script("f", "a", &[], Some(&cache), false, true, false);
         assert!(hosted.starts_with(&format!("set -eu\n{HOSTED_NIX_CONFIG}")));
         assert!(hosted.contains("store = $HOME/.local/share/nix/rworker"));
+        let latest = build_script("f", "a", &[], None, false, false, true);
+        assert!(latest.contains("--refresh"));
     }
 }

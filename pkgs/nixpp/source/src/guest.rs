@@ -645,6 +645,38 @@ pub struct UpgradeTarget {
     pub flake: String,
     pub host: String,
     pub cache: Option<UpgradeCache>,
+    /// How `--rworker` builds: a worker leased through the rworker controller.
+    #[serde(default)]
+    pub lease: Option<UpgradeLease>,
+}
+
+/// The `lease` section of `/etc/nixpp/upgrade.json`: the same controller the
+/// `nixpp setup` defaults name, reached with this phone's own key.
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+pub struct UpgradeLease {
+    /// `[USER@]HOST[:PORT]` of the rworker controller.
+    pub controller: String,
+    /// Its public host key, `ssh-ed25519 AAAA...`.
+    pub controller_host_key: String,
+    /// The name the controller knows this phone's key by (`{user}@{host}`).
+    pub owner: String,
+    /// The phone's private key (default: `~/.ssh/id_ed25519`); the public
+    /// half is the same path with `.pub`.
+    #[serde(default)]
+    pub key: Option<PathBuf>,
+    /// Worker profiles, in the order they are tried (default: `gh-aarch64`).
+    #[serde(default)]
+    pub profiles: Vec<String>,
+    /// Lifetime of the leased worker (default: 1h).
+    #[serde(default)]
+    pub ttl: Option<String>,
+    /// Seconds to wait for a GitHub runner before the next profile is tried.
+    #[serde(default)]
+    pub queue_timeout: Option<u64>,
+    /// Root inputs of the flake that are private on GitHub; the worker fetches
+    /// them over SSH with the phone's key.
+    #[serde(default)]
+    pub ssh_inputs: Vec<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -655,19 +687,31 @@ pub struct UpgradeCache {
     pub credentials_file: Option<PathBuf>,
 }
 
+/// Largest accepted `/etc/nixpp/upgrade.json`.
+const CONFIG_LIMIT: u64 = 16384;
+
 pub fn upgrade_target(
     config: &Path,
     flake: Option<String>,
     host: Option<String>,
 ) -> Result<UpgradeTarget> {
     if let (Some(flake), Some(host)) = (&flake, &host) {
+        // The cache and the settings of `--rworker` still come from the
+        // configuration, when it exists: they do not depend on which flake is
+        // built.
+        let defaults = read_bounded(config, CONFIG_LIMIT)
+            .ok()
+            .and_then(|data| serde_json::from_slice::<UpgradeTarget>(&data).ok());
+        let (cache, lease) =
+            defaults.map_or((None, None), |defaults| (defaults.cache, defaults.lease));
         return Ok(UpgradeTarget {
             flake: flake.clone(),
             host: host.clone(),
-            cache: None,
+            cache,
+            lease,
         });
     }
-    let data = read_bounded(config, 4096)
+    let data = read_bounded(config, CONFIG_LIMIT)
         .map_err(|error| Error::invalid(format!("cannot read {}: {error}", config.display())))?;
     let defaults: UpgradeTarget = serde_json::from_slice(&data)
         .map_err(|error| Error::invalid(format!("invalid {}: {error}", config.display())))?;
@@ -675,6 +719,7 @@ pub fn upgrade_target(
         flake: flake.unwrap_or(defaults.flake),
         host: host.unwrap_or(defaults.host),
         cache: defaults.cache,
+        lease: defaults.lease,
     })
 }
 
@@ -924,17 +969,14 @@ fn build_on_builder(
     Ok(generation)
 }
 
+/// Build the latest system of the target (`--refresh`: never a cached
+/// resolution of the flake).
 pub fn build_upgrade(
     target: &UpgradeTarget,
     worker: Worker,
     builder: &mut dyn Builder,
 ) -> Result<PathBuf> {
-    if worker == Worker::BuildersRemoteEval {
-        return build_on_builder(&target.flake, &target.host, true, builder);
-    }
-    let mut command = build_command(&target.flake, &target.host, worker)?;
-    command.insert(2, "--refresh".to_owned());
-    built_system(&command, builder)
+    build_target(target, worker, true, builder)
 }
 
 /// Build the system of `host` and return its store path.
@@ -944,10 +986,49 @@ pub fn build_system(
     worker: Worker,
     builder: &mut dyn Builder,
 ) -> Result<PathBuf> {
+    let target = UpgradeTarget {
+        flake: flake.to_owned(),
+        host: host.to_owned(),
+        cache: None,
+        lease: None,
+    };
+    build_target(&target, worker, false, builder)
+}
+
+/// Build the system of the target. `--rworker` leases a worker through the
+/// rworker controller when the configuration has a `lease` section (the one
+/// route a phone can reach), and falls back to the `rworker-nix` wrapper when
+/// it has none. Evaluation then always happens on the worker.
+pub fn build_target(
+    target: &UpgradeTarget,
+    worker: Worker,
+    refresh: bool,
+    builder: &mut dyn Builder,
+) -> Result<PathBuf> {
     if worker == Worker::BuildersRemoteEval {
-        return build_on_builder(flake, host, false, builder);
+        return build_on_builder(&target.flake, &target.host, refresh, builder);
     }
-    built_system(&build_command(flake, host, worker)?, builder)
+    if matches!(worker, Worker::Rworker | Worker::RworkerRemoteEval)
+        && let Some(lease) = &target.lease
+    {
+        // The same validation as the command line of the other routes.
+        build_command(&target.flake, &target.host, Worker::Builders)?;
+        return crate::upgrade_lease::build(
+            &crate::upgrade_lease::Job {
+                flake: &target.flake,
+                host: &target.host,
+                lease,
+                cache: target.cache.as_ref(),
+                refresh,
+            },
+            builder,
+        );
+    }
+    let mut command = build_command(&target.flake, &target.host, worker)?;
+    if refresh {
+        command.insert(2, "--refresh".to_owned());
+    }
+    built_system(&command, builder)
 }
 
 fn built_system(command: &[String], builder: &mut dyn Builder) -> Result<PathBuf> {
@@ -992,11 +1073,27 @@ pub fn rebuild(
     Ok(generation)
 }
 
+/// [`rebuild`] for a target with its configured lease settings.
+pub fn rebuild_target(
+    runtime: &Path,
+    socket: &Path,
+    target: &UpgradeTarget,
+    worker: Worker,
+    backup: Option<&str>,
+    builder: &mut dyn Builder,
+    on_stage: &mut dyn FnMut(Stage),
+) -> Result<PathBuf> {
+    on_stage(Stage::Build);
+    let generation = build_target(target, worker, false, builder)?;
+    activate_system(runtime, socket, &generation, backup, on_stage)?;
+    Ok(generation)
+}
+
 /// The Home Manager backup extension the system configuration enables by
 /// default (`homeManagerBackupExtension` in the upgrade config), if any. A
 /// missing file or key means no backup.
 pub fn configured_backup_extension(config: &Path) -> Result<Option<String>> {
-    let data = match read_bounded(config, 4096) {
+    let data = match read_bounded(config, CONFIG_LIMIT) {
         Ok(data) => data,
         Err(_) if !config.exists() => return Ok(None),
         Err(error) => {
@@ -1550,6 +1647,7 @@ mod tests {
                 public_keys: vec!["test:key".to_owned()],
                 credentials_file: None,
             }),
+            lease: None,
         };
         struct CacheFixture {
             results: std::vec::IntoIter<String>,
@@ -1676,6 +1774,92 @@ mod tests {
         );
     }
 
+    const LEASE_CONFIG: &str = r#"{
+        "flake": "github:example/config/main",
+        "host": "phone",
+        "cache": {"store": "s3://b?region=r", "pin_reader": "/pin", "public_keys": ["k:1"],
+                  "credentials_file": "/home/u/aws"},
+        "lease": {"controller": "gate@controller.example",
+                  "controller_host_key": "ssh-ed25519 AAAAexample",
+                  "owner": "user@phone", "profiles": ["gh-aarch64"],
+                  "ssh_inputs": ["private"], "ttl": "1h"}
+    }"#;
+
+    #[test]
+    fn upgrade_config_carries_the_lease_settings() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = dir.path().join("upgrade.json");
+        fs::write(&config, LEASE_CONFIG).unwrap();
+        let target = upgrade_target(&config, None, None).unwrap();
+        let lease = target.lease.unwrap();
+        assert_eq!(lease.controller, "gate@controller.example");
+        assert_eq!(lease.owner, "user@phone");
+        assert_eq!(lease.profiles, ["gh-aarch64"]);
+        assert_eq!(lease.ssh_inputs, ["private"]);
+        assert_eq!(lease.key, None);
+        assert_eq!(lease.queue_timeout, None);
+        assert!(target.cache.is_some());
+        // An older configuration has no lease section.
+        fs::write(&config, r#"{"flake":"f","host":"h"}"#).unwrap();
+        assert!(upgrade_target(&config, None, None).unwrap().lease.is_none());
+    }
+
+    #[test]
+    fn overriding_flake_and_host_keeps_the_configured_lease_and_cache() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = dir.path().join("upgrade.json");
+        fs::write(&config, LEASE_CONFIG).unwrap();
+        let target = upgrade_target(
+            &config,
+            Some("github:o/r/rev".to_owned()),
+            Some("p11".to_owned()),
+        )
+        .unwrap();
+        assert_eq!(target.flake, "github:o/r/rev");
+        assert_eq!(target.host, "p11");
+        assert!(target.lease.is_some() && target.cache.is_some());
+        // No readable configuration: the overrides stand alone.
+        let missing = dir.path().join("missing.json");
+        let target =
+            upgrade_target(&missing, Some("/src".to_owned()), Some("p11".to_owned())).unwrap();
+        assert!(target.lease.is_none() && target.cache.is_none());
+    }
+
+    #[test]
+    fn rworker_with_a_lease_never_runs_the_wrapper_or_installs_another_system() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = dir.path().join("upgrade.json");
+        fs::write(&config, LEASE_CONFIG).unwrap();
+        let mut target = upgrade_target(&config, None, None).unwrap();
+        // The phone's key does not exist: the lease fails before any network.
+        target.lease.as_mut().unwrap().key = Some(dir.path().join("missing-key"));
+        for worker in [Worker::Rworker, Worker::RworkerRemoteEval] {
+            let mut builder = Scripted::new(&format!("{}\n", system_path()));
+            let error = build_upgrade(&target, worker, &mut builder).unwrap_err();
+            assert!(error.to_string().contains("public key"), "{error}");
+            assert!(
+                builder.commands.is_empty(),
+                "no fallback: {:?}",
+                builder.commands
+            );
+        }
+        // Arguments are validated before a worker is leased.
+        target.host = "bad host".to_owned();
+        let mut builder = Scripted::new("");
+        assert!(build_upgrade(&target, Worker::Rworker, &mut builder).is_err());
+        assert!(builder.commands.is_empty());
+        // Without a lease section the wrapper is still the route, now with
+        // --refresh for an upgrade.
+        target.host = "phone".to_owned();
+        target.lease = None;
+        let mut builder = Scripted::new(&format!("{}\n", system_path()));
+        build_upgrade(&target, Worker::RworkerRemoteEval, &mut builder).unwrap();
+        assert_eq!(
+            builder.commands[0][..3],
+            ["rworker-nix", "remote-build", "--refresh"]
+        );
+    }
+
     /// Answers each command through a closure and records it.
     struct Responder<F: FnMut(&[String]) -> Result<String>> {
         respond: F,
@@ -1760,6 +1944,7 @@ mod tests {
                 flake: "/home/u/cfg".to_owned(),
                 host: "test".to_owned(),
                 cache: None,
+                lease: None,
             },
             Worker::BuildersRemoteEval,
             &mut builder,
