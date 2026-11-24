@@ -1,2 +1,3 @@
-Usage: tpp battery
-Get the status of the device battery.
+Usage: tpp battery [FIELD]
+Get the status of the device battery, or only one FIELD of it
+(for example plugged, percentage or status).

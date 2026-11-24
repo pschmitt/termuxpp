@@ -435,6 +435,20 @@ fn human_and_json_output() {
 }
 
 #[test]
+fn battery_prints_one_field() {
+    let fx = Fixture::new("battery-field");
+    let (o, call) = fx.app(&["battery", "status"], BATTERY);
+    assert_eq!(code(&o), 0, "{}", err(&o));
+    assert_eq!(call.method(), "BatteryStatus");
+    assert_eq!(out(&o), "FULL\n");
+    let (o, _) = fx.app(&["battery", "percentage"], BATTERY);
+    assert_eq!(out(&o), "85\n");
+    let (o, _) = fx.app(&["battery", "nope"], BATTERY);
+    assert_eq!(code(&o), 1);
+    assert!(err(&o).contains("no such field: nope"), "{}", err(&o));
+}
+
+#[test]
 fn color_is_opt_in_off_a_terminal() {
     let fx = Fixture::new("color");
     let (o, _) = fx.app_with(&["--json", "battery"], BATTERY, |c| {

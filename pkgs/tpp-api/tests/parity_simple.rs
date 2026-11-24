@@ -12,7 +12,6 @@ fn harness(tag: &str) -> Option<Harness> {
 }
 
 const SIMPLE: &[&str] = &[
-    "battery-status",
     "audio-info",
     "camera-info",
     "contact-list",
@@ -42,6 +41,25 @@ fn simple_commands() {
         ] {
             parity(&h, Case::new(imp, args).replies(&reply));
         }
+    }
+}
+
+/// `tpp battery FIELD` is not in the script (see the module's Deviations), so
+/// the single-operand case is left out and tested in the module itself.
+#[test]
+fn battery_status() {
+    let Some(h) = harness("battery") else { return };
+    let reply = ["{\"percentage\": 85}\n"];
+    for args in [
+        &[][..],
+        &["-h"],
+        &["--help"],
+        &["-x"],
+        &["extra", "more"],
+        &["-h", "-x"],
+        &["-x", "-h"],
+    ] {
+        parity(&h, Case::new("battery-status", args).replies(&reply));
     }
 }
 
