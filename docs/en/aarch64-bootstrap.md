@@ -62,7 +62,10 @@ native TermuxPP session as `nixpp-setup --host HOST --user USER` (with `--secret
 prompt): it reads the enrollment credentials from Bitwarden with the bundled `rbw`, builds the
 system on a leased rworker (or installs the CI-published one with `--published`), activates it and
 clones the dotfiles. See [`nixpp setup`](../../pkgs/nixpp/source/README.md#nixpp-setup). From an
-app session that already opened the Nix guest, run `nixpp enter --outer -- nixpp-setup ...`.
+app session that already opened the Nix guest (the first-start seed session), run
+`nixpp setup ...` or `nixpp-setup ...` directly: the guest hands the invocation to the native
+side, and a `--secrets-file` guest path is translated (the adb helper's
+`/data/data/PKG/files/home/...` path works unchanged).
 
 `--nixpp-setup-config` takes a `KEY=VALUE` file that the builder installs as
 `etc/nixpp/setup.conf` (mode 0600) in the `nixpp` package: the rworker controller and its host key,

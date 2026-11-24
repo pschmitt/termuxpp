@@ -518,6 +518,16 @@ fn execute(cli: &Cli, ui: &Ui) -> Exit {
                 Err(error) => Exit::failure(format!("bootstrap: {error:#}")),
             }
         }
+        Command::Setup(_) if !cfg!(target_os = "android") => {
+            // A guest session: the native side runs the whole invocation.
+            match crate::setup::hand_off() {
+                Ok(code) => Exit {
+                    code,
+                    message: None,
+                },
+                Err(error) => Exit::failure(format!("setup: {error:#}")),
+            }
+        }
         Command::Setup(args) => {
             match native_runtime(runtime).and_then(|runtime| crate::setup::run(&runtime, args)) {
                 Ok(()) => Exit::success(),

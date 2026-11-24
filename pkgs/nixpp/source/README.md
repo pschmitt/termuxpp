@@ -103,11 +103,47 @@ without a native parent can use the app's failsafe session instead.
 
 `nixpp setup` enrolls a fresh phone into its guest system. Run it in a native
 TermuxPP session (the custom bootstrap installs it as `nixpp-setup`, which
-just runs `nixpp setup "$@"`):
+just runs `nixpp setup "$@"`) or directly in a guest session such as the
+first-start seed session (see below):
 
 ```sh
 nixpp setup --host PHONE [--user USER] [--flake FLAKE] [--published]
 ```
+
+#### From a guest session
+
+The guest build of nixpp cannot run setup itself (it needs the Android prefix,
+the bundled rbw and the app's terminal). `nixpp setup ...` and the guest's
+`nixpp-setup` (a one-line wrapper installed with the guest package) therefore
+hand the whole invocation to the native side through the same terminal
+handoff as `nixpp enter --outer` and run `nixpp-setup ...` there: the terminal
+session's native parent, only from the terminal's foreground job, with all
+three streams on the terminal (prompts, progress and the exit status come back
+unchanged). Arguments after `setup` are forwarded verbatim; `--json`,
+`--quiet` and `--color` given before `setup` are carried over, `--runtime` and
+`--socket` (guest paths) are not. Environment variables of the guest session
+(`NIXPP_SETUP_*`, `RBW_EMAIL`) do not reach the native side: use the matching
+options.
+
+`--secrets-file` is the one path argument. The guest sees the app's files
+differently from the native side: the guest's `/home` is `<runtime>/root/home`
+natively, and the whole native file system is mounted at `/android`. The path
+is translated before the handoff:
+
+| Given in the guest | Read natively as |
+| --- | --- |
+| `/android/data/data/PKG/files/home/FILE` | `/data/data/PKG/files/home/FILE` |
+| `/data/data/PKG/files/home/FILE` (the path the adb helper prints; not a guest path) | unchanged |
+| `/home/USER/FILE`, or relative to a working directory below `/home` | `<runtime>/root/home/USER/FILE` |
+| anything else (`/tmp`, `/etc`, `..` components) | refused with an explanation |
+
+The adb helper writes `/data/data/PKG/files/home/.nixpp-setup-secrets`
+(the app's native home, not the guest home), so the same path works in both
+kinds of session.
+
+Without a native parent (a recovery shell, for example) the handoff fails with
+a message naming the fallback: open the app's failsafe session and run
+`"$PREFIX/bin/nixpp" native-shell`, then `nixpp-setup` there.
 
 `--host` is required; there is no table of devices. What it does:
 

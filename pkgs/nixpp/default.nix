@@ -54,6 +54,10 @@ rustPlatform.buildRustPackage {
     "${completionGenerator}" completions zsh > _nixpp
     "${completionGenerator}" completions fish > nixpp.fish
     installShellCompletion --cmd nixpp --bash nixpp --zsh _nixpp --fish nixpp.fish
+    # The name of the native launcher, so `nixpp-setup` works in the guest too
+    # (where `nixpp setup` hands the invocation to the native side).
+    printf '#!%s\nexec %s setup "$@"\n' "${stdenv.shell}" "$out/bin/nixpp" > "$out/bin/nixpp-setup"
+    chmod 0755 "$out/bin/nixpp-setup"
   '';
   NIXPP_REFERENCE_PREPARE = ./tests/prepare-session.py;
   NIXPP_REFERENCE_PYTHON = "${python3}/bin/python3";

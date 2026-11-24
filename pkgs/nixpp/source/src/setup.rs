@@ -10,8 +10,10 @@ use crate::lease::{Controller, Profile};
 use crate::{fsutil, store};
 use anyhow::{Context, Result, bail, ensure};
 use std::collections::HashMap;
+use std::ffi::{OsStr, OsString};
 use std::fs::{self, DirBuilder, OpenOptions};
 use std::io::{Read, Write};
+use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt, PermissionsExt};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -736,6 +738,131 @@ fn load_config(path: Option<&Path>) -> Result<HashMap<String, String>> {
     }
 }
 
+/// Prefix under which a guest session sees the whole native file system.
+const GUEST_NATIVE_ROOT: &str = "/android";
+/// Global options that take a value, which `native_invocation` must skip to
+/// find the subcommand.
+const VALUE_OPTIONS: [&str; 3] = ["--runtime", "--socket", "--color"];
+
+/// Build the native command line for `nixpp setup ...` typed in a guest.
+///
+/// `argv` is the guest process's full argument vector. Everything after the
+/// `setup` subcommand is forwarded unchanged, except that a guest path given
+/// to `--secrets-file` is rewritten to the path the native side sees (see
+/// [`native_path`]). `--json`, `--quiet` and `--color` given before `setup`
+/// are carried over; `--runtime` and `--socket` name guest paths and are not.
+/// The result starts with the native `nixpp-setup` launcher.
+pub fn native_invocation(
+    argv: &[OsString],
+    cwd: &Path,
+    runtime: Option<&OsStr>,
+) -> Result<Vec<OsString>> {
+    let mut forwarded = vec![OsString::from("nixpp-setup")];
+    let mut rest = argv.iter().skip(1);
+    let mut found = false;
+    while let Some(arg) = rest.next() {
+        let text = arg.to_string_lossy();
+        if text == "setup" {
+            found = true;
+            break;
+        }
+        if VALUE_OPTIONS.contains(&text.as_ref()) {
+            let value = rest
+                .next()
+                .context("a global option is missing its value")?;
+            if text == "--color" {
+                forwarded.extend([arg.clone(), value.clone()]);
+            }
+        } else if text == "--json"
+            || text == "-q"
+            || text == "--quiet"
+            || text.starts_with("--color=")
+        {
+            forwarded.push(arg.clone());
+        }
+    }
+    ensure!(found, "cannot find the setup subcommand in the arguments");
+    let mut rest = rest.peekable();
+    while let Some(arg) = rest.next() {
+        if arg == "--" {
+            forwarded.push(arg.clone());
+            forwarded.extend(rest.by_ref().cloned());
+            break;
+        }
+        if arg == "--secrets-file" {
+            forwarded.push(arg.clone());
+            let value = rest.next().context("--secrets-file is missing its value")?;
+            forwarded.push(native_path(Path::new(value), cwd, runtime)?.into_os_string());
+        } else if let Some(value) = arg.as_bytes().strip_prefix(b"--secrets-file=") {
+            let path = native_path(Path::new(OsStr::from_bytes(value)), cwd, runtime)?;
+            let mut joined = OsString::from("--secrets-file=");
+            joined.push(path);
+            forwarded.push(joined);
+        } else {
+            forwarded.push(arg.clone());
+        }
+    }
+    Ok(forwarded)
+}
+
+/// The native path of a file named in a guest session.
+///
+/// The guest's `/home` is `<runtime>/root/home` natively, and the whole native
+/// file system is mounted at `/android`, so the app's own home
+/// (`/data/data/<package>/files/home`) is `/android/data/data/...` in the
+/// guest. A path below `/data` is taken to be native already (the form the
+/// helper prints, which does not exist in the guest). Anything else (`/tmp` is
+/// configurable, `/etc` and `/run` are overlays) has no reliable native
+/// counterpart and is refused rather than guessed.
+pub fn native_path(path: &Path, cwd: &Path, runtime: Option<&OsStr>) -> Result<PathBuf> {
+    let absolute = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        cwd.join(path)
+    };
+    ensure!(
+        !absolute
+            .components()
+            .any(|part| matches!(part, std::path::Component::ParentDir)),
+        "the path {} must not contain `..`",
+        absolute.display()
+    );
+    if let Ok(rest) = absolute.strip_prefix(GUEST_NATIVE_ROOT) {
+        return Ok(Path::new("/").join(rest));
+    }
+    if absolute.starts_with("/data") {
+        return Ok(absolute);
+    }
+    if let Ok(rest) = absolute.strip_prefix("/home") {
+        let native = runtime
+            .map(Path::new)
+            .and_then(|runtime| runtime.strip_prefix(GUEST_NATIVE_ROOT).ok())
+            .context("cannot map a guest home path: NIXPP_RUNTIME is not a /android path")?;
+        return Ok(Path::new("/").join(native).join("root/home").join(rest));
+    }
+    bail!(
+        "{} is not visible to the native side; put the file below /home or give its \
+         native path as /android/... (for example /android/data/data/PACKAGE/files/home/FILE)",
+        absolute.display()
+    )
+}
+
+/// Run `nixpp setup` from a guest by handing the whole invocation to the native
+/// side, which has the Android prefix, the bundled rbw and the real terminal.
+pub fn hand_off() -> Result<u8> {
+    let argv: Vec<OsString> = std::env::args_os().collect();
+    let forwarded = native_invocation(
+        &argv,
+        &std::env::current_dir().context("cannot determine the working directory")?,
+        std::env::var_os("NIXPP_RUNTIME").as_deref(),
+    )?;
+    crate::outer::request(&forwarded).context(
+        "setup needs the native TermuxPP side and found no native parent for this session; \
+         open the app's failsafe session and run \"$PREFIX/bin/nixpp\" native-shell, \
+         then nixpp-setup there",
+    )
+}
+
 pub fn run(runtime: &Path, args: &Args) -> Result<()> {
     ensure!(
         cfg!(target_os = "android"),
@@ -863,6 +990,115 @@ fn clone_dotfiles(
 mod tests {
     use super::*;
     use std::cell::RefCell;
+
+    fn argv(args: &[&str]) -> Vec<OsString> {
+        args.iter().map(OsString::from).collect()
+    }
+
+    const RUNTIME: &str = "/android/data/data/dev.pschmitt.termux/files/nixpp";
+
+    fn invocation(args: &[&str]) -> Result<Vec<OsString>> {
+        native_invocation(
+            &argv(args),
+            Path::new("/home/nix"),
+            Some(OsStr::new(RUNTIME)),
+        )
+    }
+
+    #[test]
+    fn guest_setup_forwards_arguments_exactly() {
+        let forwarded = invocation(&[
+            "nixpp",
+            "setup",
+            "--host",
+            "H",
+            "--ssh-input",
+            "two words",
+            "--",
+            "--secrets-file",
+        ])
+        .unwrap();
+        assert_eq!(
+            forwarded,
+            argv(&[
+                "nixpp-setup",
+                "--host",
+                "H",
+                "--ssh-input",
+                "two words",
+                "--",
+                "--secrets-file"
+            ])
+        );
+    }
+
+    #[test]
+    fn guest_setup_keeps_presentation_flags_and_drops_guest_paths() {
+        let forwarded = invocation(&[
+            "nixpp",
+            "--runtime",
+            "/x",
+            "--socket=/y",
+            "--json",
+            "--color",
+            "never",
+            "setup",
+            "--host",
+            "H",
+        ])
+        .unwrap();
+        assert_eq!(
+            forwarded,
+            argv(&["nixpp-setup", "--json", "--color", "never", "--host", "H"])
+        );
+        assert!(invocation(&["nixpp", "--json"]).is_err());
+    }
+
+    #[test]
+    fn guest_secrets_file_is_translated_in_both_spellings() {
+        let native = "/data/data/dev.pschmitt.termux/files/nixpp/root/home/nix/.s";
+        for args in [
+            argv(&["nixpp", "setup", "--secrets-file", ".s"]),
+            argv(&["nixpp", "setup", "--secrets-file", "/home/nix/.s"]),
+            argv(&["nixpp", "setup", "--secrets-file=/home/nix/.s"]),
+        ] {
+            let forwarded =
+                native_invocation(&args, Path::new("/home/nix"), Some(OsStr::new(RUNTIME)))
+                    .unwrap();
+            let joined: Vec<String> = forwarded
+                .iter()
+                .map(|arg| arg.to_string_lossy().into_owned())
+                .collect();
+            assert!(joined.iter().any(|arg| arg.ends_with(native)), "{joined:?}");
+            assert!(joined.iter().all(|arg| !arg.contains("/android")));
+        }
+    }
+
+    #[test]
+    fn native_paths_are_kept_and_android_mounts_are_unwrapped() {
+        let cwd = Path::new("/home/nix");
+        let home = "/data/data/dev.pschmitt.termux/files/home/.nixpp-setup-secrets";
+        for input in [home.to_owned(), format!("/android{home}")] {
+            assert_eq!(
+                native_path(Path::new(&input), cwd, None).unwrap(),
+                Path::new(home)
+            );
+        }
+    }
+
+    #[test]
+    fn unmappable_guest_paths_are_refused() {
+        let cwd = Path::new("/home/nix");
+        let runtime = Some(OsStr::new(RUNTIME));
+        for path in ["/tmp/x", "/etc/x", "/home/../etc/x", "../x"] {
+            assert!(
+                native_path(Path::new(path), cwd, runtime).is_err(),
+                "{path}"
+            );
+        }
+        assert!(native_path(Path::new("/home/nix/x"), cwd, None).is_err());
+        assert!(native_path(Path::new("/home/nix/x"), cwd, Some(OsStr::new("/data/x"))).is_err());
+    }
 
     const KEY: &str = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIExampleExampleExampleExampleExample";
 
