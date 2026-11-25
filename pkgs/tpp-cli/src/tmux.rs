@@ -238,7 +238,8 @@ session=$(tmux list-clients -F '#{{client_tty}} #{{session_id}}' |
 "#,
             self.marker()
         );
-        let list = "printf '%s\\n' \"$session\"\ntmux list-windows -t \"$session\" -F '#{window_id} #{window_index} #{window_active} #{window_name}'\n";
+        // The command of the active pane follows the name after a tab, for the app's program icons.
+        let list = "printf '%s\\n' \"$session\"\ntmux list-windows -t \"$session\" -F '#{window_id} #{window_index} #{window_active} #{window_name}\t#{pane_current_command}'\n";
         let query = format!("{client}{list}");
         let mut remote = Remote::new(control);
         // The tmux session and window IDs of the last snapshot, to check a choice against.
@@ -484,20 +485,27 @@ struct Window<'a> {
     id: &'a str,
     index: u32,
     name: &'a str,
+    /// The command of the window's active pane, empty when tmux did not name one.
+    program: &'a str,
     active: bool,
 }
 
 impl Window<'_> {
     fn json(&self) -> Value {
         let title: String = self.name.chars().take(100).collect();
-        Value::Object(vec![
+        let mut fields = vec![
             ("id".into(), Value::string(self.id)),
             (
                 "label".into(),
                 Value::string(format!("{}  {title}", self.index)),
             ),
             ("active".into(), Value::Bool(self.active)),
-        ])
+        ];
+        if !self.program.is_empty() {
+            let program: String = self.program.chars().take(64).collect();
+            fields.push(("program".into(), Value::string(program)));
+        }
+        Value::Object(fields)
     }
 }
 
@@ -516,16 +524,18 @@ fn parse_windows(output: &str) -> Option<(&str, Vec<Window<'_>>)> {
         .lines()
         .filter_map(|row| {
             let fields: Vec<_> = row.splitn(4, ' ').collect();
-            let [id, index, active @ ("0" | "1"), name] = fields.as_slice() else {
+            let [id, index, active @ ("0" | "1"), rest] = fields.as_slice() else {
                 return None;
             };
             if !valid_id(id, '@') {
                 return None;
             }
+            let (name, program) = rest.rsplit_once('\t').unwrap_or((rest, ""));
             Some(Window {
                 id,
                 index: index.parse().ok()?,
                 name,
+                program,
                 active: *active == "1",
             })
         })
@@ -541,11 +551,16 @@ mod tests {
     #[test]
     fn accepts_unicode_and_prioritizes_the_active_window() {
         let (session, windows) =
-            parse_windows("$4\n@1 1 0 first\n@15 2 1 é spaces\n@3; 3 1 invalid\n").unwrap();
+            parse_windows("$4\n@1 1 0 first\tzsh\n@15 2 1 é spaces\tclaude\n@3; 3 1 invalid\n").unwrap();
         assert_eq!(session, "$4");
         assert_eq!(windows.len(), 2);
         assert_eq!(windows[0].id, "@15");
         assert_eq!(windows[0].name, "é spaces");
+        assert_eq!(windows[0].program, "claude");
+        assert_eq!(windows[1].program, "zsh");
+        // A name without the command, as from a helper that did not ask for it.
+        let (_, windows) = parse_windows("$4\n@1 1 1 plain name\n").unwrap();
+        assert_eq!((windows[0].name, windows[0].program), ("plain name", ""));
         assert!(parse_windows("$4; bad\n@1 1 0 first").is_none());
     }
 

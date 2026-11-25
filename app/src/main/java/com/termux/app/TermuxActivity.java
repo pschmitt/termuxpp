@@ -27,6 +27,7 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.RelativeLayout;
@@ -44,6 +45,7 @@ import com.termux.app.terminal.TerminalContextMenu;
 import com.termux.app.terminal.TermuxActivityRootView;
 import com.termux.app.terminal.TermuxContextMenuSheet;
 import com.termux.app.terminal.TermuxTerminalSessionActivityClient;
+import com.termux.app.terminal.TmuxProgramIcon;
 import com.termux.app.terminal.io.ExtraKeysSwipeDetector;
 import com.termux.app.terminal.io.ExtraKeysSwipeViewPager;
 import com.termux.app.terminal.io.TermuxTerminalExtraKeys;
@@ -1229,6 +1231,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         int muted = ContextCompat.getColor(this, R.color.ui_on_surface_variant);
         int accent = MaterialColors.getColor(container, R.attr.termuxUiPrimary);
         int onAccent = MaterialColors.getColor(container, R.attr.termuxUiOnPrimary);
+        int shelf = ContextCompat.getColor(this, R.color.ui_session_shelf);
 
         LinearLayout group = new LinearLayout(this);
         container.addView(group, new LinearLayout.LayoutParams(-1, -2));
@@ -1265,6 +1268,18 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             if (parts.length == 2) {
                 TextView number = tmuxWindowText(parts[0], active && !rounded ? accent : textColor, active);
                 row.addView(number, new LinearLayout.LayoutParams(sidebarDp(24), -2));
+            }
+            TmuxProgramIcon program = TmuxProgramIcon.forCommand(window.optString("program", null));
+            if (program != null) {
+                ImageView icon = new ImageView(this);
+                icon.setImageResource(program.drawable);
+                // Brand colours would clash with the filled accent pill, so it keeps one colour.
+                icon.setImageTintList(ColorStateList.valueOf(active && rounded ? textColor
+                    : TmuxProgramIcon.tint(program, textColor, shelf)));
+                icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+                LinearLayout.LayoutParams iconLayout = new LinearLayout.LayoutParams(sidebarDp(16), sidebarDp(16));
+                iconLayout.setMarginEnd(sidebarDp(10));
+                row.addView(icon, iconLayout);
             }
             TextView title = tmuxWindowText(parts.length == 2 ? parts[1] : label, textColor, active);
             row.addView(title, new LinearLayout.LayoutParams(0, -2, 1));

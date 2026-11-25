@@ -428,6 +428,15 @@ sidebar entry and choose **Open window picker**. The sidebar refreshes as the
 active window, names, and window list change. Upstream Termux's sidebar lists Android terminal
 sessions. [Upstream sidebar source](https://github.com/termux/termux-app/blob/master/app/src/main/java/com/termux/app/TermuxSessionsListViewController.java).
 
+Each window row shows an icon for the program in the window's active pane,
+like a tmux status bar that maps `pane_current_command` to Nerd Font
+glyphs. TermuxPP shows real logos instead (Claude, Codex, Gemini, Neovim,
+zsh, Git, Python and others), tinted in their brand colour unless that would
+be hard to see on the background. Unknown commands show a terminal icon.
+The helper sends the command with each window; an older helper sends none,
+and the rows then have no icon.
+[Program icons](../../app/src/main/java/com/termux/app/terminal/TmuxProgramIcon.java).
+
 The `terminal-tmux-sidebar-layout` property selects nested windows, a
 second sidebar level, or separate session and tmux views.
 [Sidebar settings](terminal-settings.md#tmux-sidebar-layout).

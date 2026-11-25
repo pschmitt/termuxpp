@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Material Design Icons (Apache-2.0), tinted at runtime. See docs/en/termuxpp-differences.md, Remote tmux integration. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M 2 19.63 L 13.43 8.2 L 12.72 7.5 L 14.14 6.07 L 12 3.89 C 13.2 2.7 15.09 2.7 16.27 3.89 L 19.87 7.5 L 18.45 8.91 H 21.29 L 22 9.62 L 18.45 13.21 L 17.74 12.5 V 9.62 L 16.27 11.04 L 15.56 10.33 L 4.13 21.76 L 2 19.63 Z" />
+</vector>
