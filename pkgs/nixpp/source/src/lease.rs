@@ -200,10 +200,6 @@ pub enum Profile {
 }
 
 impl Profile {
-    pub fn is_hosted(&self) -> bool {
-        matches!(self, Self::Hosted(_))
-    }
-
     /// `gh-aarch64` and `gh-x86_64` lease GitHub runners; everything else is
     /// an OpenStack profile of the controller.
     pub fn parse(name: &str) -> Result<Self> {
@@ -758,10 +754,10 @@ pub fn build_script(
     if hosted {
         script.push_str(HOSTED_NIX_CONFIG);
     }
-    script.push_str(&format!(
+    script.push_str(
         "export GIT_SSH_COMMAND=\"ssh -oBatchMode=yes -oStrictHostKeyChecking=yes \
-         -oUserKnownHostsFile=$HOME/.cache/nixpp-setup/github_known_hosts\"\n"
-    ));
+         -oUserKnownHostsFile=$HOME/.cache/nixpp-setup/github_known_hosts\"\n",
+    );
     let mut command = vec![
         "nix".to_owned(),
         "build".to_owned(),
