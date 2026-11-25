@@ -599,8 +599,8 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
                     Toast.makeText(requireContext(), getString(R.string.nix_services_settings_save_error, failure),
                         Toast.LENGTH_LONG).show();
                 }
-                // svc applies the settings within a second.
-                mainHandler.postDelayed(this::refreshServices, 1500);
+                // Give svc time to observe settings before reloading the page.
+                mainHandler.postDelayed(this::refreshPage, 1500);
             });
         });
     }
