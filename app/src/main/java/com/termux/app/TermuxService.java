@@ -106,6 +106,10 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
      * Note that the service may often outlive the activity, so need to clear this reference.
      */
     private TermuxTerminalSessionActivityClient mTermuxTerminalSessionActivityClient;
+    private final TmuxWindows tmuxWindows = new TmuxWindows(mHandler, () -> {
+        if (mTermuxTerminalSessionActivityClient != null)
+            mTermuxTerminalSessionActivityClient.termuxSessionListNotifyUpdated();
+    });
 
     /** The basic implementation of the {@link TerminalSessionClient} interface to be used by {@link TerminalSession}
      * that does not hold activity references and only a service reference.
@@ -798,6 +802,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     /** Remove a TermuxSession. */
     public synchronized int removeTermuxSession(TerminalSession sessionToRemove) {
         int index = getIndexOfSession(sessionToRemove);
+        tmuxWindows.remove(sessionToRemove.mHandle);
         closingSessions.remove(sessionToRemove.mHandle);
 
         if (index >= 0)
@@ -915,9 +920,22 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
             throw new IllegalStateException("Cannot open " + action + " from the current TermuxPP screen");
     }
 
+    public JSONArray getTmuxWindows(TerminalSession session) {
+        return session.isRunning() ? tmuxWindows.get(session.mHandle) : new JSONArray();
+    }
+
+    boolean selectTmuxWindow(TerminalSession session, String windowId) {
+        return session.isRunning() && tmuxWindows.select(session.mHandle, windowId);
+    }
+
     /** Called on the main thread by the app-UID session socket. */
     Object runSessionCommand(JSONArray args) throws JSONException, ErrnoException {
         String command = args.getString(0);
+        if ("tmux-windows".equals(command) && (args.length() == 3 || args.length() == 4)) {
+            TerminalSession terminal = getTerminalSessionForHandle(args.getString(1));
+            if (terminal == null || !terminal.isRunning()) throw new IllegalArgumentException("Terminal session has ended");
+            return tmuxWindows.update(terminal.mHandle, args);
+        }
         if ("new".equals(command) && args.length() == 3)
             return createSessionFromCommand(args.isNull(1) ? null : args.getString(1), args.getJSONArray(2));
         if ("reload-settings".equals(command) && args.length() == 1) {

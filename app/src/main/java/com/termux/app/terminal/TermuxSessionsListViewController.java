@@ -9,6 +9,7 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -57,12 +58,15 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
         SessionsListView.resetRowStyle(sessionRowView);
 
         TerminalSession sessionAtRow = getItem(position).getTerminalSession();
+        LinearLayout tmux = sessionRowView.findViewById(R.id.session_tmux_windows);
+        mActivity.bindTmuxWindows(tmux, sessionAtRow);
+        View header = sessionRowView.findViewById(R.id.session_header);
         if (sessionAtRow == null) {
             sessionTitleView.setText(R.string.ui_session_null);
             sessionTitleView.setPaintFlags(sessionTitleView.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
             sessionTitleView.setTextColor(ContextCompat.getColorStateList(mActivity, R.color.ui_session_row_text));
             sessionSubtitleView.setVisibility(View.GONE);
-            sessionRowView.setContentDescription(number + ", " + mActivity.getString(R.string.ui_session_null));
+            header.setContentDescription(number + ", " + mActivity.getString(R.string.ui_session_null));
             return sessionRowView;
         }
 
@@ -103,7 +107,7 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
         sessionTitleView.setTextColor(ContextCompat.getColorStateList(mActivity,
             failed ? R.color.ui_session_failed_text : R.color.ui_session_row_text));
 
-        sessionRowView.setContentDescription(subtitle.isEmpty() ? number + ", " + title : number + ", " + title + ", " + subtitle);
+        header.setContentDescription(subtitle.isEmpty() ? number + ", " + title : number + ", " + title + ", " + subtitle);
         return sessionRowView;
     }
 

@@ -14,6 +14,7 @@ import android.os.Bundle;
 import android.os.IBinder;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -22,8 +23,10 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.RelativeLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.termux.R;
@@ -77,6 +80,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.viewpager.widget.ViewPager;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -201,6 +207,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private android.app.Dialog mContextSheetDialog;
 
     private AlertDialog sessionSwitcher;
+    private AlertDialog tmuxSwitcher;
     private String appAccent;
     private static boolean pendingPropertiesReload;
 
@@ -376,6 +383,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     @Override
     public void onDestroy() {
+        if (tmuxSwitcher != null) tmuxSwitcher.dismiss();
         if (mContextSheetDialog != null) mContextSheetDialog.dismiss();
         if (mTermuxSessionListViewController != null) mTermuxSessionListViewController.dismissDialogs();
         super.onDestroy();
@@ -986,6 +994,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 Intent intent = new Intent(this, SettingsActivity.class);
                 if (query != null) intent.putExtra(SettingsActivity.EXTRA_SEARCH_QUERY, query);
                 return ActivityUtils.startActivity(this, intent) == null;
+            case "tmux-switcher":
+                return showTmuxSwitcher(getCurrentSession());
             case "session-switcher":
                 return showSessionSwitcher();
             case "sidebar":
@@ -1040,6 +1050,74 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         return true;
     }
 
+    public void bindTmuxWindows(LinearLayout container, @Nullable TerminalSession session) {
+        container.removeAllViews();
+        JSONArray windows = session == null || mTermuxService == null
+            ? new JSONArray() : mTermuxService.getTmuxWindows(session);
+        container.setVisibility(windows.length() == 0 ? View.GONE : View.VISIBLE);
+        if (windows.length() == 0) return;
+
+        TextView heading = addTmuxRow(container, getString(R.string.ui_tmux_switcher_title));
+        heading.setOnClickListener(view -> showTmuxSwitcher(session));
+        for (int i = 0; i < windows.length(); i++) {
+            JSONObject window = windows.optJSONObject(i);
+            boolean active = window.optBoolean("active");
+            String label = window.optString("label");
+            TextView row = addTmuxRow(container, active ? getString(R.string.ui_tmux_active_window, label) : label);
+            if (active) row.setTypeface(row.getTypeface(), android.graphics.Typeface.BOLD);
+            row.setOnClickListener(view -> selectTmuxWindow(session, window.optString("id")));
+        }
+    }
+
+    private TextView addTmuxRow(LinearLayout container, String label) {
+        TextView row = new TextView(this);
+        row.setText(label);
+        TypedValue background = new TypedValue();
+        if (getTheme().resolveAttribute(android.R.attr.selectableItemBackground, background, true))
+            row.setBackgroundResource(background.resourceId);
+        row.setMinHeight(getResources().getDimensionPixelSize(R.dimen.ui_touch_target));
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setEllipsize(TextUtils.TruncateAt.END);
+        row.setMaxLines(1);
+        container.addView(row, new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        return row;
+    }
+
+    private boolean showTmuxSwitcher(@Nullable TerminalSession session) {
+        if (session == null || mTermuxService == null || !mIsVisible || isFinishing()) return false;
+        if (tmuxSwitcher != null && tmuxSwitcher.isShowing()) return true;
+        JSONArray windows = mTermuxService.getTmuxWindows(session);
+        if (windows.length() == 0) return false;
+
+        String[] labels = new String[windows.length()];
+        int active = -1;
+        for (int i = 0; i < labels.length; i++) {
+            JSONObject window = windows.optJSONObject(i);
+            labels[i] = window.optString("label");
+            if (window.optBoolean("active")) active = i;
+        }
+        tmuxSwitcher = DialogUtils.builder(this)
+            .setTitle(R.string.ui_tmux_switcher_title)
+            .setSingleChoiceItems(labels, active, (dialog, which) -> {
+                selectTmuxWindow(session, windows.optJSONObject(which).optString("id"));
+                dialog.dismiss();
+            })
+            .create();
+        tmuxSwitcher.setOnDismissListener(dialog -> tmuxSwitcher = null);
+        tmuxSwitcher.show();
+        return true;
+    }
+
+    private void selectTmuxWindow(TerminalSession session, String id) {
+        if (mTermuxService == null || !mTermuxService.selectTmuxWindow(session, id)) {
+            Toast.makeText(this, R.string.ui_tmux_attachment_unavailable, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        mTermuxTerminalSessionActivityClient.setCurrentSession(session);
+        getDrawer().closeDrawers();
+    }
+
     private void configureSessionShelf() {
         DrawerLayout drawer = getDrawer();
         drawer.setScrimColor(ContextCompat.getColor(this, R.color.ui_session_shelf_scrim));
@@ -1090,7 +1168,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
 
     public void termuxSessionListNotifyUpdated() {
-        mTermuxSessionListViewController.notifyDataSetChanged();
+        if (mTermuxSessionListViewController != null) mTermuxSessionListViewController.notifyDataSetChanged();
     }
 
     public boolean isVisible() {

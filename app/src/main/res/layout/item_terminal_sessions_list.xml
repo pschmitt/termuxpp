@@ -3,50 +3,66 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="@drawable/ui_session_bg"
-    android:gravity="center_vertical"
-    android:minHeight="@dimen/ui_touch_target"
-    android:orientation="horizontal"
-    android:paddingStart="24dp"
-    android:paddingTop="10dp"
-    android:paddingEnd="24dp"
-    android:paddingBottom="10dp">
-
-    <TextView
-        android:id="@+id/session_index"
-        android:layout_width="32dp"
-        android:layout_height="32dp"
-        android:background="@drawable/ui_session_badge_bg"
-        android:gravity="center"
-        android:importantForAccessibility="no"
-        android:textColor="@color/ui_session_badge_text"
-        android:textSize="14sp"
-        android:textStyle="bold" />
+    android:orientation="vertical">
 
     <LinearLayout
-        android:layout_width="0dp"
+        android:id="@+id/session_header"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_weight="1"
-        android:orientation="vertical">
+        android:background="@drawable/ui_session_bg"
+        android:gravity="center_vertical"
+        android:minHeight="@dimen/ui_touch_target"
+        android:orientation="horizontal"
+        android:paddingStart="24dp"
+        android:paddingTop="10dp"
+        android:paddingEnd="24dp"
+        android:paddingBottom="10dp">
 
         <TextView
-            android:id="@+id/session_title"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:textAppearance="@style/TextAppearance.TermuxPP.Title"
-            android:textColor="@color/ui_session_row_text" />
+            android:id="@+id/session_index"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:background="@drawable/ui_session_badge_bg"
+            android:gravity="center"
+            android:importantForAccessibility="no"
+            android:textColor="@color/ui_session_badge_text"
+            android:textSize="14sp"
+            android:textStyle="bold" />
 
-        <TextView
-            android:id="@+id/session_subtitle"
-            android:layout_width="match_parent"
+        <LinearLayout
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="1dp"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:textAppearance="@style/TextAppearance.TermuxPP.Body"
-            android:textColor="@color/ui_session_row_text" />
+            android:layout_marginStart="16dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/session_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textAppearance="@style/TextAppearance.TermuxPP.Title"
+                android:textColor="@color/ui_session_row_text" />
+
+            <TextView
+                android:id="@+id/session_subtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="1dp"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textAppearance="@style/TextAppearance.TermuxPP.Body"
+                android:textColor="@color/ui_session_row_text" />
+        </LinearLayout>
     </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/session_tmux_windows"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="40dp"
+        android:paddingEnd="16dp"
+        android:visibility="gone" />
 </LinearLayout>

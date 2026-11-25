@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.UUID;
 
 /**
@@ -91,7 +92,8 @@ public final class TerminalSession extends TerminalOutput {
         this.mShellPath = shellPath;
         this.mCwd = cwd;
         this.mArgs = args;
-        this.mEnv = env;
+        this.mEnv = Arrays.copyOf(env, env.length + 1);
+        this.mEnv[env.length] = "TPP_TERMINAL_SESSION_ID=" + mHandle;
         this.mTranscriptRows = transcriptRows;
         this.mClient = client;
     }

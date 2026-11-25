@@ -131,6 +131,7 @@ main() {
     LANG=C.UTF-8 TMPDIR=/tmp SHELL="$login_shell" \
     NIXPP_RUNTIME="/android$directory" NIXPP_SOCKET=/tmp/nixpp.sock \
     NIXPP_OUTER_SOCKET="${NIXPP_OUTER_SOCKET:-}" \
+    TPP_TERMINAL_SESSION_ID="${TPP_TERMINAL_SESSION_ID:-}" \
     XDG_RUNTIME_DIR="$runtime_dir" \
     NIX_CONF_DIR="$session_home/.config/nix" \
     PATH="$command_path" TERMINFO="$SESSION_TERMINFO" \

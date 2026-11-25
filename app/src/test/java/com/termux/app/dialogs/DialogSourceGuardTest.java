@@ -93,7 +93,7 @@ public class DialogSourceGuardTest {
         String shared = "termux-shared/src/main/java/dev/pschmitt/termux/shared/";
 
         String activity = source(app + "TermuxActivity.java");
-        Assert.assertEquals("kill session dialog and Session switcher", 2, count(activity, "DialogUtils.builder("));
+        Assert.assertEquals("kill session dialog and session and tmux switchers", 3, count(activity, "DialogUtils.builder("));
         Assert.assertTrue("named session input", activity.contains("TextInputDialogUtils.textInput("));
 
         String installer = source(app + "TermuxInstaller.java");
