@@ -928,6 +928,15 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         return session.isRunning() && tmuxWindows.select(session.mHandle, windowId);
     }
 
+    /** Called on a socket thread: hand the helper of an attachment its chosen window as soon as there is one. */
+    Object awaitTmuxSelection(JSONArray args) throws JSONException, InterruptedException {
+        if (args.length() != 2) throw new IllegalArgumentException("Invalid tmux wait arguments");
+        String token = args.getString(1);
+        if (!token.matches("[0-9a-f]{32}")) throw new IllegalArgumentException("Invalid attachment token");
+        String id = tmuxWindows.awaitSelection(token, SessionCommandServer.WAIT_MS);
+        return id == null ? JSONObject.NULL : id;
+    }
+
     /** Called on the main thread by the app-UID session socket. */
     Object runSessionCommand(JSONArray args) throws JSONException, ErrnoException {
         String command = args.getString(0);

@@ -8,19 +8,27 @@ import org.json.JSONObject;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
-/** Window snapshots and selection requests for shell-owned tmux attachments. Main thread only. */
+/**
+ * Window snapshots and selection requests for shell-owned tmux attachments. Main thread only, except
+ * {@link #awaitSelection}, which a socket thread uses to hand a chosen window to the helper the moment
+ * it is chosen instead of with the next snapshot.
+ */
 final class TmuxWindows {
     private static final long LEASE_MS = 6000;
     private final Handler handler;
     private final Runnable onChange;
     private final Map<String, Attachment> attachments = new HashMap<>();
+    /** The window chosen for each attachment token and not yet handed to its helper. */
+    private final Map<String, String> selections = new ConcurrentHashMap<>();
+    private final Object signal = new Object();
 
     private static final class Attachment {
         final String token;
         JSONArray windows;
         String signature;
-        String selection;
         Runnable expire;
 
         Attachment(String token) {
@@ -49,7 +57,10 @@ final class TmuxWindows {
             row.getBoolean("active");
         }
         if (entry == null || !entry.token.equals(token)) {
-            if (entry != null) handler.removeCallbacks(entry.expire);
+            if (entry != null) {
+                handler.removeCallbacks(entry.expire);
+                selections.remove(entry.token);
+            }
             entry = new Attachment(token);
             entry.expire = () -> remove(terminal);
             attachments.put(terminal, entry);
@@ -62,8 +73,8 @@ final class TmuxWindows {
             entry.windows = snapshot;
             onChange.run();
         }
-        String selected = entry.selection;
-        entry.selection = null;
+        // Helpers without the wait request still pick the choice up here, with their next snapshot.
+        String selected = selections.remove(token);
         for (int i = 0; selected != null && i < snapshot.length(); i++) {
             if (selected.equals(snapshot.getJSONObject(i).getString("id"))) return selected;
         }
@@ -78,19 +89,56 @@ final class TmuxWindows {
     boolean select(String terminal, String id) {
         Attachment entry = attachments.get(terminal);
         if (entry == null) return false;
-        for (int i = 0; i < entry.windows.length(); i++) {
-            if (id.equals(entry.windows.optJSONObject(i).optString("id"))) {
-                entry.selection = id;
-                return true;
+        JSONArray windows = new JSONArray();
+        boolean found = false;
+        try {
+            for (int i = 0; i < entry.windows.length(); i++) {
+                // A copy keeps the key order, so the helper's next snapshot of the switched window
+                // matches this one and does not redraw the sidebar again.
+                JSONObject row = new JSONObject(entry.windows.getJSONObject(i).toString());
+                boolean chosen = id.equals(row.optString("id"));
+                found |= chosen;
+                windows.put(row.put("active", chosen));
+            }
+        } catch (JSONException e) {
+            return false;
+        }
+        if (!found) return false;
+
+        synchronized (signal) {
+            selections.put(entry.token, id);
+            signal.notifyAll();
+        }
+        // Show the choice at once; the helper's next snapshot confirms or corrects it.
+        entry.windows = windows;
+        entry.signature = windows.toString();
+        onChange.run();
+        return true;
+    }
+
+    /**
+     * Wait until a window is chosen for the attachment with this token, and take the choice. Any thread.
+     *
+     * @return The window ID, or null when nothing was chosen in time.
+     */
+    String awaitSelection(String token, long timeoutMs) throws InterruptedException {
+        long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMs);
+        synchronized (signal) {
+            while (true) {
+                String id = selections.remove(token);
+                if (id != null) return id;
+                long left = TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime());
+                if (left <= 0) return null;
+                signal.wait(left);
             }
         }
-        return false;
     }
 
     void remove(String terminal) {
         Attachment entry = attachments.remove(terminal);
         if (entry == null) return;
         handler.removeCallbacks(entry.expire);
+        selections.remove(entry.token);
         onChange.run();
     }
 }

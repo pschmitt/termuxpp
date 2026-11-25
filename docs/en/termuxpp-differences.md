@@ -438,15 +438,21 @@ A shell SSH wrapper can replace its interactive SSH invocation with
 Use `tpp tmux switcher` to open the picker from the active terminal and
 a current nixpp runtime for terminals launched inside the guest.
 
-The shell helper owns the SSH connection and opens extra channels on that
-connection to identify the attached tmux client, list windows and select
-a window. It sends snapshots over the app-UID session socket. The app
-clears the list when the attachment ends or its lease expires. The remote
-host needs tmux and the usual shell utilities. The command polls and
-caps the snapshot to fit the session socket's request limit.
+The shell helper owns the SSH connection. It keeps one remote `sh` open on
+that connection to identify the attached tmux client, list windows and select
+a window, and falls back to a new channel per command if that shell breaks.
+It sends snapshots over the app-UID session socket and keeps a `tmux-wait`
+request open there. When you tap a window, the app highlights it, answers the
+wait, and the helper selects the window and lists the windows again in one
+round trip. Without a choice the wait ends after 750 ms and the helper looks
+at tmux again. An app without `tmux-wait` hands the choice back with the next
+snapshot instead. The app clears the list when the attachment ends or its
+lease expires. The remote host needs tmux and the usual shell utilities. The
+command caps the snapshot to fit the session socket's request limit.
 [SSH multiplexing](https://man.openbsd.org/ssh_config#ControlMaster) ·
 [Rust CLI](../../pkgs/tpp-cli/src/tmux.rs) ·
-[TermuxPP attachment state](../../app/src/main/java/com/termux/app/TmuxWindows.java).
+[TermuxPP attachment state](../../app/src/main/java/com/termux/app/TmuxWindows.java) ·
+[Session socket](../../app/src/main/java/com/termux/app/SessionCommandServer.java).
 
 ## Terminal session CLI
 
