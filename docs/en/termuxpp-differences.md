@@ -420,6 +420,10 @@ open the window picker. The sidebar refreshes as the active window, names
 and window list change. Upstream Termux's sidebar lists Android terminal
 sessions. [Upstream sidebar source](https://github.com/termux/termux-app/blob/master/app/src/main/java/com/termux/app/TermuxSessionsListViewController.java).
 
+The `terminal-tmux-sidebar-layout` property selects nested windows, a
+second sidebar level, or separate session and tmux views.
+[Sidebar settings](terminal-settings.md#tmux-sidebar-layout).
+
 The bundled `tpp tmux` command uses the terminal's OpenSSH client.
 A shell SSH wrapper can replace its interactive SSH invocation with
 `tpp tmux attach 'exec tmux new-session -A -s main' -- -t HOST`.

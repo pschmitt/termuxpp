@@ -8,6 +8,9 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.res.ColorStateList;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.RippleDrawable;
 import android.content.ServiceConnection;
 import android.os.Build;
 import android.os.Bundle;
@@ -29,6 +32,7 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.android.material.color.MaterialColors;
 import com.termux.R;
 import com.termux.app.api.file.FileReceiverActivity;
 import com.termux.app.settings.AppAccent;
@@ -65,6 +69,7 @@ import dev.pschmitt.termux.shared.logger.Logger;
 import dev.pschmitt.termux.shared.termux.TermuxUtils;
 import dev.pschmitt.termux.shared.termux.settings.properties.TerminalGestureAction;
 import dev.pschmitt.termux.shared.termux.settings.properties.TermuxAppSharedProperties;
+import dev.pschmitt.termux.shared.termux.settings.properties.TermuxPropertyConstants;
 import dev.pschmitt.termux.shared.termux.theme.TermuxThemeUtils;
 import dev.pschmitt.termux.shared.theme.NightMode;
 import dev.pschmitt.termux.shared.view.ViewUtils;
@@ -86,7 +91,9 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.Map;
 
 /**
@@ -208,6 +215,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private AlertDialog sessionSwitcher;
     private AlertDialog tmuxSwitcher;
+    private final Set<String> collapsedTmuxSessions = new HashSet<>();
+    @Nullable private TerminalSession tmuxSidebarSession;
+    private boolean tmuxSidebarMode;
+    private String lastTmuxSidebarLayout;
     private String appAccent;
     private static boolean pendingPropertiesReload;
 
@@ -548,6 +559,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         termuxSessionsListView.setOnItemLongClickListener(mTermuxSessionListViewController);
         if (termuxSessionsListView instanceof SessionsListView)
             ((SessionsListView) termuxSessionsListView).setReorderListener(mTermuxSessionListViewController);
+        updateTmuxSidebar();
     }
 
 
@@ -694,10 +706,14 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
 
 
-    @SuppressLint("RtlHardcoded")
     @Override
     public void onBackPressed() {
-        if (getDrawer().isDrawerOpen(Gravity.LEFT)) {
+        if (getDrawer().isDrawerOpen(Gravity.START)) {
+            if (tmuxSidebarSession != null) {
+                tmuxSidebarSession = null;
+                updateTmuxSidebar();
+                return;
+            }
             getDrawer().closeDrawers();
         } else {
             finishActivityIfNotFinishing();
@@ -1050,38 +1066,143 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         return true;
     }
 
+    private String tmuxSidebarLayout() {
+        return (String) mProperties.getInternalPropertyValue(
+            TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_LAYOUT, true);
+    }
+
+    private void updateTmuxSidebar() {
+        if (mTermuxService == null) return;
+        String layout = tmuxSidebarLayout();
+        if (!layout.equals(lastTmuxSidebarLayout)) {
+            lastTmuxSidebarLayout = layout;
+            tmuxSidebarSession = null;
+            tmuxSidebarMode = false;
+        }
+
+        List<TerminalSession> attachments = new ArrayList<>();
+        for (int i = 0; i < mTermuxService.getTermuxSessionsSize(); i++) {
+            TerminalSession terminal = mTermuxService.getTermuxSession(i).getTerminalSession();
+            if (terminal != null && mTermuxService.getTmuxWindows(terminal).length() > 0)
+                attachments.add(terminal);
+        }
+        if (!attachments.contains(tmuxSidebarSession)) tmuxSidebarSession = null;
+        if (attachments.isEmpty()) tmuxSidebarMode = false;
+
+        boolean modes = layout.equals(TermuxPropertyConstants.TMUX_SIDEBAR_MODES) && !attachments.isEmpty();
+        boolean showWindows = tmuxSidebarSession != null || tmuxSidebarMode;
+        TextView navigation = findViewById(R.id.tmux_sidebar_navigation);
+        navigation.setVisibility(modes || tmuxSidebarSession != null ? View.VISIBLE : View.GONE);
+        navigation.setText(tmuxSidebarSession != null ? R.string.ui_tmux_sidebar_back
+            : tmuxSidebarMode ? R.string.ui_tmux_sidebar_sessions : R.string.ui_tmux_switcher_title);
+        navigation.setOnClickListener(view -> {
+            if (tmuxSidebarSession != null) tmuxSidebarSession = null;
+            else tmuxSidebarMode = !tmuxSidebarMode;
+            updateTmuxSidebar();
+        });
+
+        findViewById(R.id.terminal_sessions_list).setVisibility(showWindows ? View.GONE : View.VISIBLE);
+        View panel = findViewById(R.id.tmux_sidebar_panel);
+        panel.setVisibility(showWindows ? View.VISIBLE : View.GONE);
+        LinearLayout groups = findViewById(R.id.tmux_sidebar_groups);
+        groups.removeAllViews();
+        if (!showWindows) return;
+        for (TerminalSession terminal : attachments) {
+            if (tmuxSidebarSession != null && terminal != tmuxSidebarSession) continue;
+            String title = terminal.mSessionName;
+            if (TextUtils.isEmpty(title)) title = terminal.getTitle();
+            if (TextUtils.isEmpty(title)) title = getString(R.string.ui_session_unnamed,
+                mTermuxService.getIndexOfSession(terminal) + 1);
+            addTmuxHeading(groups, terminal, title, null);
+            addTmuxWindows(groups, terminal, mTermuxService.getTmuxWindows(terminal));
+        }
+    }
+
     public void bindTmuxWindows(LinearLayout container, @Nullable TerminalSession session) {
         container.removeAllViews();
+        String layout = tmuxSidebarLayout();
         JSONArray windows = session == null || mTermuxService == null
             ? new JSONArray() : mTermuxService.getTmuxWindows(session);
-        container.setVisibility(windows.length() == 0 ? View.GONE : View.VISIBLE);
-        if (windows.length() == 0) return;
+        boolean visible = windows.length() > 0 && !layout.equals(TermuxPropertyConstants.TMUX_SIDEBAR_MODES);
+        container.setVisibility(visible ? View.VISIBLE : View.GONE);
+        if (!visible) return;
 
-        TextView heading = addTmuxRow(container, getString(R.string.ui_tmux_switcher_title));
-        heading.setOnClickListener(view -> showTmuxSwitcher(session));
+        if (layout.equals(TermuxPropertyConstants.TMUX_SIDEBAR_DRILL_DOWN)) {
+            addTmuxHeading(container, session, getString(R.string.ui_tmux_sidebar_drill), view -> {
+                tmuxSidebarSession = session;
+                updateTmuxSidebar();
+            });
+            return;
+        }
+
+        boolean collapsed = collapsedTmuxSessions.contains(session.mHandle);
+        addTmuxHeading(container, session, getString(collapsed ? R.string.ui_tmux_sidebar_expand
+            : R.string.ui_tmux_sidebar_collapse), view -> {
+                if (!collapsedTmuxSessions.remove(session.mHandle)) collapsedTmuxSessions.add(session.mHandle);
+                mTermuxSessionListViewController.notifyDataSetChanged();
+            });
+        if (!collapsed) addTmuxWindows(container, session, windows);
+    }
+
+    private void addTmuxHeading(LinearLayout container, TerminalSession session, String label,
+                                @Nullable View.OnClickListener onClick) {
+        LinearLayout line = new LinearLayout(this);
+        line.setGravity(Gravity.CENTER_VERTICAL);
+        container.addView(line);
+        TextView heading = createTmuxRow(label);
+        heading.setOnClickListener(onClick);
+        heading.setClickable(onClick != null);
+        line.addView(heading, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        ImageButton picker = new ImageButton(this);
+        picker.setImageResource(R.drawable.ui_ic_transcript);
+        picker.setContentDescription(getString(R.string.ui_tmux_sidebar_picker));
+        picker.setColorFilter(heading.getCurrentTextColor());
+        applyTmuxRipple(picker);
+        int target = getResources().getDimensionPixelSize(R.dimen.ui_touch_target);
+        line.addView(picker, new LinearLayout.LayoutParams(target, target));
+        picker.setOnClickListener(view -> showTmuxSwitcher(session));
+    }
+
+    private void addTmuxWindows(LinearLayout container, TerminalSession session, JSONArray windows) {
         for (int i = 0; i < windows.length(); i++) {
             JSONObject window = windows.optJSONObject(i);
             boolean active = window.optBoolean("active");
             String label = window.optString("label");
-            TextView row = addTmuxRow(container, active ? getString(R.string.ui_tmux_active_window, label) : label);
-            if (active) row.setTypeface(row.getTypeface(), android.graphics.Typeface.BOLD);
+            TextView row = createTmuxRow(label);
+            if (active) {
+                row.setTypeface(row.getTypeface(), android.graphics.Typeface.BOLD);
+                GradientDrawable fill = new GradientDrawable();
+                fill.setCornerRadius(row.getPaddingStart());
+                fill.setColor(MaterialColors.getColor(row, R.attr.termuxUiPrimary));
+                row.setBackground(new RippleDrawable(ColorStateList.valueOf(
+                    MaterialColors.getColor(row, R.attr.termuxUiRipple)), fill, null));
+                row.setTextColor(MaterialColors.getColor(row, R.attr.termuxUiOnPrimary));
+                row.setContentDescription(getString(R.string.ui_tmux_active_window, label));
+            }
+            container.addView(row, new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
             row.setOnClickListener(view -> selectTmuxWindow(session, window.optString("id")));
         }
     }
 
-    private TextView addTmuxRow(LinearLayout container, String label) {
+    private TextView createTmuxRow(String label) {
         TextView row = new TextView(this);
         row.setText(label);
-        TypedValue background = new TypedValue();
-        if (getTheme().resolveAttribute(android.R.attr.selectableItemBackground, background, true))
-            row.setBackgroundResource(background.resourceId);
+        row.setTextAppearance(R.style.TextAppearance_TermuxPP_Body);
+        applyTmuxRipple(row);
+        int inset = Math.round(12 * getResources().getDisplayMetrics().density);
+        row.setPaddingRelative(inset, 0, inset, 0);
         row.setMinHeight(getResources().getDimensionPixelSize(R.dimen.ui_touch_target));
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setEllipsize(TextUtils.TruncateAt.END);
         row.setMaxLines(1);
-        container.addView(row, new LinearLayout.LayoutParams(
-            LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         return row;
+    }
+
+    private void applyTmuxRipple(View view) {
+        TypedValue background = new TypedValue();
+        if (getTheme().resolveAttribute(android.R.attr.selectableItemBackground, background, true))
+            view.setBackgroundResource(background.resourceId);
     }
 
     private boolean showTmuxSwitcher(@Nullable TerminalSession session) {
@@ -1169,6 +1290,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     public void termuxSessionListNotifyUpdated() {
         if (mTermuxSessionListViewController != null) mTermuxSessionListViewController.notifyDataSetChanged();
+        updateTmuxSidebar();
     }
 
     public boolean isVisible() {
@@ -1306,6 +1428,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         setTerminalToolbarHeight();
 
         FileReceiverActivity.updateFileReceiverActivityComponentsState(this);
+        termuxSessionListNotifyUpdated();
 
         if (mTermuxTerminalSessionActivityClient != null)
             mTermuxTerminalSessionActivityClient.onReloadActivityStyling();

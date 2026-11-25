@@ -384,7 +384,12 @@ public final class TermuxPropertyConstants {
 
     /* TerminalGestureAction (never null) */
 
-    /** Defines the key for the {@link TerminalGestureAction} of a single finger tap on the terminal. */
+    /** Layout used for tmux attachments in the terminal sidebar. */
+    public static final String KEY_TERMINAL_TMUX_SIDEBAR_LAYOUT = "terminal-tmux-sidebar-layout";
+    public static final String TMUX_SIDEBAR_NESTED = "nested";
+    public static final String TMUX_SIDEBAR_DRILL_DOWN = "drill-down";
+    public static final String TMUX_SIDEBAR_MODES = "modes";
+
     public static final String KEY_TERMINAL_TOAST_POSITION = "terminal-toast-position";
     public static final int DEFAULT_TERMINAL_TOAST_GRAVITY = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
     public static final ImmutableBiMap<String, Integer> MAP_TERMINAL_TOAST_POSITION =
@@ -637,6 +642,7 @@ public final class TermuxPropertyConstants {
         KEY_TERMINAL_TRIPLE_TAP_ACTION,
         KEY_TERMINAL_TRIPLE_TAP_FOCUS_TITLE,
         KEY_TERMINAL_TOAST_POSITION,
+        KEY_TERMINAL_TMUX_SIDEBAR_LAYOUT,
 
         /* gesture command configuration */
         KEY_GESTURE_COMMAND_CONTEXT,

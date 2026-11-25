@@ -100,7 +100,9 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
                     getString(defaultTrue ? R.string.properties_enabled : R.string.properties_disabled))
                     : key.equals(TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_STYLE)
                         ? "Default (Soft flash)" : key.equals(TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_POSITION)
-                        ? "Default (Bottom center)" : getString(R.string.properties_default));
+                        ? "Default (Bottom center)" : key.equals(TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_LAYOUT)
+                        ? getString(R.string.properties_default_boolean, getString(R.string.ui_tmux_layout_nested))
+                        : getString(R.string.properties_default));
                 entryValues.add("");
                 if (isBoolean) {
                     entries.add(getString(R.string.properties_enabled));
@@ -196,6 +198,13 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
     }
 
     private String choiceLabel(String key, String value) {
+        if (TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_LAYOUT.equals(key)) {
+            if (TermuxPropertyConstants.TMUX_SIDEBAR_DRILL_DOWN.equals(value))
+                return getString(R.string.ui_tmux_layout_drill_down);
+            if (TermuxPropertyConstants.TMUX_SIDEBAR_MODES.equals(value))
+                return getString(R.string.ui_tmux_layout_modes);
+            return getString(R.string.ui_tmux_layout_nested);
+        }
         if (TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_STYLE.equals(key)) {
             String label = value.replace('-', ' ');
             return Character.toUpperCase(label.charAt(0)) + label.substring(1);

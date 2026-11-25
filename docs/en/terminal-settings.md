@@ -130,6 +130,20 @@ Accent color and night mode show a sample interface; gesture actions show an
 illustration without running the action. The bell setting has a **Try bell** button. Changes take effect after you save; cancelling leaves the
 existing setting unchanged.
 
+## tmux sidebar layout
+
+Open **Settings → Properties → Appearance → Terminal tmux sidebar layout**
+or set `terminal-tmux-sidebar-layout` in `termuxpp.properties`.
+
+- `nested` (default) shows collapsible tmux windows below their terminal.
+- `drill-down` opens a second sidebar level for one terminal's tmux windows.
+- `modes` adds a switch between the terminal list and tmux windows grouped
+  by terminal.
+
+After editing the file, run `tpp settings reload`. Open the sidebar while a
+tmux attachment is active to see its windows. The highlight follows the active
+tmux window, including when you switch with a keyboard shortcut.
+
 ## Terminal feedback position
 
 Use **Settings → Properties → Appearance → terminal-toast-position** to move

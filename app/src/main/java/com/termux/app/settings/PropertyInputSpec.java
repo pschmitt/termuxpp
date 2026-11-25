@@ -159,6 +159,10 @@ public final class PropertyInputSpec {
 
             case TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_POSITION:
                 return "Where gesture action labels appear in the terminal. Default: bottom-center.";
+            case TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_LAYOUT:
+                return "How the sidebar organizes tmux windows. Nested shows them under their terminal session. "
+                    + "Drill-down opens a window list for one terminal. Modes adds a switch between sessions "
+                    + "and tmux windows. Default: nested.";
             case TermuxPropertyConstants.KEY_TERMINAL_TOAST_POSITION:
                 return "Where terminal feedback appears, including session-switch indicators. Default: top-center.";
 
@@ -339,6 +343,11 @@ public final class PropertyInputSpec {
                     if (style.equalsIgnoreCase(value)) return null;
                 }
                 return "Choose one of the available feedback styles";
+            case TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_LAYOUT:
+                for (String layout : choices(key)) {
+                    if (layout.equalsIgnoreCase(value)) return null;
+                }
+                return "Expected nested, drill-down, or modes";
             case TermuxPropertyConstants.KEY_TERMINAL_ENGINE:
                 for (String engine : choices(key)) {
                     if (engine.equalsIgnoreCase(value)) return null;
@@ -505,6 +514,9 @@ public final class PropertyInputSpec {
      */
     @NonNull
     public static String[] choices(@Nullable String key) {
+        if (TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_LAYOUT.equals(key))
+            return new String[] {TermuxPropertyConstants.TMUX_SIDEBAR_NESTED,
+                TermuxPropertyConstants.TMUX_SIDEBAR_DRILL_DOWN, TermuxPropertyConstants.TMUX_SIDEBAR_MODES};
         if (TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_STYLE.equals(key))
             return TermuxPropertyConstants.GESTURE_FEEDBACK_STYLES.clone();
         if (TermuxPropertyConstants.KEY_TERMINAL_ENGINE.equals(key))

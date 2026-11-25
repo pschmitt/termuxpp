@@ -288,6 +288,12 @@ public abstract class TermuxSharedProperties {
                     if (style.equalsIgnoreCase(value)) return style;
                 }
                 return TermuxPropertyConstants.DEFAULT_GESTURE_FEEDBACK_STYLE;
+            case TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_LAYOUT:
+                if (TermuxPropertyConstants.TMUX_SIDEBAR_DRILL_DOWN.equalsIgnoreCase(value))
+                    return TermuxPropertyConstants.TMUX_SIDEBAR_DRILL_DOWN;
+                if (TermuxPropertyConstants.TMUX_SIDEBAR_MODES.equalsIgnoreCase(value))
+                    return TermuxPropertyConstants.TMUX_SIDEBAR_MODES;
+                return TermuxPropertyConstants.TMUX_SIDEBAR_NESTED;
             case TermuxPropertyConstants.KEY_TERMINAL_ENGINE:
                 return TermuxPropertyConstants.TERMINAL_ENGINE_GHOSTTY.equalsIgnoreCase(value)
                     ? TermuxPropertyConstants.TERMINAL_ENGINE_GHOSTTY
