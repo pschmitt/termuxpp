@@ -247,15 +247,11 @@ at the revision the lock names, so the source is the one the lock records.
 GitHub's SSH host keys are pinned on the worker. Name only inputs that are
 private on GitHub; GitHub must accept the phone's key for them.
 
-GitHub runners (`gh-aarch64`) are reached through the controller's relay, whose
-SSH keys disable agent forwarding. With private inputs, setup therefore puts
-the phone's private key on such a runner as a mode-0600 file for the duration of
-the build (removed by a shell trap, and with the runner when the lease is
-released). That key is already authorized for the controller and for GitHub; it
-still leaves the phone and reaches a third-party runner. `--no-key-upload`
-forbids it: runners are then skipped for flakes with private inputs and only
-OpenStack profiles (agent forwarding) are used, which cannot build the aarch64
-system natively and depend on cache hits.
+GitHub runners (`gh-aarch64`) are reached through the controller's relay and
+get the same agent forwarding as OpenStack workers: the runner's sshd allows
+agent forwarding, so the phone's private key never leaves the phone, also for
+flakes with private inputs. The forwarded agent exists only while the build's
+SSH session runs.
 
 #### Setup config
 

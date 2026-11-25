@@ -76,10 +76,6 @@ pub struct Args {
     /// over SSH with this phone's key at the revision of the flake's lock file
     #[arg(long, value_name = "NAME")]
     pub ssh_input: Vec<String>,
-    /// Never put the phone's key on a GitHub runner (they cannot forward the
-    /// ssh-agent): with private inputs, only OpenStack profiles are used
-    #[arg(long)]
-    pub no_key_upload: bool,
     /// Binary cache the worker and the phone may use (default: `cache_store`)
     #[arg(long, value_name = "URI")]
     pub cache_store: Option<String>,
@@ -155,7 +151,6 @@ pub enum ResolvedOrigin {
         ttl: String,
         queue_timeout: Duration,
         ssh_inputs: Vec<String>,
-        allow_key_upload: bool,
     },
     Published {
         pin_url: String,
@@ -297,7 +292,6 @@ pub fn resolve(args: &Args, config: &HashMap<String, String>) -> Result<Resolved
             ttl: args.worker_ttl.clone(),
             queue_timeout: Duration::from_secs(args.queue_timeout.clamp(30, 3600)),
             ssh_inputs,
-            allow_key_upload: !args.no_key_upload,
         }
     };
     let dotfiles_repo =
@@ -685,7 +679,6 @@ impl Resolved {
                 ttl,
                 queue_timeout,
                 ssh_inputs,
-                allow_key_upload,
             } => Origin::Lease(Box::new(LeaseOrigin {
                 controller: controller.clone(),
                 profiles: profiles.clone(),
@@ -694,7 +687,6 @@ impl Resolved {
                 owner,
                 ssh_inputs: ssh_inputs.clone(),
                 github_known_hosts: GITHUB_KNOWN_HOSTS.to_owned(),
-                allow_key_upload: *allow_key_upload,
             })),
             ResolvedOrigin::Published { pin_url } => Origin::Published(Box::new(PublishedOrigin {
                 pin_url: pin_url.clone(),

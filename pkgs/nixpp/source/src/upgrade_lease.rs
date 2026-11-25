@@ -256,10 +256,7 @@ fn run(plan: &Plan, job: &Job<'_>, builder: &mut dyn Builder) -> anyhow::Result<
         lease.worker().ssh_config(&side, &plan.controller),
     )?;
 
-    // A runner cannot forward the ssh-agent: private inputs need the key on
-    // it for the build.
-    let upload = !plan.ssh_inputs.is_empty() && lease.worker().is_hosted();
-    let agent = if upload || plan.ssh_inputs.is_empty() {
+    let agent = if plan.ssh_inputs.is_empty() {
         None
     } else {
         Some(Agent::start(scratch.path(), &plan.key)?)
@@ -270,14 +267,6 @@ fn run(plan: &Plan, job: &Job<'_>, builder: &mut dyn Builder) -> anyhow::Result<
         ssh_inputs: plan.ssh_inputs.clone(),
         cache: cache_options,
         github_known_hosts: setup::GITHUB_KNOWN_HOSTS.to_owned(),
-        uploaded_key: if upload {
-            Some(String::from_utf8(fsutil::read_bounded(
-                &plan.key,
-                64 * 1024,
-            )?)?)
-        } else {
-            None
-        },
         refresh: job.refresh,
     };
     let generation = lease::build(&lease, agent.as_ref(), &spec)?;

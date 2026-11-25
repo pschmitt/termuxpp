@@ -5,8 +5,8 @@
 //! client sends), pins the host key the controller returns, forwards its
 //! ssh-agent to the worker and lets Nix fetch private GitHub flake inputs over
 //! `git+ssh` at the revision the target flake's lock file names. No access token
-//! ever leaves the phone. GitHub runners cannot forward the agent: there the
-//! key is on the runner for the duration of the build (see `Build`).
+//! and no private key ever leaves the phone: OpenStack workers and GitHub
+//! runners alike only see the forwarded agent.
 
 use crate::bootstrap::shell_quote;
 use crate::{fsutil, store};
@@ -426,8 +426,7 @@ impl Worker {
         options
     }
 
-    /// A GitHub runner: reached through the controller's relay, which does not
-    /// forward the ssh-agent.
+    /// A GitHub runner: reached through the controller's relay.
     pub fn is_hosted(&self) -> bool {
         matches!(self.release, Release::Hosted(_))
     }
@@ -732,9 +731,6 @@ pub struct Build {
     pub cache: Option<CacheOptions>,
     /// GitHub host keys for `git+ssh`.
     pub github_known_hosts: String,
-    /// The private key, for a worker that cannot forward the ssh-agent
-    /// (GitHub runners). Only set when the flake has private inputs.
-    pub uploaded_key: Option<String>,
     /// Resolve the flake afresh instead of from Nix's cache of the last hour
     /// (`nixpp upgrade`: the latest revision or nothing).
     pub refresh: bool,
@@ -755,7 +751,6 @@ pub fn build_script(
     attribute: &str,
     overrides: &[(String, String)],
     cache: Option<&CacheOptions>,
-    uploaded_key: bool,
     hosted: bool,
     refresh: bool,
 ) -> String {
@@ -763,17 +758,9 @@ pub fn build_script(
     if hosted {
         script.push_str(HOSTED_NIX_CONFIG);
     }
-    // A runner that cannot forward the agent gets the key as a file that is
-    // removed when the build ends, however it ends.
-    let identity = if uploaded_key {
-        script.push_str("trap 'rm -f \"$HOME/.cache/nixpp-setup/key\"' EXIT\n");
-        " -oIdentitiesOnly=yes -i $HOME/.cache/nixpp-setup/key"
-    } else {
-        ""
-    };
     script.push_str(&format!(
         "export GIT_SSH_COMMAND=\"ssh -oBatchMode=yes -oStrictHostKeyChecking=yes \
-         -oUserKnownHostsFile=$HOME/.cache/nixpp-setup/github_known_hosts{identity}\"\n"
+         -oUserKnownHostsFile=$HOME/.cache/nixpp-setup/github_known_hosts\"\n"
     ));
     let mut command = vec![
         "nix".to_owned(),
@@ -802,10 +789,8 @@ pub fn build_script(
         command.extend(["--override-input".to_owned(), name.clone(), url.clone()]);
     }
     command.extend(["--".to_owned(), format!("{flake}#{attribute}")]);
-    // Without an uploaded key nothing is left to clean up: replace the shell.
-    if !uploaded_key {
-        script.push_str("exec ");
-    }
+    // Nothing is left to clean up: replace the shell.
+    script.push_str("exec ");
     script.push_str(
         &command
             .iter()
@@ -817,6 +802,18 @@ pub fn build_script(
     script
 }
 
+/// The `ssh` command for `script` on the worker; with an agent socket the
+/// agent is forwarded (`-A`), so the key never leaves the phone.
+fn worker_command(lease: &Lease, agent_socket: Option<&Path>, script: &str) -> Command {
+    let mut command = Command::new("ssh");
+    command.args(lease.worker.ssh_options(&lease.side, &lease.controller));
+    if let Some(socket) = agent_socket {
+        command.arg("-A").env("SSH_AUTH_SOCK", socket);
+    }
+    command.args(["--", &lease.worker.destination(), script]);
+    command
+}
+
 fn run_on_worker(
     lease: &Lease,
     agent: Option<&Agent>,
@@ -824,13 +821,8 @@ fn run_on_worker(
     stdin: Option<&str>,
     capture: bool,
 ) -> Result<String> {
-    let mut command = Command::new("ssh");
-    command.args(lease.worker.ssh_options(&lease.side, &lease.controller));
-    if let Some(agent) = agent {
-        command.arg("-A").env("SSH_AUTH_SOCK", agent.socket());
-    }
+    let mut command = worker_command(lease, agent.map(Agent::socket), script);
     command
-        .args(["--", &lease.worker.destination(), script])
         .stdin(if stdin.is_some() {
             Stdio::piped()
         } else {
@@ -898,10 +890,6 @@ pub fn build(lease: &Lease, agent: Option<&Agent>, spec: &Build) -> Result<Strin
         overrides = ssh_input_overrides(&lock, &spec.ssh_inputs)?;
         flake = pinned;
         put_file(lease, "github_known_hosts", &spec.github_known_hosts)?;
-        if let Some(key) = &spec.uploaded_key {
-            eprintln!("This runner cannot forward the ssh-agent: the key is on it for the build.");
-            put_file(lease, "key", key)?;
-        }
     }
     if let Some(cache) = &spec.cache {
         put_file(lease, "aws", &cache.credentials)?;
@@ -912,7 +900,6 @@ pub fn build(lease: &Lease, agent: Option<&Agent>, spec: &Build) -> Result<Strin
         &spec.target_attribute,
         &overrides,
         spec.cache.as_ref(),
-        spec.uploaded_key.is_some(),
         lease.worker.is_hosted(),
         spec.refresh,
     );
@@ -1146,6 +1133,44 @@ mod tests {
         assert!(ports.is_err(), "privileged relay ports are refused");
     }
 
+    #[test]
+    fn hosted_builds_forward_the_agent_and_upload_no_key() {
+        let ready =
+            format!(r#"{{"state":"ready","endpoint":{{"port":40123,"host_key":"{KEY}"}}}}"#);
+        let Hosted::Ready(worker) =
+            parse_hosted_status(&ready, "0123456789abcdef", "gha-01234567").unwrap()
+        else {
+            panic!("expected a ready worker");
+        };
+        assert!(worker.is_hosted());
+        let lease = Lease {
+            controller: controller(),
+            side: side("native"),
+            owner: "user@host".to_owned(),
+            worker,
+            released: true,
+        };
+        let command = worker_command(&lease, Some(Path::new("/run/agent.sock")), "true");
+        let args: Vec<_> = command
+            .get_args()
+            .map(|arg| arg.to_string_lossy())
+            .collect();
+        assert!(args.iter().any(|arg| arg == "-A"));
+        assert!(!args.iter().any(|arg| arg.contains("ForwardAgent=no")));
+        assert_eq!(
+            command
+                .get_envs()
+                .find(|(name, _)| *name == "SSH_AUTH_SOCK")
+                .and_then(|(_, value)| value),
+            Some(std::ffi::OsStr::new("/run/agent.sock"))
+        );
+        let none = worker_command(&lease, None, "true");
+        assert!(!none.get_args().any(|arg| arg == "-A"));
+        let script = build_script("f", "a", &[], None, true, false);
+        assert!(!script.contains("nixpp-setup/key"));
+        assert!(!script.contains("-oIdentitiesOnly"));
+    }
+
     const LOCK: &str = r#"{
       "nodes": {
         "root": {"inputs": {"private": "private_2", "public": "public", "alias": ["public"], "tree": "tree"}},
@@ -1217,12 +1242,13 @@ mod tests {
             Some(&cache),
             false,
             false,
-            false,
         );
         assert!(script.starts_with("set -eu\nexport GIT_SSH_COMMAND=\""));
         assert!(!script.contains("--refresh"));
         assert!(script.contains("\nexec 'nix' ") || script.contains("\nexec nix "));
         assert!(!script.contains("IdentitiesOnly"));
+        assert!(!script.contains(" -i "), "the agent supplies the key");
+        assert!(!script.contains("trap "));
         assert!(script.contains("-oStrictHostKeyChecking=yes"));
         assert!(script.contains("AWS_SHARED_CREDENTIALS_FILE=\"$HOME/.cache/nixpp-setup/aws\""));
         assert!(
@@ -1235,21 +1261,14 @@ mod tests {
             !script.contains("[niks3]"),
             "credentials never enter the command line"
         );
-        let uploaded = build_script("f", "a", &[], None, true, false, false);
-        assert!(uploaded.contains("trap 'rm -f \"$HOME/.cache/nixpp-setup/key\"' EXIT"));
-        assert!(uploaded.contains("-oIdentitiesOnly=yes -i $HOME/.cache/nixpp-setup/key"));
-        assert!(
-            !uploaded.contains("exec "),
-            "the trap needs the shell to stay"
-        );
-        let plain = build_script("f", "a", &[], None, false, false, false);
+        let plain = build_script("f", "a", &[], None, false, false);
         assert!(!plain.contains("AWS_SHARED"));
         assert!(!plain.contains("--override-input"));
         assert!(!plain.contains("NIX_CONFIG"));
-        let hosted = build_script("f", "a", &[], Some(&cache), false, true, false);
+        let hosted = build_script("f", "a", &[], Some(&cache), true, false);
         assert!(hosted.starts_with(&format!("set -eu\n{HOSTED_NIX_CONFIG}")));
         assert!(hosted.contains("store = $HOME/.local/share/nix/rworker"));
-        let latest = build_script("f", "a", &[], None, false, false, true);
+        let latest = build_script("f", "a", &[], None, false, true);
         assert!(latest.contains("--refresh"));
     }
 }

@@ -28,8 +28,6 @@ pub struct LeaseOrigin {
     pub owner: String,
     pub ssh_inputs: Vec<String>,
     pub github_known_hosts: String,
-    /// Put the key on runners that cannot forward the ssh-agent.
-    pub allow_key_upload: bool,
 }
 
 pub struct PublishedOrigin {
@@ -507,28 +505,11 @@ fn from_lease(runtime: &Path, activation: &Activation<'_>, origin: &LeaseOrigin)
         !request.public_key.is_empty() && !request.public_key.contains('\n'),
         "invalid enrollment public key"
     );
-    // GitHub runners cannot forward the ssh-agent; private inputs then need
-    // the key on the runner, which the user may have forbidden.
-    let needs_key = !origin.ssh_inputs.is_empty();
-    let profiles: Vec<Profile> = origin
-        .profiles
-        .iter()
-        .filter(|profile| {
-            let usable = origin.allow_key_upload || !needs_key || !profile.is_hosted();
-            if !usable {
-                eprintln!(
-                    "Skipping {profile:?}: it cannot forward the ssh-agent and --no-key-upload is set."
-                );
-            }
-            usable
-        })
-        .cloned()
-        .collect();
     let mut lease = lease::lease(
         &origin.controller,
         &native,
         &request,
-        &profiles,
+        &origin.profiles,
         origin.queue_timeout,
     )?;
     // The worker is pinned under its name, on both sides.
@@ -541,12 +522,7 @@ fn from_lease(runtime: &Path, activation: &Activation<'_>, origin: &LeaseOrigin)
         &lease.worker().ssh_config(&guest, &origin.controller),
     )?;
 
-    let upload = needs_key && lease.worker().is_hosted();
-    let agent = if upload {
-        None
-    } else {
-        Some(Agent::start(scratch.path(), &key)?)
-    };
+    let agent = Agent::start(scratch.path(), &key)?;
     let spec = Build {
         flake: activation.flake_of_target()?,
         target_attribute: format!("termuxppConfigurations.{host}.system"),
@@ -557,14 +533,9 @@ fn from_lease(runtime: &Path, activation: &Activation<'_>, origin: &LeaseOrigin)
             credentials: cache.credentials.clone(),
         }),
         github_known_hosts: origin.github_known_hosts.clone(),
-        uploaded_key: if upload {
-            Some(String::from_utf8(fsutil::read_bounded(&key, 64 * 1024)?)?)
-        } else {
-            None
-        },
         refresh: false,
     };
-    let generation = lease::build(&lease, agent.as_ref(), &spec)?;
+    let generation = lease::build(&lease, Some(&agent), &spec)?;
     if !copy_from_cache(runtime, user, cache, &generation) {
         eprintln!("Copying the system from {}…", lease.worker().destination());
         session(
