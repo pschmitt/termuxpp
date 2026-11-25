@@ -16,6 +16,7 @@ import android.os.Build;
 import android.os.IBinder;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.FileObserver;
 import android.util.Base64;
 
 import androidx.annotation.NonNull;
@@ -25,6 +26,7 @@ import androidx.core.content.ContextCompat;
 import com.termux.R;
 import com.termux.terminal.PtyProcess;
 import dev.pschmitt.termux.shared.logger.Logger;
+import dev.pschmitt.termux.shared.notification.NotificationUtils;
 import dev.pschmitt.termux.shared.termux.TermuxConstants;
 import dev.pschmitt.termux.shared.termux.settings.properties.TermuxAppSharedProperties;
 import dev.pschmitt.termux.shared.termux.settings.properties.TermuxPropertyConstants;
@@ -85,7 +87,7 @@ public final class AdbShellService extends Service {
     public static final int PORT = 5522;
     private static final String TLS_PREFACE = "TERMUXPP/TLS/1";
 
-    public static final String CHANNEL_ID = "adb_shell";
+    private static final String CHANNEL_ID = "adb_shell";
     private static final int NOTIFICATION_ID = 8022;
     private static final int MAX_PEM_BYTES = 16 * 1024;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
@@ -113,6 +115,7 @@ public final class AdbShellService extends Service {
     private final Runnable networkCheck = this::updateNetworkAccess;
     private boolean waitingForNetwork;
     private boolean destroyed;
+    @Nullable private FileObserver notificationSettingsObserver;
     private final BroadcastReceiver wifiChanges = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -133,7 +136,20 @@ public final class AdbShellService extends Service {
         super.onCreate();
         createNotificationChannel(this);
         waitingForNetwork = !networkAllowsAccess();
-        startForeground(NOTIFICATION_ID, buildNotification());
+        startForeground(TermuxConstants.TERMUX_APP_NOTIFICATION_ID, sharedForegroundNotification());
+        File state = ServiceNotificationPolicy.stateDirectory();
+        if (state.isDirectory() || state.mkdirs()) {
+            notificationSettingsObserver = new FileObserver(state.getAbsolutePath(),
+                FileObserver.CLOSE_WRITE | FileObserver.MOVED_TO | FileObserver.CREATE) {
+                @Override
+                public void onEvent(int event, @Nullable String path) {
+                    if ("settings.json".equals(path) || "notification-default".equals(path)
+                        || "notification-adb-shell".equals(path))
+                        networkHandler.post(AdbShellService.this::updateOptionalNotification);
+                }
+            };
+            notificationSettingsObserver.startWatching();
+        }
         IntentFilter filter = new IntentFilter(WifiManager.NETWORK_STATE_CHANGED_ACTION);
         filter.addAction(WifiManager.WIFI_STATE_CHANGED_ACTION);
         // Turning location off makes Android withhold the SSID.
@@ -159,6 +175,7 @@ public final class AdbShellService extends Service {
         if (intent != null && ACTION_AUTHORIZATIONS_CHANGED.equals(intent.getAction())) {
             closeTlsClients();
         }
+        updateOptionalNotification();
         updateNetworkAccess();
         return START_STICKY;
     }
@@ -176,7 +193,7 @@ public final class AdbShellService extends Service {
         boolean waiting = !allowed;
         if (waitingForNetwork != waiting) {
             waitingForNetwork = waiting;
-            getSystemService(NotificationManager.class).notify(NOTIFICATION_ID, buildNotification());
+            updateOptionalNotification();
         }
         // Permission changes may redact the SSID without a broadcast. Without an allow-list
         // access does not depend on the network, so there is nothing to re-check.
@@ -285,6 +302,8 @@ public final class AdbShellService extends Service {
     @Override
     public void onDestroy() {
         destroyed = true;
+        if (notificationSettingsObserver != null) notificationSettingsObserver.stopWatching();
+        ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).cancel(NOTIFICATION_ID);
         networkHandler.removeCallbacks(networkCheck);
         unregisterReceiver(wifiChanges);
         stopServer();
@@ -949,11 +968,46 @@ public final class AdbShellService extends Service {
         closeTlsClients();
     }
 
-    public static void createNotificationChannel(Context context) {
+    private static void createNotificationChannel(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(CHANNEL_ID,
                 context.getString(R.string.adb_shell_notification_channel), NotificationManager.IMPORTANCE_LOW);
             context.getSystemService(NotificationManager.class).createNotificationChannel(channel);
+        }
+    }
+
+    /** Share the app's foreground notification without replacing an existing terminal notification. */
+    private Notification sharedForegroundNotification() {
+        NotificationUtils.setupNotificationChannel(this, TermuxConstants.TERMUX_APP_NOTIFICATION_CHANNEL_ID,
+            TermuxConstants.TERMUX_APP_NOTIFICATION_CHANNEL_NAME, NotificationManager.IMPORTANCE_LOW);
+        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            for (android.service.notification.StatusBarNotification active : manager.getActiveNotifications()) {
+                if (active.getId() == TermuxConstants.TERMUX_APP_NOTIFICATION_ID && active.getTag() == null)
+                    return active.getNotification();
+            }
+        }
+        Notification.Builder builder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+            ? new Notification.Builder(this, TermuxConstants.TERMUX_APP_NOTIFICATION_CHANNEL_ID)
+            : new Notification.Builder(this);
+        PendingIntent open = PendingIntent.getActivity(this, 0, TermuxActivity.newInstance(this),
+            PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= 23 ? PendingIntent.FLAG_IMMUTABLE : 0));
+        return builder.setSmallIcon(R.drawable.ic_service_notification)
+            .setContentTitle(TermuxConstants.TERMUX_APP_NAME)
+            .setContentText(getString(R.string.shared_service_notification_text))
+            .setContentIntent(open)
+            .setOngoing(true).build();
+    }
+
+    private void updateOptionalNotification() {
+        if (destroyed) return;
+        NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        if (ServiceNotificationPolicy.enabled(ServiceNotificationPolicy.readSettings(),
+            ServiceNotificationPolicy.ADB_SHELL, ServiceNotificationPolicy.configuredDefault(),
+            ServiceNotificationPolicy.configuredAdbShell())) {
+            manager.notify(NOTIFICATION_ID, buildNotification());
+        } else {
+            manager.cancel(NOTIFICATION_ID);
         }
     }
 

@@ -32,6 +32,7 @@ import androidx.preference.PreferenceViewHolder;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.termux.R;
+import com.termux.app.ServiceNotificationPolicy;
 import com.termux.app.settings.GroupedPreferencesFragment;
 import com.google.android.material.color.MaterialColors;
 import com.termux.boot.BootReceiver;
@@ -74,6 +75,14 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
     public void onCreatePreferences(Bundle savedInstanceState, String rootKey) {
         setPreferencesFromResource(R.xml.termux_services_preferences, rootKey);
         servicesCategory = findPreference("services_list");
+        Preference defaultNotifications = findPreference("service_notification_default");
+        if (defaultNotifications != null) {
+            defaultNotifications.setOnPreferenceClickListener(preference -> {
+                showNotificationChoice(ServiceNotificationPolicy.DEFAULTS,
+                    getString(R.string.nix_services_notification_default));
+                return true;
+            });
+        }
     }
 
     @Override
@@ -126,6 +135,13 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
     }
 
     private void refreshPage() {
+        Preference notificationDefault = findPreference("service_notification_default");
+        if (notificationDefault != null) {
+            boolean enabled = ServiceNotificationPolicy.enabled(ServiceNotificationPolicy.readSettings(),
+                ServiceNotificationPolicy.DEFAULTS, ServiceNotificationPolicy.configuredDefault());
+            notificationDefault.setSummary(enabled ? R.string.nix_services_notification_default_on
+                : R.string.nix_services_notification_default_off);
+        }
         refreshBootScripts();
         refreshServices();
     }
@@ -181,6 +197,7 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
             int message = provisioned
                 ? R.string.nix_services_guest_not_ready : R.string.nix_services_not_available;
             showServicePlaceholder(getString(message));
+            addAdbShellIfMissing();
             setBusy(false);
             return;
         }
@@ -207,13 +224,23 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
                         showServicePlaceholder(message);
                     else
                         Toast.makeText(requireContext(), message, Toast.LENGTH_LONG).show();
+                    addAdbShellIfMissing();
                     return;
                 }
                 servicesCategory.removeAll();
                 if (loaded.isEmpty()) showServicePlaceholder(getString(R.string.nix_services_empty));
                 for (Service service : loaded) addServicePreference(service);
+                addAdbShellIfMissing();
             });
         });
+    }
+
+    private void addAdbShellIfMissing() {
+        if (servicesCategory.findPreference(ServiceNotificationPolicy.ADB_SHELL) != null) return;
+        boolean enabled = requireContext().getSharedPreferences(com.termux.app.AdbShellService.PREFS_NAME,
+            Context.MODE_PRIVATE).getBoolean(com.termux.app.AdbShellService.PREF_ENABLED, false);
+        addServicePreference(new Service(ServiceNotificationPolicy.ADB_SHELL,
+            enabled ? "unknown" : "down", enabled));
     }
 
     private void showServicePlaceholder(CharSequence message) {
@@ -239,6 +266,7 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
             }
         };
         preference.setIcon(R.drawable.ui_ic_service_status);
+        preference.setKey(service.name);
         preference.setTitle(service.name);
         preference.setSummary(serviceStatus(service));
         preference.setOnPreferenceClickListener(clicked -> {
@@ -251,17 +279,7 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
     private void showServiceActions(@NonNull Service service) {
         Context context = requireContext();
         if ("adb-shell".equals(service.name)) {
-            com.termux.app.AdbShellService.createNotificationChannel(context);
-            android.content.Intent intent;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                intent = new android.content.Intent(android.provider.Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
-                    .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.getPackageName())
-                    .putExtra(android.provider.Settings.EXTRA_CHANNEL_ID, com.termux.app.AdbShellService.CHANNEL_ID);
-            } else {
-                intent = new android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                    .setData(android.net.Uri.fromParts("package", context.getPackageName(), null));
-            }
-            startActivity(intent);
+            showNotificationChoice(service.name, getString(R.string.nix_services_notification_adb_title));
             return;
         }
         String[] actions = {
@@ -285,6 +303,26 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
                 }
                 String action = new String[]{"start", "stop", "restart", "logs"}[which];
                 runServiceAction(service, action);
+            })
+            .setNegativeButton(android.R.string.cancel, null)
+            .show();
+    }
+
+    private void showNotificationChoice(@NonNull String service, @NonNull String title) {
+        Boolean selected = ServiceNotificationPolicy.override(ServiceNotificationPolicy.readSettings(), service);
+        int current = selected == null ? 0 : selected ? 1 : 2;
+        DialogUtils.builder(requireContext())
+            .setTitle(title)
+            .setSingleChoiceItems(R.array.nix_services_notification_options, current, (dialog, which) -> {
+                try {
+                    JSONObject settings = null;
+                    if (which != 0) settings = new JSONObject().put("notification", which == 1);
+                    saveSettings(service, settings);
+                    dialog.dismiss();
+                } catch (JSONException e) {
+                    Toast.makeText(requireContext(), getString(R.string.nix_services_settings_save_error,
+                        e.getMessage()), Toast.LENGTH_LONG).show();
+                }
             })
             .setNegativeButton(android.R.string.cancel, null)
             .show();

@@ -377,20 +377,17 @@ separate add-on.
 
 ## Services settings
 
-The ADB shell runs as an Android foreground service. Its notification can be
-hidden in Android's notification settings via **Settings → Debugging → ADB
-shell notification**. Android 13 and later still list active foreground services
-in the system task manager. This setting does not disable the ADB shell or its access
-approval notifications. Source: [ADB shell service](../../app/src/main/java/com/termux/app/AdbShellService.java).
-
-Guest services can show an ongoing notification while running. In the guest
-configuration, `nixpp.serviceNotifications.enable` sets the default and
-`services.<name>.notification` overrides it. The default is off. Each service's
-settings dialog can also override the configured value; that change takes
-effect when the service restarts. Notifications are best effort and require
-Android notification permission and the guest's `tpp` command. Each guest
-service has its own Android notification channel, which is created when its
-first notification is shown; ADB shell has its own separate channel.
+ADB shell and guest services can show an ongoing notification while running.
+**Settings → Services** controls the default and each service can override it.
+The guest configuration's `nixpp.serviceNotifications.enable` sets the initial
+default; `services.<name>.notification` overrides it, including for `adb-shell`. The
+default is off. ADB changes take effect immediately; guest services apply a
+change on restart. Each service has its own Android notification channel.
+Notifications require Android notification permission and guest notifications
+also require `tpp`. ADB remains a foreground service, sharing the main TermuxPP
+foreground notification; Android 13 and later also list active foreground
+services in the system task manager. Access approval notifications are separate.
+Source: [ADB shell service](../../app/src/main/java/com/termux/app/AdbShellService.java).
 
 When the managed Nix guest is available, **Settings → Services** lists
 its declared services and their enabled and running state. The page can start,

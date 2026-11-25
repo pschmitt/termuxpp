@@ -37,6 +37,10 @@
     <string name="nix_services_settings_title">Settings · %1$s</string>
     <string name="nix_services_start_on_boot">Start on boot</string>
     <string name="nix_services_notification_label">Running notification (takes effect when the service restarts)</string>
+    <string name="nix_services_notification_default">Default service notifications</string>
+    <string name="nix_services_notification_default_on">Shown by default · individual services can override this</string>
+    <string name="nix_services_notification_default_off">Hidden by default · individual services can override this</string>
+    <string name="nix_services_notification_adb_title">Running notification · ADB shell</string>
     <string-array name="nix_services_notification_options">
         <item>Use configuration</item>
         <item>Show</item>

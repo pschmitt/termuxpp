@@ -179,8 +179,7 @@
                 <string name="adb_shell_copy_token">Copy token</string>
                 <string name="adb_shell_token_copied">Token copied to clipboard</string>
                 <string name="adb_shell_notification_channel">ADB shell access</string>
-                <string name="adb_shell_notification_settings_title">ADB shell notification</string>
-                <string name="adb_shell_notification_settings_summary">Choose whether Android shows the running service notification</string>
+                <string name="shared_service_notification_text">TermuxPP is running</string>
                 <string name="adb_shell_notification_title">ADB shell is enabled</string>
                 <string name="adb_shell_waiting_for_network">Waiting for an allowed Wi-Fi network</string>
     <string name="adb_shell_allowed_ssids_title">Allowed Wi-Fi networks</string>
