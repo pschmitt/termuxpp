@@ -116,6 +116,9 @@ Both apps use an edge drawer for switching sessions. TermuxPP presents it as a
 rounded session shelf with a highlighted current row and a lighter scrim over
 the terminal. The session list settles into place as the drawer opens. The
 optional `open-session-switcher` gesture action opens a compact session picker.
+The session picker and the tmux window picker reuse the sidebar rows: numbered
+badges, the filled current session, and tmux windows in the configured sidebar
+layout and style.
 [Upstream drawer](https://github.com/termux/termux-app/blob/master/app/src/main/res/layout/activity_termux.xml) ·
 [TermuxPP shelf](../../app/src/main/res/layout/activity_termux.xml)
 

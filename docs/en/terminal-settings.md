@@ -150,6 +150,12 @@ subtle outline and accent dot or a filled rounded accent pill. Set
 `terminal-tmux-sidebar-style = subtle` (default) or `rounded`.
 Both the layout and style dialogs show a preview before you save.
 
+The session picker and the tmux window picker use the same rows as the
+sidebar. With the `nested` layout, the session picker lists each terminal's
+tmux windows below it, unless you collapsed them in the sidebar. With the
+other layouts, or for collapsed windows, it shows a **tmux windows ›** row
+that opens the window picker. The window picker uses the configured style.
+
 ## Terminal feedback position
 
 Use **Settings → Properties → Appearance → terminal-toast-position** to move

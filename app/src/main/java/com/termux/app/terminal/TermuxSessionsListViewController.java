@@ -1,6 +1,7 @@
 package com.termux.app.terminal;
 
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.graphics.Paint;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
@@ -47,11 +48,6 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
         }
 
         TextView sessionIndexView = sessionRowView.findViewById(R.id.session_index);
-        TextView sessionTitleView = sessionRowView.findViewById(R.id.session_title);
-        TextView sessionSubtitleView = sessionRowView.findViewById(R.id.session_subtitle);
-
-        int number = position + 1;
-        sessionIndexView.setText(String.valueOf(number));
         bindNumberGestures(sessionRowView, sessionIndexView);
         // Rows are reused, so one that was lifted for a drag must not carry that into another session. The list
         // itself lifts the row that is being dragged.
@@ -60,14 +56,30 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
         TerminalSession sessionAtRow = getItem(position).getTerminalSession();
         LinearLayout tmux = sessionRowView.findViewById(R.id.session_tmux_windows);
         mActivity.bindTmuxWindows(tmux, sessionAtRow);
+        bindSessionSummary(mActivity, sessionRowView, sessionAtRow, position + 1);
+        return sessionRowView;
+    }
+
+    /**
+     * Fill the number, title and subtitle of an {@code item_terminal_sessions_list} row. The sidebar and the
+     * session picker share this, so both show a session the same way.
+     */
+    @SuppressLint("SetTextI18n")
+    public static void bindSessionSummary(@NonNull Context context, @NonNull View sessionRowView,
+                                          @Nullable TerminalSession sessionAtRow, int number) {
+        TextView sessionIndexView = sessionRowView.findViewById(R.id.session_index);
+        TextView sessionTitleView = sessionRowView.findViewById(R.id.session_title);
+        TextView sessionSubtitleView = sessionRowView.findViewById(R.id.session_subtitle);
+        sessionIndexView.setText(String.valueOf(number));
+
         View header = sessionRowView.findViewById(R.id.session_header);
         if (sessionAtRow == null) {
             sessionTitleView.setText(R.string.ui_session_null);
             sessionTitleView.setPaintFlags(sessionTitleView.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
-            sessionTitleView.setTextColor(ContextCompat.getColorStateList(mActivity, R.color.ui_session_row_text));
+            sessionTitleView.setTextColor(ContextCompat.getColorStateList(context, R.color.ui_session_row_text));
             sessionSubtitleView.setVisibility(View.GONE);
-            header.setContentDescription(number + ", " + mActivity.getString(R.string.ui_session_null));
-            return sessionRowView;
+            header.setContentDescription(number + ", " + context.getString(R.string.ui_session_null));
+            return;
         }
 
         String name = sessionAtRow.mSessionName;
@@ -86,11 +98,11 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
         } else if (hasTitle) {
             title = terminalTitle;
         } else {
-            title = mActivity.getString(R.string.ui_session_unnamed, number);
+            title = context.getString(R.string.ui_session_unnamed, number);
         }
 
         if (!sessionRunning) {
-            String exited = mActivity.getString(R.string.ui_session_exited, sessionAtRow.getExitStatus());
+            String exited = context.getString(R.string.ui_session_exited, sessionAtRow.getExitStatus());
             subtitle = subtitle.isEmpty() ? exited : subtitle + " - " + exited;
         }
 
@@ -104,11 +116,10 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
             sessionTitleView.setPaintFlags(sessionTitleView.getPaintFlags() | Paint.STRIKE_THRU_TEXT_FLAG);
         }
         boolean failed = !sessionRunning && sessionAtRow.getExitStatus() != 0;
-        sessionTitleView.setTextColor(ContextCompat.getColorStateList(mActivity,
+        sessionTitleView.setTextColor(ContextCompat.getColorStateList(context,
             failed ? R.color.ui_session_failed_text : R.color.ui_session_row_text));
 
         header.setContentDescription(subtitle.isEmpty() ? number + ", " + title : number + ", " + title + ", " + subtitle);
-        return sessionRowView;
     }
 
     /**
