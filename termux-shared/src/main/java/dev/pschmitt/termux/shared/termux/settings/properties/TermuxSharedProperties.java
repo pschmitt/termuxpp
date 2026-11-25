@@ -295,6 +295,12 @@ public abstract class TermuxSharedProperties {
                     if (style.equalsIgnoreCase(value)) return style;
                 }
                 return TermuxPropertyConstants.DEFAULT_GESTURE_FEEDBACK_STYLE;
+            case TermuxPropertyConstants.KEY_TERMINAL_PICKER_POSITION:
+                for (String position : new String[]{TermuxPropertyConstants.PICKER_POSITION_TOP,
+                    TermuxPropertyConstants.PICKER_POSITION_CENTER, TermuxPropertyConstants.PICKER_POSITION_TERMINAL}) {
+                    if (position.equalsIgnoreCase(value)) return position;
+                }
+                return TermuxPropertyConstants.DEFAULT_PICKER_POSITION;
             case TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_STYLE:
                 return TermuxPropertyConstants.TMUX_SIDEBAR_SUBTLE.equalsIgnoreCase(value)
                     ? TermuxPropertyConstants.TMUX_SIDEBAR_SUBTLE : TermuxPropertyConstants.DEFAULT_TMUX_SIDEBAR_STYLE;

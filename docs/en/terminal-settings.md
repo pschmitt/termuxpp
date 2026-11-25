@@ -156,6 +156,19 @@ tmux windows below it, unless you collapsed them in the sidebar. With the
 other layouts, or for collapsed windows, it shows a **tmux windows ›** row
 that opens the window picker. The window picker uses the configured style.
 
+## Picker position
+
+**Settings → Properties → Appearance → terminal-picker-position** decides where
+the session picker and the tmux window picker open:
+
+- `top` (default) at the top of the screen,
+- `center` in the middle of the screen,
+- `terminal` in the middle of the terminal view, which stays above the
+  keyboard while it is shown.
+
+You can also write `terminal-picker-position = terminal` in
+`termuxpp.properties` and run `tpp settings reload`.
+
 ## Terminal feedback position
 
 Use **Settings → Properties → Appearance → terminal-toast-position** to move

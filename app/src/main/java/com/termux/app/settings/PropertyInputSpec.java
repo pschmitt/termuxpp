@@ -170,7 +170,11 @@ public final class PropertyInputSpec {
                 return "Where gesture action labels appear in the terminal. Default: bottom-center.";
             case TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_STYLE:
                 return "How the active tmux window looks. Subtle uses an outlined row with an accent dot. "
-                    + "Rounded uses a filled accent pill. Default: subtle.";
+                    + "Rounded uses a filled accent pill. Default: rounded.";
+            case TermuxPropertyConstants.KEY_TERMINAL_PICKER_POSITION:
+                return "Where the session picker and the tmux window picker open. Top: at the top of the screen. "
+                    + "Center: in the middle of the screen. Terminal: in the middle of the terminal, above the "
+                    + "keyboard when it is shown. Default: top.";
             case TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_LAYOUT:
                 return "How the sidebar organizes tmux windows. Nested shows them under their terminal session. "
                     + "Drill-down opens a window list for one terminal. Modes adds a switch between sessions "
@@ -369,6 +373,11 @@ public final class PropertyInputSpec {
                     if (style.equalsIgnoreCase(value)) return null;
                 }
                 return "Expected subtle or rounded";
+            case TermuxPropertyConstants.KEY_TERMINAL_PICKER_POSITION:
+                for (String position : choices(key)) {
+                    if (position.equalsIgnoreCase(value)) return null;
+                }
+                return "Expected top, center or terminal";
             case TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_LAYOUT:
                 for (String layout : choices(key)) {
                     if (layout.equalsIgnoreCase(value)) return null;
@@ -540,6 +549,9 @@ public final class PropertyInputSpec {
      */
     @NonNull
     public static String[] choices(@Nullable String key) {
+        if (TermuxPropertyConstants.KEY_TERMINAL_PICKER_POSITION.equals(key))
+            return new String[] {TermuxPropertyConstants.PICKER_POSITION_TOP,
+                TermuxPropertyConstants.PICKER_POSITION_CENTER, TermuxPropertyConstants.PICKER_POSITION_TERMINAL};
         if (TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_STYLE.equals(key))
             return new String[] {TermuxPropertyConstants.TMUX_SIDEBAR_SUBTLE,
                 TermuxPropertyConstants.TMUX_SIDEBAR_ROUNDED};

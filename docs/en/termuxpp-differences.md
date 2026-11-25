@@ -118,7 +118,9 @@ the terminal. The session list settles into place as the drawer opens. The
 optional `open-session-switcher` gesture action opens a compact session picker.
 The session picker and the tmux window picker reuse the sidebar rows: numbered
 badges, the filled current session, and tmux windows in the configured sidebar
-layout and style.
+layout and style. They open at the top of the screen by default;
+`terminal-picker-position` also offers the middle of the screen or of the
+terminal view ([Picker position](terminal-settings.md#picker-position)).
 [Upstream drawer](https://github.com/termux/termux-app/blob/master/app/src/main/res/layout/activity_termux.xml) ·
 [TermuxPP shelf](../../app/src/main/res/layout/activity_termux.xml)
 

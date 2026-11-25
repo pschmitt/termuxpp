@@ -24,6 +24,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
 import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -36,6 +37,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.material.color.MaterialColors;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.termux.R;
 import com.termux.app.api.file.FileReceiverActivity;
 import com.termux.app.settings.AppAccent;
@@ -1074,7 +1076,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         }
         scrollPickerTo(content, currentRow);
 
-        sessionSwitcher = DialogUtils.builder(this)
+        sessionSwitcher = pickerBuilder()
             .setTitle(R.string.ui_session_switcher_title)
             .setView(content)
             .setPositiveButton(R.string.action_new_session, (dialog, which) ->
@@ -1088,6 +1090,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             .create();
         sessionSwitcher.setOnDismissListener(dialog -> sessionSwitcher = null);
         sessionSwitcher.show();
+        placePicker(sessionSwitcher);
         return true;
     }
 
@@ -1097,6 +1100,56 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private void dismissTmuxSwitcher() {
         if (tmuxSwitcher != null) tmuxSwitcher.dismiss();
+    }
+
+    private String pickerPosition() {
+        return (String) mProperties.getInternalPropertyValue(TermuxPropertyConstants.KEY_TERMINAL_PICKER_POSITION, true);
+    }
+
+    /**
+     * A dialog builder for the pickers. Material dialogs pad their window with a large transparent inset above
+     * and below the card; away from the middle of the screen that would leave a gap, so those pickers keep a
+     * small one.
+     */
+    private MaterialAlertDialogBuilder pickerBuilder() {
+        MaterialAlertDialogBuilder builder = DialogUtils.builder(this);
+        if (!TermuxPropertyConstants.PICKER_POSITION_CENTER.equals(pickerPosition()))
+            builder.setBackgroundInsetTop(sidebarDp(16)).setBackgroundInsetBottom(sidebarDp(16));
+        return builder;
+    }
+
+    /**
+     * Move a picker to where {@code terminal-picker-position} wants it: the top of the screen, the middle of
+     * the screen (the dialog's own place), or the middle of the terminal view, which the keyboard shrinks.
+     */
+    private void placePicker(AlertDialog dialog) {
+        Window window = dialog.getWindow();
+        if (window == null) return;
+        String position = pickerPosition();
+        if (TermuxPropertyConstants.PICKER_POSITION_CENTER.equals(position)) return;
+
+        WindowManager.LayoutParams params = window.getAttributes();
+        params.gravity = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
+        params.y = 0;
+        window.setAttributes(params);
+        if (!TermuxPropertyConstants.PICKER_POSITION_TERMINAL.equals(position)) return;
+
+        // The dialog's height is only known once it is laid out, and changes with its content: move it then, by
+        // the distance between where it is and where it should be on screen, so system bars need no special case.
+        View decor = window.getDecorView();
+        decor.addOnLayoutChangeListener((view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
+            if (!dialog.isShowing() || mTerminalView == null) return;
+            int[] terminal = new int[2];
+            int[] current = new int[2];
+            mTerminalView.getLocationOnScreen(terminal);
+            decor.getLocationOnScreen(current);
+            int wanted = terminal[1] + Math.max(0, (mTerminalView.getHeight() - decor.getHeight()) / 2);
+            int shift = wanted - current[1];
+            if (Math.abs(shift) <= 1) return;
+            WindowManager.LayoutParams moved = window.getAttributes();
+            moved.y = Math.max(0, moved.y + shift);
+            window.setAttributes(moved);
+        });
     }
 
     /** A scrolling list for a picker dialog, padded like the sidebar so its rows line up the same way. */
@@ -1355,11 +1408,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         View activeRow = addTmuxWindows(list, session, windows, false, this::dismissTmuxSwitcher);
         scrollPickerTo(content, activeRow);
 
-        tmuxSwitcher = DialogUtils.builder(this)
+        tmuxSwitcher = pickerBuilder()
             .setView(content)
             .create();
         tmuxSwitcher.setOnDismissListener(dialog -> tmuxSwitcher = null);
         tmuxSwitcher.show();
+        placePicker(tmuxSwitcher);
         return true;
     }
 

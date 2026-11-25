@@ -289,6 +289,10 @@ public class PropertyInputSpecTest {
         invalid(tmuxKey, "tree", "tab");
         String tmuxStyle = TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_STYLE;
         assertArrayEquals(new String[]{"subtle", "rounded"}, PropertyInputSpec.choices(tmuxStyle));
+        String pickerKey = TermuxPropertyConstants.KEY_TERMINAL_PICKER_POSITION;
+        assertArrayEquals(new String[]{"top", "center", "terminal"}, PropertyInputSpec.choices(pickerKey));
+        valid(pickerKey, "top", "CENTER", "terminal");
+        invalid(pickerKey, "bottom", "top-center");
         valid(tmuxStyle, "SUBTLE", "rounded");
         invalid(tmuxStyle, "square");
         String toastKey = TermuxPropertyConstants.KEY_TERMINAL_TOAST_POSITION;
@@ -306,7 +310,8 @@ public class PropertyInputSpecTest {
         for (String key : TermuxPropertyConstants.TERMUX_APP_PROPERTIES_LIST) {
             if (key.equals("extra-keys-style") || key.equals(TermuxPropertyConstants.KEY_GESTURE_COMMAND_CONTEXT)
                 || key.equals(toastKey) || key.equals(engineKey) || key.equals(feedbackKey)
-                || key.equals(gesturePositionKey) || key.equals(tmuxKey) || key.equals(tmuxStyle)) continue;
+                || key.equals(gesturePositionKey) || key.equals(tmuxKey) || key.equals(tmuxStyle)
+                || key.equals(pickerKey)) continue;
             assertEquals(key, 0, PropertyInputSpec.choices(key).length);
         }
         assertEquals(0, PropertyInputSpec.choices(null).length);

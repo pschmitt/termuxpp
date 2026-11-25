@@ -102,6 +102,8 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
                         ? "Default (Soft flash)" : key.equals(TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_POSITION)
                         ? "Default (Bottom center)" : key.equals(TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_LAYOUT)
                         ? getString(R.string.properties_default_boolean, getString(R.string.ui_tmux_layout_nested))
+                        : key.equals(TermuxPropertyConstants.KEY_TERMINAL_PICKER_POSITION)
+                        ? getString(R.string.properties_default_boolean, getString(R.string.ui_picker_position_top))
                         : getString(R.string.properties_default));
                 entryValues.add("");
                 if (isBoolean) {
@@ -198,6 +200,13 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
     }
 
     private String choiceLabel(String key, String value) {
+        if (TermuxPropertyConstants.KEY_TERMINAL_PICKER_POSITION.equals(key)) {
+            if (TermuxPropertyConstants.PICKER_POSITION_CENTER.equals(value))
+                return getString(R.string.ui_picker_position_center);
+            if (TermuxPropertyConstants.PICKER_POSITION_TERMINAL.equals(value))
+                return getString(R.string.ui_picker_position_terminal);
+            return getString(R.string.ui_picker_position_top);
+        }
         if (TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_STYLE.equals(key))
             return getString(TermuxPropertyConstants.TMUX_SIDEBAR_ROUNDED.equals(value)
                 ? R.string.ui_tmux_style_rounded : R.string.ui_tmux_style_subtle);

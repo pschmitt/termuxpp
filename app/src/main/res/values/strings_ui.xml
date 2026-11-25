@@ -39,6 +39,9 @@
     <string name="ui_tmux_sidebar_collapse">Collapse tmux windows</string>
     <string name="ui_tmux_style_subtle">Subtle</string>
     <string name="ui_tmux_style_rounded">Rounded</string>
+    <string name="ui_picker_position_top">Top of the screen</string>
+    <string name="ui_picker_position_center">Center of the screen</string>
+    <string name="ui_picker_position_terminal">Center of the terminal</string>
     <string name="ui_tmux_preview_terminal">Remote shell</string>
     <string name="ui_tmux_active_window">%1$s (active)</string>
     <string name="ui_tmux_attachment_unavailable">tmux attachment unavailable</string>

@@ -394,6 +394,16 @@ public final class TermuxPropertyConstants {
     public static final String TMUX_SIDEBAR_ROUNDED = "rounded";
     public static final String DEFAULT_TMUX_SIDEBAR_STYLE = TMUX_SIDEBAR_ROUNDED;
 
+    /** Where the session picker and the tmux window picker open. */
+    public static final String KEY_TERMINAL_PICKER_POSITION = "terminal-picker-position";
+    /** At the top of the screen. */
+    public static final String PICKER_POSITION_TOP = "top";
+    /** In the middle of the screen. */
+    public static final String PICKER_POSITION_CENTER = "center";
+    /** In the middle of the terminal view, which shrinks while the keyboard is shown. */
+    public static final String PICKER_POSITION_TERMINAL = "terminal";
+    public static final String DEFAULT_PICKER_POSITION = PICKER_POSITION_TOP;
+
     public static final String KEY_TERMINAL_TOAST_POSITION = "terminal-toast-position";
     public static final int DEFAULT_TERMINAL_TOAST_GRAVITY = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
     public static final ImmutableBiMap<String, Integer> MAP_TERMINAL_TOAST_POSITION =
@@ -670,6 +680,7 @@ public final class TermuxPropertyConstants {
         KEY_TERMINAL_TOAST_POSITION,
         KEY_TERMINAL_TMUX_SIDEBAR_LAYOUT,
         KEY_TERMINAL_TMUX_SIDEBAR_STYLE,
+        KEY_TERMINAL_PICKER_POSITION,
 
         /* gesture command configuration */
         KEY_GESTURE_COMMAND_CONTEXT,

@@ -27,6 +27,15 @@ public class TerminalGestureActionTest {
     }
 
     @Test
+    public void pickerPositionDefaultsToTopAndParses() {
+        String key = TermuxPropertyConstants.KEY_TERMINAL_PICKER_POSITION;
+        assertEquals("top", TermuxSharedProperties.getInternalTermuxPropertyValueFromValue(null, key, null));
+        assertEquals("top", TermuxSharedProperties.getInternalTermuxPropertyValueFromValue(null, key, "bottom"));
+        assertEquals("center", TermuxSharedProperties.getInternalTermuxPropertyValueFromValue(null, key, "Center"));
+        assertEquals("terminal", TermuxSharedProperties.getInternalTermuxPropertyValueFromValue(null, key, "terminal"));
+    }
+
+    @Test
     public void tmuxSidebarStyleDefaultsToRounded() {
         String key = TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_STYLE;
         assertEquals("rounded", TermuxSharedProperties.getInternalTermuxPropertyValueFromValue(null, key, null));
