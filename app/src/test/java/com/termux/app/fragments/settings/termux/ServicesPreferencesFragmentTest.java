@@ -27,6 +27,17 @@ public class ServicesPreferencesFragmentTest {
     }
 
     @Test
+    public void parsesNotificationOverridesIncludingFalse() throws Exception {
+        List<ServicesPreferencesFragment.Service> services = ServicesPreferencesFragment.parseServices(
+            "[{\"name\":\"one\",\"settings\":{\"notification\":true}},"
+                + "{\"name\":\"two\",\"settings\":{\"notification\":false}},"
+                + "{\"name\":\"three\"}]");
+        assertEquals(Boolean.TRUE, services.get(0).notificationOverride);
+        assertEquals(Boolean.FALSE, services.get(1).notificationOverride);
+        assertNull(services.get(2).notificationOverride);
+    }
+
+    @Test
     public void rejectsUnsafeServiceNames() throws Exception {
         try {
             ServicesPreferencesFragment.parseServices(

@@ -85,7 +85,7 @@ public final class AdbShellService extends Service {
     public static final int PORT = 5522;
     private static final String TLS_PREFACE = "TERMUXPP/TLS/1";
 
-    private static final String CHANNEL_ID = "adb_shell";
+    public static final String CHANNEL_ID = "adb_shell";
     private static final int NOTIFICATION_ID = 8022;
     private static final int MAX_PEM_BYTES = 16 * 1024;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
@@ -131,7 +131,7 @@ public final class AdbShellService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        createNotificationChannel();
+        createNotificationChannel(this);
         waitingForNetwork = !networkAllowsAccess();
         startForeground(NOTIFICATION_ID, buildNotification());
         IntentFilter filter = new IntentFilter(WifiManager.NETWORK_STATE_CHANGED_ACTION);
@@ -949,11 +949,11 @@ public final class AdbShellService extends Service {
         closeTlsClients();
     }
 
-    private void createNotificationChannel() {
+    public static void createNotificationChannel(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(CHANNEL_ID,
-                getString(R.string.adb_shell_notification_channel), NotificationManager.IMPORTANCE_LOW);
-            getSystemService(NotificationManager.class).createNotificationChannel(channel);
+                context.getString(R.string.adb_shell_notification_channel), NotificationManager.IMPORTANCE_LOW);
+            context.getSystemService(NotificationManager.class).createNotificationChannel(channel);
         }
     }
 

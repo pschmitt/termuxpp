@@ -57,9 +57,28 @@ public class DebuggingPreferencesFragment extends GroupedPreferencesFragment {
         configureAllowedSsidsPreference();
         configureCurrentNetworkPreference(context);
 
+        Preference notificationSettings = findPreference("adb_shell_notification_settings");
+        if (notificationSettings != null) {
+            notificationSettings.setOnPreferenceClickListener(preference -> {
+                AdbShellService.createNotificationChannel(context);
+                Intent intent;
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    intent = new Intent(android.provider.Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+                        .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.getPackageName())
+                        .putExtra(android.provider.Settings.EXTRA_CHANNEL_ID, AdbShellService.CHANNEL_ID);
+                } else {
+                    intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                        .setData(android.net.Uri.fromParts("package", context.getPackageName(), null));
+                }
+                startActivity(intent);
+                return true;
+            });
+        }
+
         for (String key : new String[] {"log_level", "terminal_view_key_logging_enabled",
             "plugin_error_notifications_enabled", "crash_report_notifications_enabled",
-            "adb_shell_current_network", "adb_shell_allowed_ssids", "adb_shell_authorizations"}) {
+            "adb_shell_current_network", "adb_shell_allowed_ssids", "adb_shell_authorizations",
+            "adb_shell_notification_settings"}) {
             Preference row = findPreference(key);
             if (row != null) row.setIcon(null);
         }

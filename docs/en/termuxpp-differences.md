@@ -377,6 +377,21 @@ separate add-on.
 
 ## Services settings
 
+The ADB shell runs as an Android foreground service. Its notification can be
+hidden in Android's notification settings via **Settings → Debugging → ADB
+shell notification**. Android 13 and later still list active foreground services
+in the system task manager. This setting does not disable the ADB shell or its access
+approval notifications. Source: [ADB shell service](../../app/src/main/java/com/termux/app/AdbShellService.java).
+
+Guest services can show an ongoing notification while running. In the guest
+configuration, `nixpp.serviceNotifications.enable` sets the default and
+`services.<name>.notification` overrides it. The default is off. Each service's
+settings dialog can also override the configured value; that change takes
+effect when the service restarts. Notifications are best effort and require
+Android notification permission and the guest's `tpp` command. Each guest
+service has its own Android notification channel, which is created when its
+first notification is shown; ADB shell has its own separate channel.
+
 When the managed Nix guest is available, **Settings → Services** lists
 its declared services and their enabled and running state. The page can start,
 stop, restart and view bounded logs for a service. Actions call the guest's `svc`

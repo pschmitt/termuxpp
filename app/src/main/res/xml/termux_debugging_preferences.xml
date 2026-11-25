@@ -20,6 +20,13 @@
             app:persistent="false"
             app:title="@string/adb_shell_current_network_title" />
 
+        <Preference
+            app:icon="@drawable/ui_ic_info"
+            app:key="adb_shell_notification_settings"
+            app:persistent="false"
+            app:title="@string/adb_shell_notification_settings_title"
+            app:summary="@string/adb_shell_notification_settings_summary" />
+
         <EditTextPreference
             app:icon="@drawable/ui_ic_link"
             app:key="adb_shell_allowed_ssids"

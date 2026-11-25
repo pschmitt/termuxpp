@@ -43,6 +43,7 @@ public class NotificationAPI {
     public static final String BIN_SH = TermuxConstants.TERMUX_PREFIX_DIR_PATH + "/bin/sh";
     private static final String CHANNEL_ID = "termux-notification";
     private static final String DESKTOP_CHANNEL_PREFIX = "termux-notify-send-";
+    private static final String SERVICE_CHANNEL_PREFIX = "nixpp-service-";
     private static final String CHANNEL_TITLE = "Termux API notification channel";
     private static final String KEY_TEXT_REPLY = "TERMUX_TEXT_REPLY";
 
@@ -71,14 +72,7 @@ public class NotificationAPI {
                 }
 
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    String desktopChannel = getDesktopChannel(intent);
-                    String channelId = CHANNEL_ID;
-                    String name = CHANNEL_TITLE;
-                    if (desktopChannel != null) {
-                        channelId = desktopChannel;
-                        name = "Shell notifications (" + desktopChannel.substring(DESKTOP_CHANNEL_PREFIX.length()) + ")";
-                    }
-                    manager.createNotificationChannel(new NotificationChannel(channelId, name, priorityFromIntent(intent)));
+                    createDefaultChannel(manager, intent);
                 }
 
                 long now = System.currentTimeMillis();
@@ -96,6 +90,25 @@ public class NotificationAPI {
                 manager.notify(notificationId, 0, notification.build());
             }
         });
+    }
+
+    static void createDefaultChannel(NotificationManager manager, Intent intent) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
+        String desktopChannel = getDesktopChannel(intent);
+        String channelId = CHANNEL_ID;
+        String name = CHANNEL_TITLE;
+        if (desktopChannel != null) {
+            channelId = desktopChannel;
+            name = "Shell notifications (" + desktopChannel.substring(DESKTOP_CHANNEL_PREFIX.length()) + ")";
+        } else {
+            String requestedChannel = intent.getStringExtra("channel");
+            if (requestedChannel != null && requestedChannel.startsWith(SERVICE_CHANNEL_PREFIX)
+                && requestedChannel.length() > SERVICE_CHANNEL_PREFIX.length()) {
+                channelId = requestedChannel;
+                name = "Service: " + requestedChannel.substring(SERVICE_CHANNEL_PREFIX.length());
+            }
+        }
+        manager.createNotificationChannel(new NotificationChannel(channelId, name, priorityFromIntent(intent)));
     }
 
     public static void onReceiveChannel(TermuxApiReceiver apiReceiver, final Context context, final Intent intent) {

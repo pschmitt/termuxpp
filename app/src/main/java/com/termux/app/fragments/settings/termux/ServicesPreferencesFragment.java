@@ -250,6 +250,20 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
 
     private void showServiceActions(@NonNull Service service) {
         Context context = requireContext();
+        if ("adb-shell".equals(service.name)) {
+            com.termux.app.AdbShellService.createNotificationChannel(context);
+            android.content.Intent intent;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                intent = new android.content.Intent(android.provider.Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
+                    .putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.getPackageName())
+                    .putExtra(android.provider.Settings.EXTRA_CHANNEL_ID, com.termux.app.AdbShellService.CHANNEL_ID);
+            } else {
+                intent = new android.content.Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                    .setData(android.net.Uri.fromParts("package", context.getPackageName(), null));
+            }
+            startActivity(intent);
+            return;
+        }
         String[] actions = {
             getString(R.string.nix_services_start),
             getString(R.string.nix_services_stop),
@@ -345,14 +359,17 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
             if (allowed != null)
                 for (int j = 0; j < allowed.length(); j++) ssids.add(allowed.getString(j));
             JSONObject settings = item.optJSONObject("settings");
-            services.add(new Service(name,
+            Service service = new Service(name,
                 item.optString("status", "unknown"),
                 item.optBoolean("enabled", false),
                 item.optBoolean("wifiRestricted", false),
                 ssids, item.optBoolean("ssidsOverridden", false),
                 settings != null && settings.length() > 0,
                 item.optBoolean("waitingForNetwork", false),
-                item.has("network") ? item.optString("network") : null));
+                item.has("network") ? item.optString("network") : null);
+            if (settings != null && settings.opt("notification") instanceof Boolean)
+                service.notificationOverride = settings.optBoolean("notification");
+            services.add(service);
         }
         return services;
     }
@@ -449,6 +466,17 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
         boot.setChecked(service.enabled);
         layout.addView(boot);
 
+        TextView notificationLabel = new TextView(context);
+        notificationLabel.setText(R.string.nix_services_notification_label);
+        layout.addView(notificationLabel);
+        android.widget.Spinner notification = new android.widget.Spinner(context);
+        android.widget.ArrayAdapter<CharSequence> notificationOptions = android.widget.ArrayAdapter.createFromResource(
+            context, R.array.nix_services_notification_options, android.R.layout.simple_spinner_item);
+        notificationOptions.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        notification.setAdapter(notificationOptions);
+        notification.setSelection(service.notificationOverride == null ? 0 : service.notificationOverride ? 1 : 2);
+        layout.addView(notification);
+
         android.widget.Switch restricted = new android.widget.Switch(context);
         restricted.setText(R.string.nix_services_wifi_restricted);
         restricted.setChecked(service.wifiRestricted);
@@ -480,6 +508,8 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
                     settings.put("enabled", boot.isChecked());
                     settings.put("wifiRestricted", restricted.isChecked());
                     settings.put("allowedSsids", new JSONArray(names));
+                    if (notification.getSelectedItemPosition() != 0)
+                        settings.put("notification", notification.getSelectedItemPosition() == 1);
                     saveSettings(service.name, settings);
                 } catch (JSONException e) {
                     Toast.makeText(context, getString(R.string.nix_services_settings_save_error, e.getMessage()),
@@ -561,6 +591,7 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
         final boolean waitingForNetwork;
         /** "allowed", "blocked", or null for an unrestricted service. */
         @Nullable final String network;
+        @Nullable Boolean notificationOverride;
 
         Service(@NonNull String name, @NonNull String status, boolean enabled) {
             this(name, status, enabled, false, new ArrayList<>(), false, false, false, null);
