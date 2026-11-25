@@ -59,7 +59,7 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
 
         TerminalSession sessionAtRow = getItem(position).getTerminalSession();
         LinearLayout tmux = sessionRowView.findViewById(R.id.session_tmux_windows);
-        mActivity.bindTmuxWindows(sessionRowView, tmux, sessionAtRow);
+        mActivity.bindTmuxWindows(tmux, sessionAtRow);
         View header = sessionRowView.findViewById(R.id.session_header);
         if (sessionAtRow == null) {
             sessionTitleView.setText(R.string.ui_session_null);
@@ -195,8 +195,11 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
         TerminalSession session = termuxSession == null ? null : termuxSession.getTerminalSession();
         if (session == null) return;
 
+        TermuxService service = mActivity.getTermuxService();
+        boolean hasTmuxWindows = service != null && service.getTmuxWindows(session).length() > 0;
         SessionActionsMenu.State state = new SessionActionsMenu.State(session.mSessionName, session.getTitle(),
-            position + 1, getCount(), session.isRunning());
+            position + 1, getCount(), session.isRunning(), hasTmuxWindows,
+            mActivity.tmuxWindowVisibilityAction(session));
         try {
             mActionsDialog = SessionActionsMenu.populateSheet(new TermuxContextMenuSheet(mActivity),
                 mActivity.getResources(), state).show(chosenId -> {
@@ -233,6 +236,12 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
         }
 
         switch (actionId) {
+            case SessionActionsMenu.TMUX_PICKER:
+                mActivity.showTmuxSwitcher(session);
+                break;
+            case SessionActionsMenu.TOGGLE_TMUX_WINDOWS:
+                mActivity.toggleTmuxWindows(session);
+                break;
             case SessionActionsMenu.RENAME:
                 mActivity.getTermuxTerminalSessionClient().renameSession(session);
                 break;

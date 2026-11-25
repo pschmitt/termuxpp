@@ -78,6 +78,8 @@ public final class TerminalView extends View {
 
     /** Resolves consecutive finger taps for {@link TerminalViewClient#onTapCount(int)}. */
     private final TapActionResolver mTapActionResolver;
+    private final MultiFingerSwipe mMultiFingerSwipe;
+    private boolean mMultiFingerSwipeConsumed;
     private final Runnable mTapActionTimeout = new Runnable() {
         @Override
         public void run() {
@@ -149,6 +151,8 @@ public final class TerminalView extends View {
     public TerminalView(Context context, AttributeSet attributes) { // NO_UCD (unused code)
         super(context, attributes);
         ViewConfiguration viewConfiguration = ViewConfiguration.get(context);
+        mMultiFingerSwipe = new MultiFingerSwipe(Math.max(48 * getResources().getDisplayMetrics().density,
+            5 * viewConfiguration.getScaledTouchSlop()));
         mTapActionResolver = new TapActionResolver(
             new TapSequenceTracker(ViewConfiguration.getLongPressTimeout(),
                 ViewConfiguration.getDoubleTapTimeout(), viewConfiguration.getScaledTouchSlop(),
@@ -205,6 +209,12 @@ public final class TerminalView extends View {
             @Override
             public boolean onScroll(MotionEvent e, float distanceX, float distanceY) {
                 if (mEmulator == null) return true;
+                if (e.isFromSource(InputDevice.SOURCE_TOUCHSCREEN) && !isSelectingText()
+                    && !mGestureRecognizer.isInProgress()) {
+                    MultiFingerSwipe.Direction direction = mMultiFingerSwipe.movingDirection(e);
+                    if (direction != null && mClient.hasMultiFingerSwipeAction(e.getPointerCount(), direction))
+                        return true;
+                }
                 if (mEmulator.isMouseTrackingActive() && e.isFromSource(InputDevice.SOURCE_MOUSE)) {
                     // If moving with mouse pointer while pressing button, report that instead of scroll.
                     // This means that we never report moving with button press-events for touch input,
@@ -267,6 +277,8 @@ public final class TerminalView extends View {
 
             @Override
             public boolean onDown(float x, float y) {
+                scrolledWithFinger = false;
+                mScrollRemainder = 0;
                 // Why is true not returned here?
                 // https://developer.android.com/training/gestures/detector.html#detect-a-subset-of-supported-gestures
                 // Although setting this to true still does not solve the following errors when long pressing in terminal view text area
@@ -693,6 +705,7 @@ public final class TerminalView extends View {
         final int action = event.getAction();
 
         trackTapSequence(event);
+        if (event.isFromSource(InputDevice.SOURCE_TOUCHSCREEN) && handleMultiFingerSwipe(event)) return true;
 
         if (isSelectingText()) {
             updateFloatingToolbarVisibility(event);
@@ -726,6 +739,30 @@ public final class TerminalView extends View {
         }
 
         mGestureRecognizer.onTouchEvent(event);
+        return true;
+    }
+
+    private boolean handleMultiFingerSwipe(MotionEvent event) {
+        int action = event.getActionMasked();
+        if (action == MotionEvent.ACTION_DOWN) mMultiFingerSwipeConsumed = false;
+        if (mMultiFingerSwipeConsumed) return true;
+        MultiFingerSwipe.Direction direction = mMultiFingerSwipe.observe(event);
+        if (direction == null || isSelectingText() || mGestureRecognizer.isInProgress()
+            || !mClient.hasMultiFingerSwipeAction(event.getPointerCount(), direction)) return false;
+
+        mMultiFingerSwipeConsumed = true;
+        MotionEvent cancelled = MotionEvent.obtain(event);
+        cancelled.setAction(MotionEvent.ACTION_CANCEL);
+        mGestureRecognizer.onTouchEvent(cancelled);
+        cancelled.recycle();
+        // Use the center of the gesture for visual feedback.
+        float x = 0, y = 0;
+        for (int i = 0; i < event.getPointerCount(); i++) {
+            x += event.getX(i);
+            y += event.getY(i);
+        }
+        mClient.onMultiFingerSwipe(event.getPointerCount(), direction,
+            x / event.getPointerCount(), y / event.getPointerCount());
         return true;
     }
 

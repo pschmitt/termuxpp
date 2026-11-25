@@ -221,6 +221,12 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
     }
 
     private Set<String> choices(String key) {
+        if (TermuxPropertyConstants.TERMINAL_MULTI_FINGER_SWIPE_PROPERTIES.contains(key)
+            && key.endsWith("-action")) {
+            Set<String> actions = new LinkedHashSet<>();
+            for (TerminalGestureAction action : TerminalGestureAction.values()) actions.add(action.getValue());
+            return actions;
+        }
         String[] typedChoices = PropertyInputSpec.choices(key);
         if (typedChoices != null && typedChoices.length != 0)
             return new LinkedHashSet<>(java.util.Arrays.asList(typedChoices));

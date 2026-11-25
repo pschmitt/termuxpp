@@ -29,6 +29,8 @@ public final class SessionActionsMenu {
     public static final int KILL_NOW = 6;
     /** Remove a session whose process has exited. */
     public static final int REMOVE = 7;
+    public static final int TMUX_PICKER = 8;
+    public static final int TOGGLE_TMUX_WINDOWS = 9;
 
     /** What decides which entries are shown. */
     public static final class State {
@@ -38,14 +40,23 @@ public final class SessionActionsMenu {
         public final int number;
         public final int count;
         public final boolean running;
+        public final boolean hasTmuxWindows;
+        public final int tmuxVisibilityAction;
 
         public State(@Nullable String sessionName, @Nullable String terminalTitle, int number, int count,
                      boolean running) {
+            this(sessionName, terminalTitle, number, count, running, false, 0);
+        }
+
+        public State(@Nullable String sessionName, @Nullable String terminalTitle, int number, int count,
+                     boolean running, boolean hasTmuxWindows, int tmuxVisibilityAction) {
             this.sessionName = sessionName;
             this.terminalTitle = terminalTitle;
             this.number = number;
             this.count = count;
             this.running = running;
+            this.hasTmuxWindows = hasTmuxWindows;
+            this.tmuxVisibilityAction = tmuxVisibilityAction;
         }
 
         public boolean canMoveUp() {
@@ -98,6 +109,14 @@ public final class SessionActionsMenu {
                 sheet.addSecondaryRow(MOVE_BOTTOM, resources.getString(R.string.ui_session_action_move_bottom), null,
                     R.drawable.ui_ic_menu_arrow_bottom);
             }
+        }
+
+        if (state.hasTmuxWindows) {
+            sheet.addRow(TMUX_PICKER, resources.getString(R.string.ui_tmux_sidebar_picker), null,
+                R.drawable.ui_ic_terminal);
+            if (state.tmuxVisibilityAction != 0)
+                sheet.addRow(TOGGLE_TMUX_WINDOWS, resources.getString(state.tmuxVisibilityAction), null,
+                    R.drawable.ui_ic_menu_chevron_down);
         }
 
         if (state.running) {

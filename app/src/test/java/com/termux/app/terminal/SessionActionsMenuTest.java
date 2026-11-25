@@ -62,6 +62,18 @@ public class SessionActionsMenuTest {
     }
 
     @Test
+    public void tmuxActionsFollowTheAttachmentAndLayout() {
+        List<Integer> nested = ids(new SessionActionsMenu.State(null, null, 1, 1, true, true,
+            R.string.ui_tmux_sidebar_collapse));
+        Assert.assertTrue(nested.contains(SessionActionsMenu.TMUX_PICKER));
+        Assert.assertTrue(nested.contains(SessionActionsMenu.TOGGLE_TMUX_WINDOWS));
+
+        List<Integer> drillDown = ids(new SessionActionsMenu.State(null, null, 1, 1, true, true, 0));
+        Assert.assertTrue(drillDown.contains(SessionActionsMenu.TMUX_PICKER));
+        Assert.assertFalse(drillDown.contains(SessionActionsMenu.TOGGLE_TMUX_WINDOWS));
+    }
+
+    @Test
     public void anExitedSessionIsRemovedInsteadOfKilled() {
         Assert.assertEquals(Arrays.asList(
                 SessionActionsMenu.MOVE_UP, SessionActionsMenu.MOVE_DOWN,

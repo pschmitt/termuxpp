@@ -135,7 +135,8 @@ existing setting unchanged.
 Open **Settings → Properties → Appearance → Terminal tmux sidebar layout**
 or set `terminal-tmux-sidebar-layout` in `termuxpp.properties`.
 
-- `nested` (default) shows collapsible tmux windows below their terminal.
+- `nested` (default) shows tmux windows below their terminal. Hold the terminal
+  row to collapse or expand the windows, or to open the window picker.
 - `drill-down` opens a second sidebar level for one terminal's tmux windows.
 - `modes` adds a switch between the terminal list and tmux windows grouped
   by terminal.
@@ -159,6 +160,21 @@ short terminal messages such as the session number. The default is
 `termuxpp.properties` and run `tpp-session reload-settings`.
 
 ## Tap and swipe actions
+
+Bind a two- or three-finger swipe under **Settings → Properties → Gestures**.
+Each finger count has separate up, down, left, and right bindings. Move the
+fingers together and lift to run the assigned action. All eight are unbound
+by default. Pinch-to-zoom continues to work.
+
+For example, set these in `termuxpp.properties`:
+
+```properties
+terminal-2-finger-swipe-left-action = next-session
+terminal-3-finger-swipe-up-action = open-sidebar
+```
+
+Use the corresponding `-keys` or `-command` property for `send-keys` or
+`run-command`, just as for taps and extra-key swipes.
 
 Custom taps, extra-key swipes, and volume-button actions show visual feedback
 by default. Turn **gesture-animations** off in **Settings → Properties →

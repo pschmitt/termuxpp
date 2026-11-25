@@ -53,6 +53,14 @@ public final class PropertyInputSpec {
     @NonNull
     public static String help(@Nullable String key) {
         if (key == null) return "";
+        if (TermuxPropertyConstants.TERMINAL_MULTI_FINGER_SWIPE_PROPERTIES.contains(key)) {
+            String base = key.substring(0, key.lastIndexOf('-') + 1);
+            String trigger = base.substring("terminal-".length(), base.length() - 1).replace('-', ' ');
+            if (key.endsWith("-action"))
+                return gesture("a " + trigger + " on the terminal", base + "keys", TerminalGestureAction.NONE);
+            if (key.endsWith("-keys")) return keySequence("a " + trigger, base + "action");
+            return commandHelp("a " + trigger + " bound to run-command");
+        }
         switch (key) {
             /* boolean */
             case TermuxPropertyConstants.KEY_DISABLE_FILE_SHARE_RECEIVER:
@@ -332,6 +340,15 @@ public final class PropertyInputSpec {
         if (key == null || !TermuxPropertyConstants.TERMUX_APP_PROPERTIES_LIST.contains(key))
             return "Unknown property: " + key;
         if (value == null || value.isEmpty()) return null;
+        if (TermuxPropertyConstants.TERMINAL_MULTI_FINGER_SWIPE_PROPERTIES.contains(key)) {
+            if (key.endsWith("-action")) return TerminalGestureAction.parse(value) != null ? null
+                : "Expected one of: " + TerminalGestureAction.getValidValues();
+            if (key.endsWith("-keys")) {
+                String error = TerminalKeySequence.getError(value);
+                return error == null ? null : "Invalid keys: " + error;
+            }
+            return value.indexOf(0) < 0 ? null : "A command cannot contain NUL";
+        }
 
         if (isBoolean(key)) {
             return SharedProperties.getBooleanValueForStringValue(value) != null ? null

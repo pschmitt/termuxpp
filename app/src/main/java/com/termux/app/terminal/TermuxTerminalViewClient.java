@@ -46,6 +46,7 @@ import dev.pschmitt.termux.shared.activities.ReportActivity;
 import dev.pschmitt.termux.shared.models.ReportInfo;
 import com.termux.app.models.UserAction;
 import com.termux.app.terminal.io.KeyboardShortcut;
+import dev.pschmitt.termux.shared.termux.settings.properties.TermuxAppSharedProperties;
 import dev.pschmitt.termux.shared.termux.settings.properties.TermuxPropertyConstants;
 import dev.pschmitt.termux.shared.data.DataUtils;
 import dev.pschmitt.termux.shared.logger.Logger;
@@ -54,6 +55,7 @@ import dev.pschmitt.termux.shared.termux.TermuxUtils;
 import dev.pschmitt.termux.shared.termux.data.TermuxUrlUtils;
 import dev.pschmitt.termux.shared.view.KeyboardUtils;
 import dev.pschmitt.termux.shared.view.ViewUtils;
+import com.termux.view.MultiFingerSwipe;
 import com.termux.terminal.KeyHandler;
 import com.termux.terminal.TerminalBuffer;
 import com.termux.terminal.TerminalEmulator;
@@ -69,6 +71,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import androidx.annotation.NonNull;
@@ -345,6 +348,23 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
             return;
         }
         performTerminalTapAction(tapCount, mActivity.getProperties().getTerminalTapAction(tapCount), x, y);
+    }
+
+    @Override
+    public boolean hasMultiFingerSwipeAction(int fingers, MultiFingerSwipe.Direction direction) {
+        return mActivity.getProperties().getTerminalMultiFingerSwipeAction(
+            fingers, direction.name().toLowerCase(Locale.ROOT)) != TerminalGestureAction.NONE;
+    }
+
+    @Override
+    public void onMultiFingerSwipe(int fingers, MultiFingerSwipe.Direction direction, float x, float y) {
+        String name = direction.name().toLowerCase(Locale.ROOT);
+        TermuxAppSharedProperties properties = mActivity.getProperties();
+        TerminalGestureAction action = properties.getTerminalMultiFingerSwipeAction(fingers, name);
+        if (action == TerminalGestureAction.NONE) return;
+        showGestureFeedback(action.getLabel(), x, y);
+        performGestureAction(action, properties.getTerminalMultiFingerSwipeKeys(fingers, name),
+            properties.getTerminalMultiFingerSwipeCommand(fingers, name), properties.getGestureCommandContext());
     }
 
     public void showGestureFeedback(String label) {

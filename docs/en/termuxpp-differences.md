@@ -409,12 +409,18 @@ The default is top center.
 The `tpp-session reload-settings` command reloads properties from disk and
 refreshes terminal styling in the app.
 
+## Multi-finger terminal swipes
+
+TermuxPP can bind a two- or three-finger swipe to a terminal gesture action.
+Up, down, left, and right are separate bindings and are unbound by default.
+[Gesture settings](terminal-settings.md#tap-and-swipe-actions).
+
 ## Remote tmux integration
 
 A shell-launched SSH attachment can publish its remote tmux windows under its
-TermuxPP sidebar entry. Tap a window to select it or tap **tmux windows** to
-open the window picker. The sidebar refreshes as the active window, names
-and window list change. Upstream Termux's sidebar lists Android terminal
+TermuxPP sidebar entry. Tap a window to select it, or hold the terminal's
+sidebar entry and choose **Open window picker**. The sidebar refreshes as the
+active window, names, and window list change. Upstream Termux's sidebar lists Android terminal
 sessions. [Upstream sidebar source](https://github.com/termux/termux-app/blob/master/app/src/main/java/com/termux/app/TermuxSessionsListViewController.java).
 
 The `terminal-tmux-sidebar-layout` property selects nested windows, a

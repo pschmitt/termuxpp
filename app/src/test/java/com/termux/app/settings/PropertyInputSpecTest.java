@@ -42,6 +42,20 @@ public class PropertyInputSpecTest {
     }
 
     @Test
+    public void multiFingerSwipesUseTheRegularActionAndPayloadValidation() {
+        for (int fingers : new int[]{2, 3}) {
+            for (String direction : new String[]{"up", "down", "left", "right"}) {
+                String prefix = "terminal-" + fingers + "-finger-swipe-" + direction;
+                valid(prefix + "-action", "none", "open-sidebar", "send-keys", "run-command");
+                invalid(prefix + "-action", "not-an-action");
+                valid(prefix + "-keys", "CTRL l", "ESC");
+                invalid(prefix + "-keys", "CTRL");
+                valid(prefix + "-command", "printf hello");
+            }
+        }
+    }
+
+    @Test
     public void everyPropertyHasHelp() {
         for (String key : TermuxPropertyConstants.TERMUX_APP_PROPERTIES_LIST) {
             String help = PropertyInputSpec.help(key);

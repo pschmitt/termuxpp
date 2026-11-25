@@ -59,6 +59,13 @@ public interface TerminalViewClient {
         onTapCount(tapCount);
     }
 
+    default boolean hasMultiFingerSwipeAction(int fingers, MultiFingerSwipe.Direction direction) {
+        return false;
+    }
+
+    default void onMultiFingerSwipe(int fingers, MultiFingerSwipe.Direction direction, float x, float y) {
+    }
+
     boolean shouldBackButtonBeMappedToEscape();
 
     boolean shouldEnforceCharBasedInput();

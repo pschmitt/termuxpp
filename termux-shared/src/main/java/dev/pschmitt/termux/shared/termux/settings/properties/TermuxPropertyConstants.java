@@ -592,6 +592,23 @@ public final class TermuxPropertyConstants {
 
 
 
+    public static final Set<String> TERMINAL_MULTI_FINGER_SWIPE_PROPERTIES = multiFingerSwipeProperties();
+
+    private static Set<String> multiFingerSwipeProperties() {
+        Set<String> properties = new HashSet<>();
+        for (int fingers = 2; fingers <= 3; fingers++) {
+            for (String direction : Arrays.asList("up", "down", "left", "right")) {
+                for (String type : Arrays.asList("action", "keys", "command"))
+                    properties.add(terminalMultiFingerSwipeProperty(fingers, direction, type));
+            }
+        }
+        return java.util.Collections.unmodifiableSet(properties);
+    }
+
+    public static String terminalMultiFingerSwipeProperty(int fingers, String direction, String type) {
+        return "terminal-" + fingers + "-finger-swipe-" + direction + "-" + type;
+    }
+
     /** Defines the set for keys loaded by termux
      * Setting this to {@code null} will make {@link SharedProperties} throw an exception.
      * */
@@ -691,6 +708,10 @@ public final class TermuxPropertyConstants {
         KEY_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR,
         KEY_VOLUME_KEYS_BEHAVIOUR
     ));
+
+    static {
+        TERMUX_APP_PROPERTIES_LIST.addAll(TERMINAL_MULTI_FINGER_SWIPE_PROPERTIES);
+    }
 
     /** Defines the set for keys loaded by termux that have default boolean behaviour with false as default.
      * "true" -> true

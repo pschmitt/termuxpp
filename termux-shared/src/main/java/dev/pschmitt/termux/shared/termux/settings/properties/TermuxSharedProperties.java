@@ -260,6 +260,12 @@ public abstract class TermuxSharedProperties {
      */
     public static Object getInternalTermuxPropertyValueFromValue(Context context, String key, String value) {
         if (key == null) return null;
+        if (TermuxPropertyConstants.TERMINAL_MULTI_FINGER_SWIPE_PROPERTIES.contains(key)) {
+            if (key.endsWith("-action"))
+                return getGestureActionInternalPropertyValueFromValue(key, value, TerminalGestureAction.NONE).getValue();
+            if (key.endsWith("-keys")) return getKeySequenceInternalPropertyValueFromValue(key, value);
+            return getGestureCommandInternalPropertyValueFromValue(value);
+        }
         /*
           For keys where a MAP_* is checked by respective functions. Note that value to this function
           would actually be the key for the MAP_*:
@@ -875,6 +881,9 @@ public abstract class TermuxSharedProperties {
     /** The key of the {@code *-keys} property of the key of a gesture action property. */
     @Nullable
     private static String getKeysKeyOfGestureActionKey(String actionKey) {
+        if (TermuxPropertyConstants.TERMINAL_MULTI_FINGER_SWIPE_PROPERTIES.contains(actionKey)
+            && actionKey.endsWith("-action"))
+            return actionKey.substring(0, actionKey.length() - "action".length()) + "keys";
         switch (actionKey) {
             case TermuxPropertyConstants.KEY_TERMINAL_SINGLE_TAP_ACTION: return TermuxPropertyConstants.KEY_TERMINAL_SINGLE_TAP_KEYS;
             case TermuxPropertyConstants.KEY_TERMINAL_DOUBLE_TAP_ACTION: return TermuxPropertyConstants.KEY_TERMINAL_DOUBLE_TAP_KEYS;
@@ -892,6 +901,9 @@ public abstract class TermuxSharedProperties {
     /** The property key containing a command for a gesture action property, or {@code null}. */
     @Nullable
     private static String getCommandKeyOfGestureActionKey(String actionKey) {
+        if (TermuxPropertyConstants.TERMINAL_MULTI_FINGER_SWIPE_PROPERTIES.contains(actionKey)
+            && actionKey.endsWith("-action"))
+            return actionKey.substring(0, actionKey.length() - "action".length()) + "command";
         switch (actionKey) {
             case TermuxPropertyConstants.KEY_TERMINAL_SINGLE_TAP_ACTION: return TermuxPropertyConstants.KEY_TERMINAL_SINGLE_TAP_COMMAND;
             case TermuxPropertyConstants.KEY_TERMINAL_DOUBLE_TAP_ACTION: return TermuxPropertyConstants.KEY_TERMINAL_DOUBLE_TAP_COMMAND;
@@ -1109,6 +1121,22 @@ public abstract class TermuxSharedProperties {
         return getKeySequence(TermuxPropertyConstants.KEY_VOLUME_DOWN_KEYS);
     }
 
+    @NonNull
+    public TerminalGestureAction getTerminalMultiFingerSwipeAction(int fingers, String direction) {
+        return getGestureAction(TermuxPropertyConstants.terminalMultiFingerSwipeProperty(fingers, direction, "action"));
+    }
+
+    @Nullable
+    public TerminalKeySequence getTerminalMultiFingerSwipeKeys(int fingers, String direction) {
+        return getKeySequence(TermuxPropertyConstants.terminalMultiFingerSwipeProperty(fingers, direction, "keys"));
+    }
+
+    @Nullable
+    public String getTerminalMultiFingerSwipeCommand(int fingers, String direction) {
+        return (String) getInternalPropertyValue(
+            TermuxPropertyConstants.terminalMultiFingerSwipeProperty(fingers, direction, "command"), true);
+    }
+
     /** The action of a single finger tap on the terminal, see {@link TermuxPropertyConstants#KEY_TERMINAL_SINGLE_TAP_ACTION}. */
     @NonNull
     public TerminalGestureAction getTerminalSingleTapAction() {
@@ -1305,7 +1333,9 @@ public abstract class TermuxSharedProperties {
     /** Keep configured command text out of property dumps and logs. */
     @NonNull
     public static String getPropertyValueForLog(@NonNull String key, @Nullable String value) {
-        if (key.equals(TermuxPropertyConstants.KEY_TERMINAL_SINGLE_TAP_COMMAND)
+        if ((TermuxPropertyConstants.TERMINAL_MULTI_FINGER_SWIPE_PROPERTIES.contains(key)
+                && key.endsWith("-command"))
+            || key.equals(TermuxPropertyConstants.KEY_TERMINAL_SINGLE_TAP_COMMAND)
             || key.equals(TermuxPropertyConstants.KEY_TERMINAL_DOUBLE_TAP_COMMAND)
             || key.equals(TermuxPropertyConstants.KEY_TERMINAL_TRIPLE_TAP_COMMAND)
             || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_SWIPE_LEFT_COMMAND)
