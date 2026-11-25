@@ -292,6 +292,11 @@ public final class TerminalSession extends TerminalOutput {
     }
 
     @Override
+    public void onTmuxWindowsReport(String report) {
+        mClient.onTmuxWindowsReport(this, report);
+    }
+
+    @Override
     public void onPasteTextFromClipboard() {
         mClient.onPasteTextFromClipboard(this);
     }

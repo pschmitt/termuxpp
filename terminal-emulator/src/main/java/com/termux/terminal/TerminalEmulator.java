@@ -275,6 +275,11 @@ public final class TerminalEmulator {
      * Setting it only attaches the link to the cells that are written afterwards, nothing is opened.
      */
     private TerminalHyperlink mCurrentHyperlink;
+    /** OSC 7769: a tmux window report, from the TermuxPP tmux plugin. */
+    public static final int OSC_TMUX_WINDOWS = 7769;
+    /** Whether tmux reported windows since the alternate screen was entered, so leaving it clears them. */
+    private boolean mTmuxWindowsReported;
+
     /** The current screen buffer, pointing at either {@link #mMainBuffer} or {@link #mAltBuffer}. */
     private TerminalBuffer mScreen;
 
@@ -2341,6 +2346,11 @@ public final class TerminalEmulator {
                     mScreen = newScreen;
                     // A link that is open on one screen does not continue on the other one.
                     mCurrentHyperlink = null;
+                    // A tmux client that ends, even without detaching cleanly, leaves the alternate screen.
+                    if (!setting && mTmuxWindowsReported) {
+                        mTmuxWindowsReported = false;
+                        mSession.onTmuxWindowsReport(null);
+                    }
                     if (!setting) {
                         int col = mSavedStateMain.mSavedCursorCol;
                         int row = mSavedStateMain.mSavedCursorRow;
@@ -4321,6 +4331,11 @@ public final class TerminalEmulator {
                 } catch (Exception e) {
                     Logger.logError(mClient, LOG_TAG, "OSC Manipulate selection, invalid string '" + textParameter + "'");
                 }
+                break;
+            case OSC_TMUX_WINDOWS:
+                // Never drawn: the TermuxPP tmux plugin's report of the windows of the attached session.
+                mTmuxWindowsReported = true;
+                mSession.onTmuxWindowsReport(textParameter);
                 break;
             case 104:
                 // "104;$c" → Reset Color Number $c. It is reset to the color specified by the corresponding X

@@ -93,6 +93,52 @@ public class TmuxWindowsTest {
         assertEquals(JSONObject.NULL, windows.update(TERMINAL, snapshot("@1")));
     }
 
+    private static String report(String lines) {
+        return TmuxWindows.REPORT_PREFIX + android.util.Base64.encodeToString(
+            lines.getBytes(java.nio.charset.StandardCharsets.UTF_8), android.util.Base64.NO_WRAP);
+    }
+
+    @Test
+    public void pluginReportsShowTheirWindowsWithProgramAndName() throws Exception {
+        assertTrue(windows.report("plugin", report("@4\t1\t1\tclaude\tcode review\n@5\t2\t0\t\tsh\n")));
+        assertTrue(windows.isReported("plugin"));
+        JSONArray rows = windows.get("plugin");
+        assertEquals(2, rows.length());
+        assertEquals("1  code review", rows.getJSONObject(0).getString("label"));
+        assertEquals("claude", rows.getJSONObject(0).getString("program"));
+        assertTrue(rows.getJSONObject(0).getBoolean("active"));
+        assertFalse(rows.getJSONObject(1).has("program"));
+    }
+
+    @Test
+    public void choosingAReportedWindowDoesNotWaitForAHelper() throws Exception {
+        windows.report("plugin", report("@4\t1\t1\tzsh\ta\n@5\t2\t0\tzsh\tb\n"));
+        assertTrue(windows.select("plugin", "@5"));
+        assertTrue(windows.get("plugin").getJSONObject(1).getBoolean("active"));
+        // Nothing is queued for a helper: the service types the choice into the terminal instead.
+        assertNull(windows.awaitSelection(TOKEN, 20));
+    }
+
+    @Test
+    public void anEmptyOrNullReportClearsTheWindows() throws Exception {
+        windows.report("plugin", report("@4\t1\t1\tzsh\ta\n"));
+        changes = 0;
+        windows.report("plugin", null);
+        assertEquals(0, windows.get("plugin").length());
+        assertFalse(windows.isReported("plugin"));
+        assertEquals(1, changes);
+        // The helper's attachment of another terminal is not touched.
+        assertEquals(2, windows.get(TERMINAL).length());
+    }
+
+    @Test
+    public void reportsOfAnotherVersionOrShapeAreIgnored() {
+        assertNull(TmuxWindows.parseReport("tmux-windows;2;" + "QA=="));
+        assertNull(TmuxWindows.parseReport(report("@4\t1\t1\tzsh\n")));
+        assertNull(TmuxWindows.parseReport(report("4\t1\t1\tzsh\tname\n")));
+        assertFalse(windows.report("plugin", "something else"));
+    }
+
     @Test
     public void unknownWindowsAreNotChosen() {
         assertFalse(windows.select(TERMINAL, "@9"));

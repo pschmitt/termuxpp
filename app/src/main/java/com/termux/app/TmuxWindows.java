@@ -1,6 +1,9 @@
 package com.termux.app;
 
 import android.os.Handler;
+import android.util.Base64;
+
+import androidx.annotation.Nullable;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -12,12 +15,20 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Window snapshots and selection requests for shell-owned tmux attachments. Main thread only, except
- * {@link #awaitSelection}, which a socket thread uses to hand a chosen window to the helper the moment
- * it is chosen instead of with the next snapshot.
+ * The tmux windows shown in a terminal, from two sources: reports the TermuxPP tmux plugin writes into the
+ * terminal's output (OSC 7769), and snapshots of the shell-owned SSH helper over the session socket.
+ * Main thread only, except {@link #awaitSelection}, which a socket thread uses to hand a chosen window to the
+ * helper the moment it is chosen instead of with the next snapshot.
  */
 final class TmuxWindows {
     private static final long LEASE_MS = 6000;
+    /** The prefix of a plugin report: the protocol name and version, then the base64 window list. */
+    static final String REPORT_PREFIX = "tmux-windows;1;";
+    /**
+     * The plugin's select key ({@code user-keys[77]}, key {@code User77}): typed into the terminal, followed
+     * by the digits of a window ID and Return, it selects that window.
+     */
+    static final String SELECT_KEYS = "\033[5;30077~";
     private final Handler handler;
     private final Runnable onChange;
     private final Map<String, Attachment> attachments = new HashMap<>();
@@ -26,12 +37,13 @@ final class TmuxWindows {
     private final Object signal = new Object();
 
     private static final class Attachment {
-        final String token;
+        /** The helper's token, or null for windows the plugin reports through the terminal. */
+        @Nullable final String token;
         JSONArray windows;
         String signature;
         Runnable expire;
 
-        Attachment(String token) {
+        Attachment(@Nullable String token) {
             this.token = token;
         }
     }
@@ -56,11 +68,8 @@ final class TmuxWindows {
             row.getString("label");
             row.getBoolean("active");
         }
-        if (entry == null || !entry.token.equals(token)) {
-            if (entry != null) {
-                handler.removeCallbacks(entry.expire);
-                selections.remove(entry.token);
-            }
+        if (entry == null || !token.equals(entry.token)) {
+            if (entry != null) forget(entry);
             entry = new Attachment(token);
             entry.expire = () -> remove(terminal);
             attachments.put(terminal, entry);
@@ -79,6 +88,77 @@ final class TmuxWindows {
             if (selected.equals(snapshot.getJSONObject(i).getString("id"))) return selected;
         }
         return JSONObject.NULL;
+    }
+
+    /**
+     * Take a plugin report for a terminal: show its windows, or clear them for an empty or null report.
+     *
+     * @return False when the report is not one this version understands.
+     */
+    boolean report(String terminal, @Nullable String report) {
+        JSONArray rows = report == null ? new JSONArray() : parseReport(report);
+        if (rows == null) return false;
+        Attachment entry = attachments.get(terminal);
+        if (rows.length() == 0) {
+            if (entry != null && entry.token == null) remove(terminal);
+            return true;
+        }
+        if (entry == null || entry.token != null) {
+            if (entry != null) forget(entry);
+            entry = new Attachment(null);
+            attachments.put(terminal, entry);
+        }
+        String signature = rows.toString();
+        if (!signature.equals(entry.signature)) {
+            entry.signature = signature;
+            entry.windows = rows;
+            onChange.run();
+        }
+        return true;
+    }
+
+    /** Whether a terminal's windows come from the plugin, so a choice is typed into the terminal. */
+    boolean isReported(String terminal) {
+        Attachment entry = attachments.get(terminal);
+        return entry != null && entry.token == null;
+    }
+
+    /**
+     * Parse a plugin report: {@code tmux-windows;1;} and the base64 of one line per window, with the ID,
+     * index, active flag (0 or 1), the active pane's command and the name, separated by tabs.
+     *
+     * @return The rows, or null for a report of another protocol or version, or one that does not parse.
+     */
+    @Nullable
+    static JSONArray parseReport(String report) {
+        if (!report.startsWith(REPORT_PREFIX)) return null;
+        String text;
+        try {
+            text = new String(Base64.decode(report.substring(REPORT_PREFIX.length()), Base64.DEFAULT),
+                java.nio.charset.StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+        JSONArray rows = new JSONArray();
+        try {
+            for (String line : text.split("\n")) {
+                if (line.isEmpty()) continue;
+                String[] fields = line.split("\t", 5);
+                if (fields.length != 5 || !fields[0].matches("@[0-9]+") || !fields[1].matches("[0-9]+")
+                    || !fields[2].matches("[01]")) return null;
+                String name = fields[4].length() > 100 ? fields[4].substring(0, 100) : fields[4];
+                JSONObject row = new JSONObject()
+                    .put("id", fields[0])
+                    .put("label", fields[1] + "  " + name)
+                    .put("active", fields[2].equals("1"));
+                if (!fields[3].isEmpty())
+                    row.put("program", fields[3].length() > 64 ? fields[3].substring(0, 64) : fields[3]);
+                rows.put(row);
+            }
+        } catch (JSONException e) {
+            return null;
+        }
+        return rows;
     }
 
     JSONArray get(String terminal) {
@@ -105,9 +185,11 @@ final class TmuxWindows {
         }
         if (!found) return false;
 
-        synchronized (signal) {
-            selections.put(entry.token, id);
-            signal.notifyAll();
+        if (entry.token != null) {
+            synchronized (signal) {
+                selections.put(entry.token, id);
+                signal.notifyAll();
+            }
         }
         // Show the choice at once; the helper's next snapshot confirms or corrects it.
         entry.windows = windows;
@@ -137,8 +219,12 @@ final class TmuxWindows {
     void remove(String terminal) {
         Attachment entry = attachments.remove(terminal);
         if (entry == null) return;
-        handler.removeCallbacks(entry.expire);
-        selections.remove(entry.token);
+        forget(entry);
         onChange.run();
+    }
+
+    private void forget(Attachment entry) {
+        if (entry.expire != null) handler.removeCallbacks(entry.expire);
+        if (entry.token != null) selections.remove(entry.token);
     }
 }

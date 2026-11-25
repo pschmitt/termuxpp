@@ -187,6 +187,12 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     }
 
     @Override
+    public void onTmuxWindowsReport(@NonNull TerminalSession session, String report) {
+        TermuxService service = mActivity.getTermuxService();
+        if (service != null) service.onTmuxWindowsReport(session, report);
+    }
+
+    @Override
     public void onCopyTextToClipboard(@NonNull TerminalSession session, String text) {
         if (!mActivity.isVisible()) return;
 

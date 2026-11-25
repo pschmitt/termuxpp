@@ -925,7 +925,16 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     }
 
     boolean selectTmuxWindow(TerminalSession session, String windowId) {
-        return session.isRunning() && tmuxWindows.select(session.mHandle, windowId);
+        if (!session.isRunning() || !tmuxWindows.select(session.mHandle, windowId)) return false;
+        // The plugin's tmux takes the choice as keys typed into the terminal, wherever tmux runs.
+        if (tmuxWindows.isReported(session.mHandle))
+            session.write(TmuxWindows.SELECT_KEYS + windowId.substring(1) + "\r");
+        return true;
+    }
+
+    /** A window report of the TermuxPP tmux plugin in a session's output, or null when its client has gone. */
+    public void onTmuxWindowsReport(TerminalSession session, @Nullable String report) {
+        tmuxWindows.report(session.mHandle, report);
     }
 
     /** Called on a socket thread: hand the helper of an attachment its chosen window as soon as there is one. */

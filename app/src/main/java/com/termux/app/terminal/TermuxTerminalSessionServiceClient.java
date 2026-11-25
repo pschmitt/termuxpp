@@ -22,6 +22,11 @@ public class TermuxTerminalSessionServiceClient extends TermuxTerminalSessionCli
     }
 
     @Override
+    public void onTmuxWindowsReport(@NonNull TerminalSession session, String report) {
+        mService.onTmuxWindowsReport(session, report);
+    }
+
+    @Override
     public void onSessionFinished(@NonNull TerminalSession session) {
         mService.finishSessionClosedByCommand(session);
     }

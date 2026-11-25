@@ -18,6 +18,10 @@ public interface TerminalSessionClient {
 
     void onCopyTextToClipboard(@NonNull TerminalSession session, String text);
 
+    /** A tmux window report from the session's output (OSC 7769), or null when the tmux client has gone. */
+    default void onTmuxWindowsReport(@NonNull TerminalSession session, String report) {
+    }
+
     void onPasteTextFromClipboard(@Nullable TerminalSession session);
 
     void onBell(@NonNull TerminalSession session);

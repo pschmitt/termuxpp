@@ -21,6 +21,13 @@ public abstract class TerminalOutput {
     /** Notify the terminal client that text should be copied to clipboard. */
     public abstract void onCopyTextToClipboard(String text);
 
+    /**
+     * Notify the terminal client of a tmux window report (OSC 7769), or with null that the reporting tmux
+     * client has gone.
+     */
+    public void onTmuxWindowsReport(String report) {
+    }
+
     /** Notify the terminal client that text should be pasted from clipboard. */
     public abstract void onPasteTextFromClipboard();
 

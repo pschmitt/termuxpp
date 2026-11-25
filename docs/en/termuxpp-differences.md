@@ -422,6 +422,12 @@ The other seven bindings are unbound.
 
 ## Remote tmux integration
 
+The [TermuxPP tmux plugin](tmux-plugin.md) shows the windows of any attached tmux session, local or over
+SSH or mosh, in the sidebar and window picker, and switches windows from there. tmux reports the windows
+to the terminal in a private OSC sequence that the app never draws, and the app selects a window by
+typing a key the plugin binds. Hosts need only the plugin; the `tpp tmux attach` helper below remains
+for hosts without it. Upstream Termux has no tmux integration.
+
 A shell-launched SSH attachment can publish its remote tmux windows under its
 TermuxPP sidebar entry. Tap a window to select it, or hold the terminal's
 sidebar entry and choose **Open window picker**. The sidebar refreshes as the

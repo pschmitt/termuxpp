@@ -34,7 +34,12 @@
           "nixpp-runtime-termux-seed"
           "rbw-termux"
         ]
-        // adbShellFor nixpkgs.legacyPackages.aarch64-linux;
+        // adbShellFor nixpkgs.legacyPackages.aarch64-linux
+        // tmuxPluginFor nixpkgs.legacyPackages.aarch64-linux;
+      # The tmux plugin that reports windows to the app, for any host running tmux.
+      tmuxPluginFor = pkgs: {
+        tmux-termuxpp = pkgs.callPackage ./pkgs/tmux-termuxpp { };
+      };
       # Host-side ADB client built with a caller's Nixpkgs.
       adbShellFor = pkgs: {
         tpp-adb-shell = pkgs.callPackage ./pkgs/tpp-adb-shell { };
@@ -189,6 +194,10 @@
       # `inputs.termuxpp.lib.adbShell.packagesFor pkgs`).
       lib.adbShell.packagesFor = adbShellFor;
 
+      # The tmux plugin for a caller's Nixpkgs (nixos-config:
+      # `inputs.termuxpp.lib.tmux.packagesFor pkgs`).
+      lib.tmux.packagesFor = tmuxPluginFor;
+
       circus.consumerBuilds.nixos-config = {
         repository = "pschmitt/nixos-config";
         ref = "main";
@@ -225,6 +234,7 @@
           nixppFor pkgs
         )
         // adbShellFor pkgs
+        // tmuxPluginFor pkgs
         // {
           default = apk;
           inherit apk;
