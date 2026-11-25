@@ -271,6 +271,23 @@ impl EnrollmentCache {
         }))
     }
 
+    /// Whether the cache has `generation`, asked silently: `nix copy` prints
+    /// an error for a path it lacks.
+    fn has(&self, runtime: &Path, user: &str, generation: &str) -> bool {
+        let mut words = vec![
+            "env".to_owned(),
+            format!(
+                "AWS_SHARED_CREDENTIALS_FILE=/home/{user}/.config/nixpp-enrollment/cache_credentials"
+            ),
+        ];
+        words.extend(lease::cache_probe_command(
+            &self.store,
+            &self.public_keys,
+            generation,
+        ));
+        session(runtime, &lease::quiet(&words)).is_ok()
+    }
+
     fn copy(&self, runtime: &Path, user: &str, generation: &str) -> Result<()> {
         session(
             runtime,
@@ -407,6 +424,10 @@ fn copy_from_cache(
 ) -> bool {
     cache.is_some_and(|cache| {
         eprintln!("Checking the signed enrollment cache…");
+        if !cache.has(runtime, user, generation) {
+            eprintln!("Not in the signed cache; copying from the worker.");
+            return false;
+        }
         match cache.copy(runtime, user, generation) {
             Ok(()) => true,
             Err(_) => {
@@ -522,6 +543,9 @@ fn from_lease(runtime: &Path, activation: &Activation<'_>, origin: &LeaseOrigin)
         &lease.worker().ssh_config(&guest, &origin.controller),
     )?;
 
+    if cache.is_some() {
+        lease.enable_cache_push();
+    }
     let agent = Agent::start(scratch.path(), &key)?;
     let spec = Build {
         flake: activation.flake_of_target()?,
@@ -536,6 +560,7 @@ fn from_lease(runtime: &Path, activation: &Activation<'_>, origin: &LeaseOrigin)
         refresh: false,
     };
     let generation = lease::build(&lease, Some(&agent), &spec)?;
+    lease.push_to_cache(&generation);
     if !copy_from_cache(runtime, user, cache, &generation) {
         eprintln!("Copying the system from {}…", lease.worker().destination());
         session(

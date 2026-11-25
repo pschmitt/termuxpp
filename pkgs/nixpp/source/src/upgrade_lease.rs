@@ -147,6 +147,19 @@ fn cache_copy_command(cache: &UpgradeCache, generation: &str) -> Result<Vec<Stri
     Ok(command)
 }
 
+/// `command` run silently, with the cache's AWS credentials.
+fn with_credentials(cache: &UpgradeCache, command: Vec<String>) -> Result<Vec<String>> {
+    let mut words = Vec::new();
+    if let Some(file) = cache.credentials_file.as_deref() {
+        words.extend([
+            "env".to_owned(),
+            format!("AWS_SHARED_CREDENTIALS_FILE={}", fsutil::path_str(file)?),
+        ]);
+    }
+    words.extend(command);
+    Ok(lease::quiet(&words))
+}
+
 /// `nix copy` of `generation` from the lease's own store over its ssh_config.
 fn lease_copy_command(ssh_config: &Path, store_uri: &str, generation: &str) -> Result<Vec<String>> {
     Ok([
@@ -173,13 +186,20 @@ fn fetch(
 ) -> Result<()> {
     if let Some(cache) = cache {
         eprintln!("Checking the signed cache…");
-        if builder
-            .output(&cache_copy_command(cache, generation)?)
-            .is_ok()
-        {
-            return Ok(());
+        // Ask first: `nix copy` of a path the cache lacks prints an error.
+        let probe =
+            lease::cache_probe_command(&cache.store, &cache.public_keys.join(" "), generation);
+        if builder.output(&with_credentials(cache, probe)?).is_ok() {
+            if builder
+                .output(&cache_copy_command(cache, generation)?)
+                .is_ok()
+            {
+                return Ok(());
+            }
+            eprintln!("Could not use the signed cache. Copying from the worker.");
+        } else {
+            eprintln!("Not in the signed cache; copying from the worker.");
         }
-        eprintln!("Could not use the signed cache. Copying from the worker.");
     }
     eprintln!("Copying the system from the worker…");
     builder.output(&lease_copy_command(ssh_config, store_uri, generation)?)?;
@@ -256,6 +276,9 @@ fn run(plan: &Plan, job: &Job<'_>, builder: &mut dyn Builder) -> anyhow::Result<
         lease.worker().ssh_config(&side, &plan.controller),
     )?;
 
+    if job.cache.is_some() {
+        lease.enable_cache_push();
+    }
     let agent = if plan.ssh_inputs.is_empty() {
         None
     } else {
@@ -270,6 +293,7 @@ fn run(plan: &Plan, job: &Job<'_>, builder: &mut dyn Builder) -> anyhow::Result<
         refresh: job.refresh,
     };
     let generation = lease::build(&lease, agent.as_ref(), &spec)?;
+    lease.push_to_cache(&generation);
     fetch(
         builder,
         job.cache,
@@ -310,12 +334,14 @@ mod tests {
     struct Scripted {
         commands: Vec<Vec<String>>,
         fail_cache: bool,
+        fail_copy: bool,
     }
 
     impl Builder for Scripted {
         fn output(&mut self, command: &[String]) -> Result<String> {
             self.commands.push(command.to_vec());
-            if self.fail_cache && command.iter().any(|word| word == "require-sigs") {
+            let has = |word: &str| command.iter().any(|item| item == word);
+            if (self.fail_cache && has("path-info")) || (self.fail_copy && has("require-sigs")) {
                 return Err(Error::invalid("not in the cache"));
             }
             Ok(String::new())
@@ -383,6 +409,7 @@ mod tests {
         let mut builder = Scripted {
             commands: Vec::new(),
             fail_cache: false,
+            fail_copy: false,
         };
         fetch(
             &mut builder,
@@ -394,22 +421,41 @@ mod tests {
         .unwrap();
         assert_eq!(
             builder.commands,
-            [[
-                "env",
-                "AWS_SHARED_CREDENTIALS_FILE=/home/u/aws",
-                "nix",
-                "--refresh",
-                "--option",
-                "trusted-public-keys",
-                "a:1 b:2",
-                "copy",
-                "--from",
-                "s3://bucket?region=r&profile=p",
-                "--option",
-                "require-sigs",
-                "true",
-                GENERATION,
-            ]]
+            [
+                vec![
+                    "sh",
+                    "-c",
+                    "exec \"$@\" 2>/dev/null",
+                    "sh",
+                    "env",
+                    "AWS_SHARED_CREDENTIALS_FILE=/home/u/aws",
+                    "nix",
+                    "--refresh",
+                    "--option",
+                    "trusted-public-keys",
+                    "a:1 b:2",
+                    "path-info",
+                    "--store",
+                    "s3://bucket?region=r&profile=p",
+                    GENERATION,
+                ],
+                vec![
+                    "env",
+                    "AWS_SHARED_CREDENTIALS_FILE=/home/u/aws",
+                    "nix",
+                    "--refresh",
+                    "--option",
+                    "trusted-public-keys",
+                    "a:1 b:2",
+                    "copy",
+                    "--from",
+                    "s3://bucket?region=r&profile=p",
+                    "--option",
+                    "require-sigs",
+                    "true",
+                    GENERATION,
+                ]
+            ]
         );
     }
 
@@ -418,6 +464,7 @@ mod tests {
         let mut builder = Scripted {
             commands: Vec::new(),
             fail_cache: true,
+            fail_copy: false,
         };
         fetch(
             &mut builder,
@@ -444,6 +491,7 @@ mod tests {
         let mut builder = Scripted {
             commands: Vec::new(),
             fail_cache: false,
+            fail_copy: false,
         };
         fetch(
             &mut builder,
@@ -458,12 +506,34 @@ mod tests {
     }
 
     #[test]
+    fn a_cached_path_that_cannot_be_copied_still_falls_back() {
+        let mut builder = Scripted {
+            commands: Vec::new(),
+            fail_cache: false,
+            fail_copy: true,
+        };
+        fetch(
+            &mut builder,
+            Some(&cache()),
+            Path::new("/scratch/ssh_config"),
+            "ssh-ng://u@w",
+            GENERATION,
+        )
+        .unwrap();
+        // The probe, the cache copy, the worker copy.
+        assert_eq!(builder.commands.len(), 3);
+        assert_eq!(builder.commands[2][2], "nix");
+        assert!(builder.commands[2].contains(&"--no-check-sigs".to_owned()));
+    }
+
+    #[test]
     fn a_failed_lease_is_an_error_and_never_runs_the_old_wrapper() {
         let mut lease = settings();
         lease.key = Some("/nonexistent/id_ed25519".into());
         let mut builder = Scripted {
             commands: Vec::new(),
             fail_cache: false,
+            fail_copy: false,
         };
         let error = build(
             &Job {

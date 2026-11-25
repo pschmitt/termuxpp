@@ -278,6 +278,115 @@ fn release_command(release: &Release, owner: &str) -> String {
     }
 }
 
+/// The request the rworker client sends for a CI lease's niks3 push token.
+fn niks3_token_command(worker: &str, owner: &str) -> String {
+    words(&["rworker", "niks3-token", worker, "--owner", owner])
+}
+
+/// The cache server and the lease's push token, from the controller's reply.
+/// Not `Debug`: the token must never reach a log.
+struct CacheToken {
+    server_url: String,
+    token: String,
+}
+
+/// Parse the `niks3-token` reply. Errors never quote the reply.
+fn parse_niks3_reply(reply: &str) -> Result<CacheToken> {
+    let value: Value =
+        serde_json::from_str(reply.trim()).map_err(|_| anyhow::anyhow!("invalid token reply"))?;
+    let issued = &value["niks3_token"];
+    if issued["ok"] != true {
+        let reason = issued["error"]
+            .as_str()
+            .filter(|reason| {
+                reason.len() <= 40
+                    && reason
+                        .bytes()
+                        .all(|b| b.is_ascii_lowercase() || matches!(b, b'-' | b' '))
+            })
+            .unwrap_or("unknown reason");
+        bail!("the controller issued none: {reason}");
+    }
+    let server_url = issued["server_url"].as_str().unwrap_or_default();
+    let token = issued["token"].as_str().unwrap_or_default();
+    // A JWT: three base64url parts.
+    ensure!(
+        server_url.starts_with("https://")
+            && server_url.len() <= 256
+            && server_url
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'-' | b':' | b'/' | b'_'))
+            && !token.is_empty()
+            && token.len() <= 8192
+            && token
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'-' | b'_')),
+        "invalid token reply"
+    );
+    Ok(CacheToken {
+        server_url: server_url.to_owned(),
+        token: token.to_owned(),
+    })
+}
+
+/// Where the runner's `niks3` wrapper (installed by its job agent) reads the
+/// server and the token, relative to the build user's home.
+const NIKS3_SETTINGS: &str = ".config/rworker-niks3";
+
+/// Installs the token from stdin (0700 directory, 0600 files, like the
+/// rworker client). Only the public server URL is in the command line.
+fn niks3_install_script(server_url: &str) -> String {
+    format!(
+        "umask 077; d=\"$HOME/{NIKS3_SETTINGS}\"; mkdir -p \"$d\" && chmod 0700 \"$d\" \
+         && printf '%s\\n' {} > \"$d/server-url\" \
+         && cat > \"$d/token.new\" && mv -f \"$d/token.new\" \"$d/token\"",
+        shell_quote(server_url)
+    )
+}
+
+/// Pushes the whole closure of `generation` (a bare `niks3 push PATH` skips
+/// the references when PATH itself is cached) in the lease's own store.
+fn niks3_push_script(generation: &str) -> String {
+    format!(
+        "set -eu\n{HOSTED_NIX_CONFIG}\
+         PATH=\"$HOME/.local/bin:$PATH\"; export PATH\n\
+         list=$(mktemp); err=$(mktemp); trap 'rm -f \"$list\" \"$err\"' EXIT\n\
+         nix path-info -r {} > \"$list\"\n\
+         if ! niks3 push --stdin < \"$list\" > /dev/null 2> \"$err\"; then\n\
+         \x20 tail -n 1 \"$err\" >&2\n\
+         \x20 exit 1\n\
+         fi\n",
+        shell_quote(generation)
+    )
+}
+
+/// `command` with stderr discarded: a probe whose failure is an expected answer.
+pub fn quiet(command: &[String]) -> Vec<String> {
+    ["sh", "-c", "exec \"$@\" 2>/dev/null", "sh"]
+        .map(str::to_owned)
+        .into_iter()
+        .chain(command.iter().cloned())
+        .collect()
+}
+
+/// `nix path-info` of `generation` in the signed cache: is it there? (`nix
+/// copy` prints a red error when it is not.) Run it through [`quiet`].
+pub fn cache_probe_command(store: &str, public_keys: &str, generation: &str) -> Vec<String> {
+    [
+        "nix",
+        "--refresh",
+        "--option",
+        "trusted-public-keys",
+        public_keys,
+        "path-info",
+        "--store",
+        store,
+        generation,
+    ]
+    .map(str::to_owned)
+    .to_vec()
+}
+
 fn field<'a>(value: &'a Value, name: &str) -> Result<&'a str> {
     value
         .get(name)
@@ -463,11 +572,64 @@ pub struct Lease {
     owner: String,
     worker: Worker,
     released: bool,
+    /// The runner holds a niks3 push token: its builds can go to the cache.
+    cache_push: bool,
 }
 
 impl Lease {
     pub fn worker(&self) -> &Worker {
         &self.worker
+    }
+
+    /// Let a GitHub runner push what it builds to the signed cache, so the
+    /// phone fetches from the cache instead of through the controller relay.
+    /// The controller mints a push token for the lease (through the gate, for
+    /// the phone's own lease only) and the token goes to the runner over SSH,
+    /// on stdin. Never fails the caller: without a token the build is copied
+    /// from the worker, as before.
+    pub fn enable_cache_push(&mut self) {
+        if !self.worker.is_hosted() {
+            return;
+        }
+        match self.install_cache_token() {
+            Ok(()) => self.cache_push = true,
+            Err(error) => eprintln!(
+                "Could not give the worker a cache push token ({error:#}); \
+                 the system is copied from the worker."
+            ),
+        }
+    }
+
+    fn install_cache_token(&self) -> Result<()> {
+        let command = niks3_token_command(&self.worker.name, &self.owner);
+        // The gate's refusal text is of no use to the phone's user: one line
+        // from the caller says what happens next.
+        let reply = controller_output_with(&self.side, &self.controller, &command, Stdio::null())?;
+        let token = parse_niks3_reply(&reply)?;
+        drop(reply);
+        run_on_worker(
+            self,
+            None,
+            &niks3_install_script(&token.server_url),
+            Some(&token.token),
+            false,
+        )
+        .map(drop)
+    }
+
+    /// Upload the closure of `generation` from the runner to the signed cache
+    /// (a no-op without a token). A failure is reported and does not fail
+    /// the caller.
+    pub fn push_to_cache(&self, generation: &str) {
+        if !self.cache_push {
+            return;
+        }
+        eprintln!("Uploading the system to the signed cache…");
+        if let Err(error) = run_on_worker(self, None, &niks3_push_script(generation), None, false) {
+            eprintln!(
+                "Could not upload to the signed cache ({error:#}); the system is copied from the worker."
+            );
+        }
     }
 
     /// Delete the worker. Idempotent.
@@ -498,10 +660,19 @@ impl Drop for Lease {
 }
 
 fn controller_output(side: &Side, controller: &Controller, remote: &str) -> Result<String> {
+    controller_output_with(side, controller, remote, Stdio::inherit())
+}
+
+fn controller_output_with(
+    side: &Side,
+    controller: &Controller,
+    remote: &str,
+    stderr: Stdio,
+) -> Result<String> {
     let output = Command::new("ssh")
         .args(side.controller_args(controller, remote))
         .stdin(Stdio::null())
-        .stderr(Stdio::inherit())
+        .stderr(stderr)
         .output()
         .context("unable to start ssh")?;
     ensure!(
@@ -539,6 +710,7 @@ pub fn lease(
                     owner: request.owner.clone(),
                     worker,
                     released: false,
+                    cache_push: false,
                 });
             }
             Err(error) => {
@@ -996,6 +1168,128 @@ mod tests {
         }
     }
 
+    const TOKEN: &str = "eyJhbGciOiJFZERTQSJ9.eyJzdWIiOiJnaGEifQ.c2lnbmF0dXJl";
+    const REPLY: &str = r#"{"name":"gha-0123abcd","niks3_token":{"ok":true,"expires_at":1,"server_url":"https://niks3.example.org","token":"eyJhbGciOiJFZERTQSJ9.eyJzdWIiOiJnaGEifQ.c2lnbmF0dXJl"}}"#;
+
+    #[test]
+    fn the_token_request_is_the_one_the_rworker_client_sends() {
+        assert_eq!(
+            niks3_token_command("gha-0123abcd", "user@host"),
+            "rworker niks3-token gha-0123abcd --owner user@host"
+        );
+        // Quoted like every other request: the gate sees one word per argument.
+        assert_eq!(
+            niks3_token_command("gha-1", "a b"),
+            "rworker niks3-token gha-1 --owner 'a b'"
+        );
+    }
+
+    #[test]
+    fn the_token_reply_is_parsed_strictly_and_never_quoted() {
+        let token = parse_niks3_reply(REPLY).unwrap();
+        assert_eq!(token.server_url, "https://niks3.example.org");
+        assert_eq!(token.token, TOKEN);
+        let refused = parse_niks3_reply(r#"{"niks3_token":{"ok":false,"error":"not-configured"}}"#)
+            .err()
+            .unwrap();
+        assert!(refused.to_string().contains("not-configured"), "{refused}");
+        for bad in [
+            "",
+            "not json",
+            "{}",
+            r#"{"niks3_token":{"ok":true}}"#,
+            r#"{"niks3_token":{"ok":true,"server_url":"http://x.example","token":"a.b.c"}}"#,
+            r#"{"niks3_token":{"ok":true,"server_url":"https://x.example","token":""}}"#,
+            r#"{"niks3_token":{"ok":true,"server_url":"https://x.example","token":"a b"}}"#,
+            r#"{"niks3_token":{"ok":true,"server_url":"https://x.example;id","token":"a.b.c"}}"#,
+            r#"{"niks3_token":{"ok":true,"server_url":"https://x.example","token":"a.b.c\n"}}"#,
+            // An error text that is not a plain word is not shown.
+            r#"{"niks3_token":{"ok":false,"error":"SECRET-Value; rm -rf"}}"#,
+        ] {
+            let error = parse_niks3_reply(bad).err().unwrap().to_string();
+            assert!(
+                !error.contains("SECRET") && !error.contains("a.b.c"),
+                "{error}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_install_script_takes_the_token_from_stdin_only() {
+        let script = niks3_install_script("https://niks3.example.org");
+        assert!(!script.contains(TOKEN) && !script.contains("eyJ"));
+        assert!(script.starts_with("umask 077;"), "{script}");
+        assert!(script.contains("chmod 0700 \"$d\""));
+        assert!(script.contains("$HOME/.config/rworker-niks3"));
+        assert!(script.contains("printf '%s\\n' https://niks3.example.org > \"$d/server-url\""));
+        // The token file is written from stdin and moved into place.
+        assert!(script.contains("cat > \"$d/token.new\" && mv -f \"$d/token.new\" \"$d/token\""));
+        // A hostile URL stays data.
+        assert!(niks3_install_script("https://x';id;'").contains("'https://x'\"'\"';id;'\"'\"''"));
+    }
+
+    #[test]
+    fn the_push_script_uploads_the_whole_closure_from_the_lease_store() {
+        let path = "/nix/store/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-termuxpp-system-phone";
+        let script = niks3_push_script(path);
+        assert!(script.starts_with("set -eu\n"));
+        // The lease's own store, where the build lives.
+        assert!(script.contains("store = $HOME/.local/share/nix/rworker"));
+        assert!(script.contains("PATH=\"$HOME/.local/bin:$PATH\""));
+        assert!(script.contains(&format!("nix path-info -r {path} > \"$list\"")));
+        assert!(script.contains("niks3 push --stdin < \"$list\""));
+        assert!(!script.contains("eyJ"));
+        // It parses.
+        let status = Command::new("sh")
+            .args(["-n", "-c", &script])
+            .status()
+            .unwrap();
+        assert!(status.success());
+        let status = Command::new("sh")
+            .args([
+                "-n",
+                "-c",
+                &niks3_install_script("https://niks3.example.org"),
+            ])
+            .status()
+            .unwrap();
+        assert!(status.success());
+    }
+
+    #[test]
+    fn the_probe_is_silent_and_uses_the_cache_keys() {
+        let probe = cache_probe_command("s3://b?profile=p", "k:1 k:2", "/nix/store/x-y");
+        assert_eq!(
+            probe,
+            [
+                "nix",
+                "--refresh",
+                "--option",
+                "trusted-public-keys",
+                "k:1 k:2",
+                "path-info",
+                "--store",
+                "s3://b?profile=p",
+                "/nix/store/x-y"
+            ]
+        );
+        let quiet = quiet(&probe);
+        assert_eq!(quiet[..4], ["sh", "-c", "exec \"$@\" 2>/dev/null", "sh"]);
+        assert_eq!(quiet[4..], probe);
+        // A miss prints nothing and fails; a success prints nothing either.
+        let out = Command::new("sh")
+            .args(quiet_of(&["sh", "-c", "echo noise >&2; exit 1"]))
+            .output()
+            .unwrap();
+        assert!(!out.status.success() && out.stderr.is_empty() && out.stdout.is_empty());
+    }
+
+    fn quiet_of(words: &[&str]) -> Vec<String> {
+        // `quiet` output minus the leading `sh`, to run with `sh` as program.
+        let words: Vec<String> = words.iter().map(|w| (*w).to_owned()).collect();
+        quiet(&words).into_iter().skip(1).collect()
+    }
+
     #[test]
     fn controller_requests() {
         let side = side("native");
@@ -1145,6 +1439,7 @@ mod tests {
             owner: "user@host".to_owned(),
             worker,
             released: true,
+            cache_push: false,
         };
         let command = worker_command(&lease, Some(Path::new("/run/agent.sock")), "true");
         let args: Vec<_> = command
