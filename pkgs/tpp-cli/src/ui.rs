@@ -3,9 +3,15 @@
 use tpp_session::client::SocketExchange;
 use tpp_session::json::{self, Value};
 
-pub const ACTIONS: &[&str] = &["more", "settings", "session-switcher", "sidebar"];
+pub const ACTIONS: &[&str] = &[
+    "more",
+    "settings",
+    "session-switcher",
+    "sidebar",
+    "tmux-switcher",
+];
 
-const HELP: &str = "Usage: tpp ui COMMAND [--json]\nOpen part of the TermuxPP interface from the visible terminal.\n\nCommands:\n  more                 Open the terminal More menu\n  settings             Open Settings [--search QUERY]\n  session-switcher     Open the session picker\n  sidebar              Open the session sidebar\n";
+const HELP: &str = "Usage: tpp ui COMMAND [--json]\nOpen part of the TermuxPP interface from the visible terminal.\n\nCommands:\n  more                 Open the terminal More menu\n  settings             Open Settings [--search QUERY]\n  session-switcher     Open the session picker\n  sidebar              Open the session sidebar\n  tmux-switcher        Open the tmux window picker\n";
 
 pub fn run(words: &[String], mut json_output: bool) -> i32 {
     let mut args = words.iter().map(String::as_str).peekable();

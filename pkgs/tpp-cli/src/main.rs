@@ -31,6 +31,7 @@ mod native;
 mod render;
 mod storage;
 mod table;
+mod tmux;
 mod ui;
 
 fn main() {

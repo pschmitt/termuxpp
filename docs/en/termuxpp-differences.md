@@ -412,7 +412,7 @@ The default is top center.
 The `tpp-session reload-settings` command reloads properties from disk and
 refreshes terminal styling in the app.
 
-## Remote tmux prototype
+## Remote tmux integration
 
 A shell-launched SSH attachment can publish its remote tmux windows under its
 TermuxPP sidebar entry. Tap a window to select it or tap **tmux windows** to
@@ -420,19 +420,20 @@ open the window picker. The sidebar refreshes as the active window, names
 and window list change. Upstream Termux's sidebar lists Android terminal
 sessions. [Upstream sidebar source](https://github.com/termux/termux-app/blob/master/app/src/main/java/com/termux/app/TermuxSessionsListViewController.java).
 
-Install [`tpp-tmux`](../../scripts/tpp-tmux) on the terminal's PATH and
-start a fresh TermuxPP terminal. The helper needs Python 3 and OpenSSH.
+The bundled `tpp tmux` command uses the terminal's OpenSSH client.
 A shell SSH wrapper can replace its interactive SSH invocation with
-`tpp-tmux 'exec tmux new-session -A -s main' -- -t HOST`. Use a current
-nixpp runtime for terminals launched inside the guest.
+`tpp tmux attach 'exec tmux new-session -A -s main' -- -t HOST`.
+Use `tpp tmux switcher` to open the picker from the active terminal and
+a current nixpp runtime for terminals launched inside the guest.
 
 The shell helper owns the SSH connection and opens extra channels on that
 connection to identify the attached tmux client, list windows and select
 a window. It sends snapshots over the app-UID session socket. The app
 clears the list when the attachment ends or its lease expires. The remote
-host needs tmux and the usual shell utilities. The prototype polls and
+host needs tmux and the usual shell utilities. The command polls and
 caps the snapshot to fit the session socket's request limit.
 [SSH multiplexing](https://man.openbsd.org/ssh_config#ControlMaster) ·
+[Rust CLI](../../pkgs/tpp-cli/src/tmux.rs) ·
 [TermuxPP attachment state](../../app/src/main/java/com/termux/app/TmuxWindows.java).
 
 ## Terminal session CLI
