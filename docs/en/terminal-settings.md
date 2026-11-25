@@ -144,6 +144,11 @@ After editing the file, run `tpp settings reload`. Open the sidebar while a
 tmux attachment is active to see its windows. The highlight follows the active
 tmux window, including when you switch with a keyboard shortcut.
 
+**Terminal tmux sidebar style** previews the active window with either a
+subtle outline and accent dot or a filled rounded accent pill. Set
+`terminal-tmux-sidebar-style = subtle` (default) or `rounded`.
+Both the layout and style dialogs show a preview before you save.
+
 ## Terminal feedback position
 
 Use **Settings → Properties → Appearance → terminal-toast-position** to move

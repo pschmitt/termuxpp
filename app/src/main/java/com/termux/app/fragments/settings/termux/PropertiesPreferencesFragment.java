@@ -198,6 +198,9 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
     }
 
     private String choiceLabel(String key, String value) {
+        if (TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_STYLE.equals(key))
+            return getString(TermuxPropertyConstants.TMUX_SIDEBAR_ROUNDED.equals(value)
+                ? R.string.ui_tmux_style_rounded : R.string.ui_tmux_style_subtle);
         if (TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_LAYOUT.equals(key)) {
             if (TermuxPropertyConstants.TMUX_SIDEBAR_DRILL_DOWN.equals(value))
                 return getString(R.string.ui_tmux_layout_drill_down);

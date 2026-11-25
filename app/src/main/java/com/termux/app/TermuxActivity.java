@@ -9,6 +9,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.ColorStateList;
+import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.RippleDrawable;
 import android.content.ServiceConnection;
@@ -83,6 +84,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.ColorUtils;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.viewpager.widget.ViewPager;
 
@@ -1118,7 +1120,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         }
     }
 
-    public void bindTmuxWindows(LinearLayout container, @Nullable TerminalSession session) {
+    public void bindTmuxWindows(View sessionRow, LinearLayout container, @Nullable TerminalSession session) {
+        ImageButton picker = sessionRow.findViewById(R.id.session_tmux_picker);
+        ImageButton expand = sessionRow.findViewById(R.id.session_tmux_expand);
+        picker.setVisibility(View.GONE);
+        expand.setVisibility(View.GONE);
         container.removeAllViews();
         String layout = tmuxSidebarLayout();
         JSONArray windows = session == null || mTermuxService == null
@@ -1136,11 +1142,17 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         }
 
         boolean collapsed = collapsedTmuxSessions.contains(session.mHandle);
-        addTmuxHeading(container, session, getString(collapsed ? R.string.ui_tmux_sidebar_expand
-            : R.string.ui_tmux_sidebar_collapse), view -> {
-                if (!collapsedTmuxSessions.remove(session.mHandle)) collapsedTmuxSessions.add(session.mHandle);
-                mTermuxSessionListViewController.notifyDataSetChanged();
-            });
+        container.setVisibility(collapsed ? View.GONE : View.VISIBLE);
+        picker.setVisibility(View.VISIBLE);
+        picker.setOnClickListener(view -> showTmuxSwitcher(session));
+        expand.setVisibility(View.VISIBLE);
+        expand.setRotation(collapsed ? -90 : 0);
+        expand.setContentDescription(getString(collapsed ? R.string.ui_tmux_sidebar_expand
+            : R.string.ui_tmux_sidebar_collapse));
+        expand.setOnClickListener(view -> {
+            if (!collapsedTmuxSessions.remove(session.mHandle)) collapsedTmuxSessions.add(session.mHandle);
+            mTermuxSessionListViewController.notifyDataSetChanged();
+        });
         if (!collapsed) addTmuxWindows(container, session, windows);
     }
 
@@ -1164,25 +1176,80 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     private void addTmuxWindows(LinearLayout container, TerminalSession session, JSONArray windows) {
+        boolean rounded = TermuxPropertyConstants.TMUX_SIDEBAR_ROUNDED.equals(mProperties.getInternalPropertyValue(
+            TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_STYLE, true));
+        int foreground = ContextCompat.getColor(this, R.color.ui_on_surface);
+        int muted = ContextCompat.getColor(this, R.color.ui_on_surface_variant);
+        int accent = MaterialColors.getColor(container, R.attr.termuxUiPrimary);
+        int onAccent = MaterialColors.getColor(container, R.attr.termuxUiOnPrimary);
+
+        LinearLayout group = new LinearLayout(this);
+        container.addView(group, new LinearLayout.LayoutParams(-1, -2));
+        View guide = new View(this);
+        guide.setBackgroundColor(ColorUtils.setAlphaComponent(foreground, 30));
+        group.addView(guide, new LinearLayout.LayoutParams(sidebarDp(1), -1));
+        LinearLayout rows = new LinearLayout(this);
+        rows.setOrientation(LinearLayout.VERTICAL);
+        rows.setPaddingRelative(sidebarDp(12), sidebarDp(2), 0, sidebarDp(4));
+        group.addView(rows, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+
         for (int i = 0; i < windows.length(); i++) {
             JSONObject window = windows.optJSONObject(i);
             boolean active = window.optBoolean("active");
             String label = window.optString("label");
-            TextView row = createTmuxRow(label);
+            String[] parts = label.split("  ", 2);
+
+            LinearLayout row = new LinearLayout(this);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setPaddingRelative(sidebarDp(14), 0, sidebarDp(14), 0);
+            applyTmuxRipple(row);
+            int textColor = active ? rounded ? onAccent : foreground : muted;
             if (active) {
-                row.setTypeface(row.getTypeface(), android.graphics.Typeface.BOLD);
                 GradientDrawable fill = new GradientDrawable();
-                fill.setCornerRadius(row.getPaddingStart());
-                fill.setColor(MaterialColors.getColor(row, R.attr.termuxUiPrimary));
+                fill.setCornerRadius(sidebarDp(rounded ? 24 : 12));
+                fill.setColor(rounded ? accent : ColorUtils.setAlphaComponent(foreground, 18));
+                if (!rounded) fill.setStroke(sidebarDp(1), ColorUtils.setAlphaComponent(foreground, 34));
                 row.setBackground(new RippleDrawable(ColorStateList.valueOf(
                     MaterialColors.getColor(row, R.attr.termuxUiRipple)), fill, null));
-                row.setTextColor(MaterialColors.getColor(row, R.attr.termuxUiOnPrimary));
-                row.setContentDescription(getString(R.string.ui_tmux_active_window, label));
             }
-            container.addView(row, new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+            if (parts.length == 2) {
+                TextView number = tmuxWindowText(parts[0], active && !rounded ? accent : textColor, active);
+                row.addView(number, new LinearLayout.LayoutParams(sidebarDp(24), -2));
+            }
+            TextView title = tmuxWindowText(parts.length == 2 ? parts[1] : label, textColor, active);
+            row.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
+            if (active) {
+                View dot = new View(this);
+                GradientDrawable circle = new GradientDrawable();
+                circle.setShape(GradientDrawable.OVAL);
+                circle.setColor(rounded ? onAccent : accent);
+                dot.setBackground(circle);
+                LinearLayout.LayoutParams dotLayout = new LinearLayout.LayoutParams(sidebarDp(7), sidebarDp(7));
+                dotLayout.setMarginStart(sidebarDp(8));
+                row.addView(dot, dotLayout);
+            }
+            LinearLayout.LayoutParams rowLayout = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, sidebarDp(48));
+            rowLayout.bottomMargin = sidebarDp(2);
+            rows.addView(row, rowLayout);
+            row.setContentDescription(active ? getString(R.string.ui_tmux_active_window, label) : label);
             row.setOnClickListener(view -> selectTmuxWindow(session, window.optString("id")));
         }
+    }
+
+    private TextView tmuxWindowText(String text, int color, boolean active) {
+        TextView view = new TextView(this);
+        view.setText(text);
+        view.setTextColor(color);
+        view.setTextSize(12);
+        view.setTypeface(Typeface.MONOSPACE, active ? Typeface.BOLD : Typeface.NORMAL);
+        view.setSingleLine();
+        view.setEllipsize(TextUtils.TruncateAt.END);
+        view.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        return view;
+    }
+
+    private int sidebarDp(int dp) {
+        return Math.round(dp * getResources().getDisplayMetrics().density);
     }
 
     private TextView createTmuxRow(String label) {

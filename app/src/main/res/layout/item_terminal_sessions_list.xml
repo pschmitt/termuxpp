@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- One terminal session. The list sets the activated state on this root for the current session. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical">
@@ -55,6 +56,25 @@
                 android:textAppearance="@style/TextAppearance.TermuxPP.Body"
                 android:textColor="@color/ui_session_row_text" />
         </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/session_tmux_picker"
+            style="@style/Widget.TermuxPP.IconButton"
+            android:layout_width="@dimen/ui_touch_target"
+            android:layout_height="@dimen/ui_touch_target"
+            android:contentDescription="@string/ui_tmux_sidebar_picker"
+            android:src="@drawable/ui_ic_transcript"
+            android:visibility="gone"
+            app:tint="?attr/termuxActivityDrawerImageTint" />
+
+        <ImageButton
+            android:id="@+id/session_tmux_expand"
+            style="@style/Widget.TermuxPP.IconButton"
+            android:layout_width="@dimen/ui_touch_target"
+            android:layout_height="@dimen/ui_touch_target"
+            android:src="@drawable/ui_ic_menu_chevron_down"
+            android:visibility="gone"
+            app:tint="?attr/termuxActivityDrawerImageTint" />
     </LinearLayout>
 
     <LinearLayout
@@ -62,7 +82,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingStart="48dp"
+        android:paddingStart="40dp"
         android:paddingEnd="16dp"
         android:visibility="gone" />
 </LinearLayout>

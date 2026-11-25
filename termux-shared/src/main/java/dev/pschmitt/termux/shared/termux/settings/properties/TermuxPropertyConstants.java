@@ -389,6 +389,9 @@ public final class TermuxPropertyConstants {
     public static final String TMUX_SIDEBAR_NESTED = "nested";
     public static final String TMUX_SIDEBAR_DRILL_DOWN = "drill-down";
     public static final String TMUX_SIDEBAR_MODES = "modes";
+    public static final String KEY_TERMINAL_TMUX_SIDEBAR_STYLE = "terminal-tmux-sidebar-style";
+    public static final String TMUX_SIDEBAR_SUBTLE = "subtle";
+    public static final String TMUX_SIDEBAR_ROUNDED = "rounded";
 
     public static final String KEY_TERMINAL_TOAST_POSITION = "terminal-toast-position";
     public static final int DEFAULT_TERMINAL_TOAST_GRAVITY = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
@@ -643,6 +646,7 @@ public final class TermuxPropertyConstants {
         KEY_TERMINAL_TRIPLE_TAP_FOCUS_TITLE,
         KEY_TERMINAL_TOAST_POSITION,
         KEY_TERMINAL_TMUX_SIDEBAR_LAYOUT,
+        KEY_TERMINAL_TMUX_SIDEBAR_STYLE,
 
         /* gesture command configuration */
         KEY_GESTURE_COMMAND_CONTEXT,

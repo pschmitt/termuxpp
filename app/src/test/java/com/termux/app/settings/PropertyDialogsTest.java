@@ -141,12 +141,44 @@ public class PropertyDialogsTest {
                 choice.getDialogMessage().toString()));
             int index = choice.getEntryValues().length - 1;
             list.performItemClick(null, index, list.getAdapter().getItemId(index));
+            Button confirm = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            if (dialog.isShowing() && confirm != null && confirm.getVisibility() == View.VISIBLE)
+                confirm.performClick();
             org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
             activity.getSupportFragmentManager().executePendingTransactions();
             assertEquals(key, choice.getEntryValues()[index].toString(), selected.get());
             tested++;
         }
         assertTrue("Boolean and enum dialogs must both be covered", tested > 10);
+    }
+
+    @Test public void sidebarChoicesShowPreviewsAndWaitForConfirmation() {
+        SettingsActivity activity = activity();
+        PropertiesPreferencesFragment parent = new PropertiesPreferencesFragment();
+        activity.getSupportFragmentManager().beginTransaction().replace(R.id.settings, parent).commitNow();
+        for (String key : new String[]{"terminal-tmux-sidebar-layout", "terminal-tmux-sidebar-style"}) {
+            androidx.preference.ListPreference choice = parent.findPreference(key);
+            java.util.concurrent.atomic.AtomicReference<String> saved = new java.util.concurrent.atomic.AtomicReference<>();
+            choice.setOnPreferenceChangeListener((preference, value) -> {
+                saved.set(value.toString());
+                return false;
+            });
+            parent.onDisplayPreferenceDialog(choice);
+            activity.getSupportFragmentManager().executePendingTransactions();
+            DialogFragment fragment = (DialogFragment) activity.getSupportFragmentManager()
+                .findFragmentByTag("property_choice");
+            assertNotNull(fragment);
+            AlertDialog dialog = (AlertDialog) fragment.requireDialog();
+            assertNotNull(dialog.getWindow().getDecorView().findViewWithTag("property-visual-preview"));
+            android.widget.ListView list = dialog.getListView();
+            int index = choice.getEntryValues().length - 1;
+            list.performItemClick(null, index, list.getAdapter().getItemId(index));
+            assertNull(saved.get());
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
+            org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idle();
+            activity.getSupportFragmentManager().executePendingTransactions();
+            assertEquals(choice.getEntryValues()[index].toString(), saved.get());
+        }
     }
 
     @Test public void choiceDialogSurvivesRecreationAndCancelDoesNotSave() {

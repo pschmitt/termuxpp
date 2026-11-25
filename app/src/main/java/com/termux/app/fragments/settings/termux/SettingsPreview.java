@@ -16,6 +16,8 @@ import android.widget.FrameLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
+import androidx.core.graphics.ColorUtils;
 
 import com.termux.app.settings.PropertyInputSpec;
 import com.termux.app.settings.AppAccent;
@@ -49,6 +51,8 @@ final class SettingsPreview extends FrameLayout {
             || key.equals("extra-keys-text-all-caps") || key.equals("extra-keys-button-active-text-color")
             || key.equals("extra-keys-button-active-background-color") || key.equals("extra-keys-button-corner-radius")
             || key.equals("terminal-toolbar-height") || key.equals("night-mode") || key.equals(AppAccent.KEY)
+            || key.equals(TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_LAYOUT)
+            || key.equals(TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_STYLE)
             || key.endsWith("-action");
     }
 
@@ -129,6 +133,11 @@ final class SettingsPreview extends FrameLayout {
         super.onDraw(canvas);
         if (isKeyboardPreview()) return;
         if (key.equals("night-mode") || key.equals(AppAccent.KEY)) { drawTheme(canvas); return; }
+        if (key.equals(TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_LAYOUT)
+            || key.equals(TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_STYLE)) {
+            drawTmuxSidebar(canvas);
+            return;
+        }
         if (key.endsWith("-action")) { drawAction(canvas); return; }
         float w = getWidth(), h = getHeight();
         paint.setTypeface(Typeface.MONOSPACE);
@@ -153,6 +162,65 @@ final class SettingsPreview extends FrameLayout {
         }
         if (blink > 0 && animations && isAttachedToWindow()) postInvalidateDelayed(Math.max(50, blink));
         if (key.equals("terminal-toast-position") || key.equals("gesture-feedback-position")) drawToast(canvas, w, h);
+    }
+
+    private void drawTmuxSidebar(Canvas canvas) {
+        String layout = value(TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_LAYOUT,
+            TermuxPropertyConstants.TMUX_SIDEBAR_NESTED);
+        boolean rounded = TermuxPropertyConstants.TMUX_SIDEBAR_ROUNDED.equalsIgnoreCase(value(
+            TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_STYLE, TermuxPropertyConstants.TMUX_SIDEBAR_SUBTLE));
+        boolean nested = !TermuxPropertyConstants.TMUX_SIDEBAR_DRILL_DOWN.equalsIgnoreCase(layout)
+            && !TermuxPropertyConstants.TMUX_SIDEBAR_MODES.equalsIgnoreCase(layout);
+        boolean modes = TermuxPropertyConstants.TMUX_SIDEBAR_MODES.equalsIgnoreCase(layout);
+        int foreground = ContextCompat.getColor(getContext(), R.color.ui_on_surface);
+        int muted = ContextCompat.getColor(getContext(), R.color.ui_on_surface_variant);
+        int accent = MaterialColors.getColor(getContext(), R.attr.termuxUiPrimary, foreground);
+        int onAccent = MaterialColors.getColor(getContext(), R.attr.termuxUiOnPrimary, Color.BLACK);
+        float right = getWidth() - dp(12);
+        float left = dp(nested ? 36 : 18);
+        float rowsTop = dp(57);
+        canvas.drawColor(ContextCompat.getColor(getContext(), R.color.ui_surface));
+
+        paint.setTypeface(Typeface.DEFAULT_BOLD);
+        paint.setTextSize(dp(12));
+        paint.setColor(foreground);
+        if (modes) {
+            canvas.drawText(getContext().getString(R.string.ui_tmux_sidebar_sessions), dp(16), dp(24), paint);
+            paint.setColor(accent);
+            canvas.drawLine(dp(16), dp(30), dp(36), dp(30), paint);
+            paint.setColor(foreground);
+        } else {
+            String heading = getContext().getString(nested ? R.string.ui_drawer_title : R.string.ui_tmux_sidebar_back);
+            canvas.drawText(heading, dp(14), dp(24), paint);
+        }
+        paint.setTypeface(Typeface.DEFAULT);
+        canvas.drawText(getContext().getString(R.string.ui_tmux_preview_terminal), dp(16), dp(47), paint);
+        if (nested) {
+            paint.setColor(ColorUtils.setAlphaComponent(foreground, 30));
+            canvas.drawRect(left - dp(9), rowsTop, left - dp(8), dp(104), paint);
+        }
+
+        paint.setTypeface(Typeface.MONOSPACE);
+        paint.setTextSize(dp(11));
+        paint.setColor(muted);
+        canvas.drawText("0  editor", left + dp(8), rowsTop + dp(15), paint);
+        float radius = dp(rounded ? 12 : 7);
+        float top = rowsTop + dp(23);
+        float bottom = rowsTop + dp(46);
+        paint.setColor(rounded ? accent : ColorUtils.setAlphaComponent(foreground, 18));
+        canvas.drawRoundRect(left, top, right, bottom, radius, radius, paint);
+        if (!rounded) {
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(dp(1));
+            paint.setColor(ColorUtils.setAlphaComponent(foreground, 34));
+            canvas.drawRoundRect(left, top, right, bottom, radius, radius, paint);
+            paint.setStyle(Paint.Style.FILL);
+        }
+        paint.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
+        paint.setColor(rounded ? onAccent : foreground);
+        canvas.drawText("1  tests", left + dp(8), top + dp(15), paint);
+        paint.setColor(rounded ? onAccent : accent);
+        canvas.drawCircle(right - dp(12), top + dp(12), dp(3), paint);
     }
 
     private void drawTheme(Canvas canvas) {

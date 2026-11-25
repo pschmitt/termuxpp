@@ -59,7 +59,7 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
 
         TerminalSession sessionAtRow = getItem(position).getTerminalSession();
         LinearLayout tmux = sessionRowView.findViewById(R.id.session_tmux_windows);
-        mActivity.bindTmuxWindows(tmux, sessionAtRow);
+        mActivity.bindTmuxWindows(sessionRowView, tmux, sessionAtRow);
         View header = sessionRowView.findViewById(R.id.session_header);
         if (sessionAtRow == null) {
             sessionTitleView.setText(R.string.ui_session_null);
