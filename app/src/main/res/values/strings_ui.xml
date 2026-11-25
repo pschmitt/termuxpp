@@ -9,6 +9,7 @@
     <string name="settings_action_new_session">Open a new terminal session.</string>
     <string name="settings_action_sidebar">Open the session shelf.</string>
     <string name="settings_action_picker">Open the session picker.</string>
+    <string name="settings_action_tmux_picker">Open the current terminal’s tmux window picker.</string>
     <string name="settings_action_menu">Open the terminal menu.</string>
     <string name="settings_action_font">Change the terminal font size.</string>
     <string name="settings_action_command">Run the configured command in a new session.</string>

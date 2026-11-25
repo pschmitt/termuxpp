@@ -258,7 +258,7 @@ final class SettingsPreview extends FrameLayout {
         if (key.equals("terminal-single-tap-action")) return "show-keyboard";
         if (key.equals("extra-keys-swipe-right-action")) return "next-session";
         if (key.startsWith("volume-")) return "modifier";
-        return "none";
+        return TermuxPropertyConstants.defaultMultiFingerSwipeAction(key).getValue();
     }
 
     private void drawAction(Canvas canvas) {
@@ -283,6 +283,7 @@ final class SettingsPreview extends FrameLayout {
             case "new-session": description = R.string.settings_action_new_session; break;
             case "open-sidebar": description = R.string.settings_action_sidebar; break;
             case "open-session-switcher": description = R.string.settings_action_picker; break;
+            case "open-tmux-switcher": description = R.string.settings_action_tmux_picker; break;
             case "open-menu": description = R.string.settings_action_menu; break;
             case "font-size-up": case "font-size-down": description = R.string.settings_action_font; break;
             case "run-command": description = R.string.settings_action_command; break;
@@ -318,7 +319,8 @@ final class SettingsPreview extends FrameLayout {
                     x + dp(13 + col * 10), y + dp(14 + row * 10), dp(1), dp(1), paint);
         } else if (action.equals("open-sidebar")) {
             canvas.drawRect(x, y, x + dp(22), y + dp(48), paint);
-        } else if (action.equals("open-menu") || action.equals("open-session-switcher")) {
+        } else if (action.equals("open-menu") || action.equals("open-session-switcher")
+            || action.equals("open-tmux-switcher")) {
             for (int row = 0; row < 3; row++) canvas.drawRoundRect(x + dp(9), y + dp(9 + row * 11),
                 x + dp(53), y + dp(14 + row * 11), dp(2), dp(2), paint);
         } else {

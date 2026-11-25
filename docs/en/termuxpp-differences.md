@@ -412,7 +412,9 @@ refreshes terminal styling in the app.
 ## Multi-finger terminal swipes
 
 TermuxPP can bind a two- or three-finger swipe to a terminal gesture action.
-Up, down, left, and right are separate bindings and are unbound by default.
+Up, down, left, and right are separate bindings. By default, a two-finger
+swipe down opens the current terminal’s tmux window picker when available.
+The other seven bindings are unbound.
 [Gesture settings](terminal-settings.md#tap-and-swipe-actions).
 
 ## Remote tmux integration

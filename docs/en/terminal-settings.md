@@ -163,8 +163,11 @@ short terminal messages such as the session number. The default is
 
 Bind a two- or three-finger swipe under **Settings → Properties → Gestures**.
 Each finger count has separate up, down, left, and right bindings. Move the
-fingers together and lift to run the assigned action. All eight are unbound
-by default. Pinch-to-zoom continues to work.
+fingers together and lift to run the assigned action. By default, swiping down
+with two fingers opens the TermuxPP window picker for the current tmux
+attachment. The other seven swipes are unbound. Set
+`terminal-2-finger-swipe-down-action = none` to disable that binding.
+Pinch-to-zoom continues to work.
 
 For example, set these in `termuxpp.properties`:
 
@@ -217,6 +220,7 @@ The gesture keys are independent and active at the same time. Valid values, case
 | `toggle-text-input` | Switch the extra keys toolbar to its text input, or back to the extra keys. Does nothing while the toolbar is hidden. |
 | `open-sidebar` | Open the sidebar with the session list. It is not opened while it is locked closed in copy mode. |
 | `open-session-switcher` | Open a compact picker with the current session selected, plus New session, Keyboard and Settings actions. |
+| `open-tmux-switcher` | Open the TermuxPP window picker for the current terminal’s local or remote tmux attachment. |
 | `open-menu` | Open the terminal menu, the bottom sheet that a long press on the terminal and then "More..." opens (Extract URL, Share transcript, Autofill, Reset, Kill process, Style, Settings and so on). It never touches the soft keyboard. |
 | `font-size-up` | Increase the terminal font size by one step, like pinching out. It never touches the soft keyboard. |
 | `font-size-down` | Decrease the terminal font size by one step, like pinching in. It never touches the soft keyboard. |
@@ -386,7 +390,7 @@ same file:
 
 The two buttons are independent. Valid values of the action keys, case-insensitive, are `modifier`
 and every action of the table above except `run-command` (`none`, `show-keyboard`, `toggle-keyboard`,
-`next-session`, `previous-session`, `open-sidebar`, `open-session-switcher`, `open-menu`, `font-size-up`, `font-size-down`,
+`next-session`, `previous-session`, `open-sidebar`, `open-session-switcher`, `open-tmux-switcher`, `open-menu`, `font-size-up`, `font-size-down`,
 `send-keys`).
 The `*-keys` keys are written as described in "Sending keys".
 

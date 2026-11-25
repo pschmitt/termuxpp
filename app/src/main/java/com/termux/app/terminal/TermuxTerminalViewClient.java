@@ -352,8 +352,14 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
 
     @Override
     public boolean hasMultiFingerSwipeAction(int fingers, MultiFingerSwipe.Direction direction) {
-        return mActivity.getProperties().getTerminalMultiFingerSwipeAction(
-            fingers, direction.name().toLowerCase(Locale.ROOT)) != TerminalGestureAction.NONE;
+        TerminalGestureAction action = mActivity.getProperties().getTerminalMultiFingerSwipeAction(
+            fingers, direction.name().toLowerCase(Locale.ROOT));
+        if (action == TerminalGestureAction.OPEN_TMUX_SWITCHER) {
+            TermuxService service = mActivity.getTermuxService();
+            TerminalSession session = mActivity.getCurrentSession();
+            return service != null && session != null && service.getTmuxWindows(session).length() > 0;
+        }
+        return action != TerminalGestureAction.NONE;
     }
 
     @Override
@@ -474,6 +480,11 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
                 // The drawer is locked closed while copying.
                 if (drawer.getDrawerLockMode(Gravity.LEFT) != DrawerLayout.LOCK_MODE_LOCKED_CLOSED)
                     drawer.openDrawer(Gravity.LEFT);
+            }
+
+            @Override
+            public void openTmuxSwitcher() {
+                mActivity.showTmuxSwitcher(mActivity.getCurrentSession());
             }
 
             @Override

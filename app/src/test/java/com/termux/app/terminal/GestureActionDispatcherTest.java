@@ -33,6 +33,7 @@ public class GestureActionDispatcherTest {
         @Override public void toggleTextInput() { calls.add("textInput"); }
         @Override public void openSidebar() { calls.add("sidebar"); }
         @Override public void openSessionSwitcher() { calls.add("switcher"); }
+        @Override public void openTmuxSwitcher() { calls.add("tmuxSwitcher"); }
         @Override public void openMenu() { calls.add("menu"); }
         @Override public void changeFontSize(boolean increase) { calls.add(increase ? "fontUp" : "fontDown"); }
         @Override public boolean isSoftKeyboardDisabled() { return keyboardDisabled; }
@@ -61,6 +62,13 @@ public class GestureActionDispatcherTest {
     public void sessionSwitcherOpensThePickerWithoutChangingTheKeyboard() {
         GestureActionDispatcher.perform(TerminalGestureAction.OPEN_SESSION_SWITCHER, mTarget);
         assertEquals(java.util.Collections.singletonList("switcher"), mTarget.calls);
+        assertEquals(0, mTarget.visibilityQueries);
+    }
+
+    @Test
+    public void tmuxSwitcherOpensTheTmuxPickerWithoutChangingTheKeyboard() {
+        GestureActionDispatcher.perform(TerminalGestureAction.OPEN_TMUX_SWITCHER, mTarget);
+        assertEquals(java.util.Collections.singletonList("tmuxSwitcher"), mTarget.calls);
         assertEquals(0, mTarget.visibilityQueries);
     }
 

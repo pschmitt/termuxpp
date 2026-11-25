@@ -131,6 +131,18 @@ public class TerminalGestureActionTest {
     }
 
     @Test
+    public void twoFingerSwipeDownDefaultsToTmuxPickerAndCanBeDisabled() {
+        String key = TermuxPropertyConstants.terminalMultiFingerSwipeProperty(2, "down", "action");
+        assertEquals("open-tmux-switcher",
+            TermuxSharedProperties.getInternalTermuxPropertyValueFromValue(null, key, null));
+        assertEquals("none",
+            TermuxSharedProperties.getInternalTermuxPropertyValueFromValue(null, key, "none"));
+        String otherKey = TermuxPropertyConstants.terminalMultiFingerSwipeProperty(3, "down", "action");
+        assertEquals("none",
+            TermuxSharedProperties.getInternalTermuxPropertyValueFromValue(null, otherKey, null));
+    }
+
+    @Test
     public void parseOrDefaultFallsBack() {
         assertSame(TerminalGestureAction.SHOW_KEYBOARD,
             TerminalGestureAction.parseOrDefault("bogus", TerminalGestureAction.SHOW_KEYBOARD));
@@ -148,7 +160,7 @@ public class TerminalGestureActionTest {
 
     @Test
     public void validValuesListsEveryValue() {
-        assertEquals("none, show-keyboard, toggle-keyboard, toggle-text-input, next-session, previous-session, new-session, open-sidebar, open-session-switcher, open-menu, font-size-up, font-size-down, run-command, send-keys",
+        assertEquals("none, show-keyboard, toggle-keyboard, toggle-text-input, next-session, previous-session, new-session, open-sidebar, open-session-switcher, open-tmux-switcher, open-menu, font-size-up, font-size-down, run-command, send-keys",
             TerminalGestureAction.getValidValues());
     }
 

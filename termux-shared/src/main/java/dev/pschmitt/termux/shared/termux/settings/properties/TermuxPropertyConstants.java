@@ -605,6 +605,11 @@ public final class TermuxPropertyConstants {
         return java.util.Collections.unmodifiableSet(properties);
     }
 
+    public static TerminalGestureAction defaultMultiFingerSwipeAction(String key) {
+        return "terminal-2-finger-swipe-down-action".equals(key)
+            ? TerminalGestureAction.OPEN_TMUX_SWITCHER : TerminalGestureAction.NONE;
+    }
+
     public static String terminalMultiFingerSwipeProperty(int fingers, String direction, String type) {
         return "terminal-" + fingers + "-finger-swipe-" + direction + "-" + type;
     }

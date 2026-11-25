@@ -57,7 +57,8 @@ public final class PropertyInputSpec {
             String base = key.substring(0, key.lastIndexOf('-') + 1);
             String trigger = base.substring("terminal-".length(), base.length() - 1).replace('-', ' ');
             if (key.endsWith("-action"))
-                return gesture("a " + trigger + " on the terminal", base + "keys", TerminalGestureAction.NONE);
+                return gesture("a " + trigger + " on the terminal", base + "keys",
+                    TermuxPropertyConstants.defaultMultiFingerSwipeAction(key));
             if (key.endsWith("-keys")) return keySequence("a " + trigger, base + "action");
             return commandHelp("a " + trigger + " bound to run-command");
         }

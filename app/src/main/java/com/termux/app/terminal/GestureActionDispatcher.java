@@ -32,6 +32,7 @@ public final class GestureActionDispatcher {
 
         /** Open the compact session picker. */
         void openSessionSwitcher();
+        void openTmuxSwitcher();
 
         /** Open the terminal menu (the bottom sheet), the same one that the long press opens. */
         void openMenu();
@@ -116,6 +117,9 @@ public final class GestureActionDispatcher {
 
             case OPEN_SESSION_SWITCHER:
                 target.openSessionSwitcher();
+                break;
+            case OPEN_TMUX_SWITCHER:
+                target.openTmuxSwitcher();
                 break;
 
             case OPEN_MENU:

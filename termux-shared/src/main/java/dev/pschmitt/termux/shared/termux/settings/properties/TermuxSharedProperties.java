@@ -262,7 +262,8 @@ public abstract class TermuxSharedProperties {
         if (key == null) return null;
         if (TermuxPropertyConstants.TERMINAL_MULTI_FINGER_SWIPE_PROPERTIES.contains(key)) {
             if (key.endsWith("-action"))
-                return getGestureActionInternalPropertyValueFromValue(key, value, TerminalGestureAction.NONE).getValue();
+                return getGestureActionInternalPropertyValueFromValue(key, value,
+                    TermuxPropertyConstants.defaultMultiFingerSwipeAction(key)).getValue();
             if (key.endsWith("-keys")) return getKeySequenceInternalPropertyValueFromValue(key, value);
             return getGestureCommandInternalPropertyValueFromValue(value);
         }
@@ -936,7 +937,7 @@ public abstract class TermuxSharedProperties {
             return TermuxPropertyConstants.DEFAULT_TERMINAL_SINGLE_TAP_ACTION;
         if (key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_SWIPE_RIGHT_ACTION))
             return TermuxPropertyConstants.DEFAULT_EXTRA_KEYS_SWIPE_RIGHT_ACTION;
-        return TerminalGestureAction.NONE;
+        return TermuxPropertyConstants.defaultMultiFingerSwipeAction(key);
     }
 
     /** Get the cached keys of a {@code *-keys} property, {@code null} if they are not set or not valid. */
