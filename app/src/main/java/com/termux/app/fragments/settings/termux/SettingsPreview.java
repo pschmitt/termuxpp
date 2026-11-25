@@ -168,7 +168,7 @@ final class SettingsPreview extends FrameLayout {
         String layout = value(TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_LAYOUT,
             TermuxPropertyConstants.TMUX_SIDEBAR_NESTED);
         boolean rounded = TermuxPropertyConstants.TMUX_SIDEBAR_ROUNDED.equalsIgnoreCase(value(
-            TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_STYLE, TermuxPropertyConstants.TMUX_SIDEBAR_SUBTLE));
+            TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_STYLE, TermuxPropertyConstants.DEFAULT_TMUX_SIDEBAR_STYLE));
         boolean nested = !TermuxPropertyConstants.TMUX_SIDEBAR_DRILL_DOWN.equalsIgnoreCase(layout)
             && !TermuxPropertyConstants.TMUX_SIDEBAR_MODES.equalsIgnoreCase(layout);
         boolean modes = TermuxPropertyConstants.TMUX_SIDEBAR_MODES.equalsIgnoreCase(layout);

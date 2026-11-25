@@ -147,7 +147,7 @@ tmux window, including when you switch with a keyboard shortcut.
 
 **Terminal tmux sidebar style** previews the active window with either a
 subtle outline and accent dot or a filled rounded accent pill. Set
-`terminal-tmux-sidebar-style = subtle` (default) or `rounded`.
+`terminal-tmux-sidebar-style = rounded` (default) or `subtle`.
 Both the layout and style dialogs show a preview before you save.
 
 The session picker and the tmux window picker use the same rows as the

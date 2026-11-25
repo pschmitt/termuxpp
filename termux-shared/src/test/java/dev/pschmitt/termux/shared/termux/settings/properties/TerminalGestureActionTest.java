@@ -27,6 +27,14 @@ public class TerminalGestureActionTest {
     }
 
     @Test
+    public void tmuxSidebarStyleDefaultsToRounded() {
+        String key = TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_STYLE;
+        assertEquals("rounded", TermuxSharedProperties.getInternalTermuxPropertyValueFromValue(null, key, null));
+        assertEquals("rounded", TermuxSharedProperties.getInternalTermuxPropertyValueFromValue(null, key, "invalid"));
+        assertEquals("subtle", TermuxSharedProperties.getInternalTermuxPropertyValueFromValue(null, key, "Subtle"));
+    }
+
+    @Test
     public void feedbackStyleDefaultsAndParses() {
         String key = TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_STYLE;
         assertEquals("soft-flash", TermuxSharedProperties.getInternalTermuxPropertyValueFromValue(null, key, null));

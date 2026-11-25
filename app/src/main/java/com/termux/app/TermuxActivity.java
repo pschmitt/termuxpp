@@ -1348,27 +1348,14 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         JSONArray windows = mTermuxService.getTmuxWindows(session);
         if (windows.length() == 0) return false;
 
-        // The same rows as the sidebar, in its subtle or rounded style, under the name of the terminal.
+        // Just the windows, as rows like the sidebar's in its subtle or rounded style.
         LinearLayout list = new LinearLayout(this);
         ScrollView content = pickerContent(list);
-        int index = mTermuxService.getIndexOfSession(session);
-        String title = session.mSessionName;
-        if (TextUtils.isEmpty(title)) title = session.getTitle();
-        if (TextUtils.isEmpty(title)) title = getString(R.string.ui_session_unnamed, index + 1);
-        TextView heading = createTmuxRow(index >= 0 ? (index + 1) + "  " + title : title);
-        heading.setTextColor(ContextCompat.getColor(this, R.color.ui_on_surface_variant));
-        heading.setPaddingRelative(sidebarDp(24), 0, sidebarDp(24), 0);
-        heading.setBackground(null);
-        list.addView(heading, new LinearLayout.LayoutParams(-1, -2));
-        LinearLayout windowsView = new LinearLayout(this);
-        windowsView.setOrientation(LinearLayout.VERTICAL);
-        windowsView.setPaddingRelative(sidebarDp(12), 0, sidebarDp(12), 0);
-        list.addView(windowsView, new LinearLayout.LayoutParams(-1, -2));
-        View activeRow = addTmuxWindows(windowsView, session, windows, false, this::dismissTmuxSwitcher);
+        list.setPaddingRelative(sidebarDp(12), sidebarDp(12), sidebarDp(12), sidebarDp(8));
+        View activeRow = addTmuxWindows(list, session, windows, false, this::dismissTmuxSwitcher);
         scrollPickerTo(content, activeRow);
 
         tmuxSwitcher = DialogUtils.builder(this)
-            .setTitle(R.string.ui_tmux_switcher_title)
             .setView(content)
             .create();
         tmuxSwitcher.setOnDismissListener(dialog -> tmuxSwitcher = null);

@@ -392,6 +392,7 @@ public final class TermuxPropertyConstants {
     public static final String KEY_TERMINAL_TMUX_SIDEBAR_STYLE = "terminal-tmux-sidebar-style";
     public static final String TMUX_SIDEBAR_SUBTLE = "subtle";
     public static final String TMUX_SIDEBAR_ROUNDED = "rounded";
+    public static final String DEFAULT_TMUX_SIDEBAR_STYLE = TMUX_SIDEBAR_ROUNDED;
 
     public static final String KEY_TERMINAL_TOAST_POSITION = "terminal-toast-position";
     public static final int DEFAULT_TERMINAL_TOAST_GRAVITY = Gravity.TOP | Gravity.CENTER_HORIZONTAL;

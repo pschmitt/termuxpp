@@ -447,6 +447,9 @@ A shell SSH wrapper can replace its interactive SSH invocation with
 Use `tpp tmux switcher` to open the picker from the active terminal and
 a current nixpp runtime for terminals launched inside the guest.
 
+The window picker lists only the window rows, without a title or the
+terminal's name.
+
 The shell helper owns the SSH connection. It keeps one remote `sh` open on
 that connection to identify the attached tmux client, list windows and select
 a window, and falls back to a new channel per command if that shell breaks.
