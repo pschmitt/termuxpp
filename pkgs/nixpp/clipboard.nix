@@ -5,7 +5,6 @@
   callPackage,
   coreutils,
   findutils,
-  jq,
   lib,
   openssh,
   symlinkJoin,
@@ -41,7 +40,6 @@ symlinkJoin {
     ])
     (tool "termuxpp-image-paste" ./scripts/image-paste.sh [
       coreutils
-      jq
       openssh
     ])
   ];

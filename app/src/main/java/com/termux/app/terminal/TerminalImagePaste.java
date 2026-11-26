@@ -35,7 +35,8 @@ import java.util.concurrent.TimeUnit;
  * Delivers an image pasted into a session (from the keyboard or the clipboard) to the program
  * running in it. A terminal only carries text, so the image is handed over as a file and the guest
  * helper {@value #HELPER} puts it where that program reads images: the guest's own wl-paste for a
- * local session, or the clipboard of the host the session's title names, over SSH. TermuxPP then
+ * local session, or, when the session's foreground process is an SSH connection, that host's
+ * clipboard over a connection with the same destination and options. TermuxPP then
  * sends Ctrl+V, the image paste key of Claude Code and similar tools, or pastes the text the helper
  * returns (a path when the host has no wl-copy).
  */
@@ -93,7 +94,7 @@ final class TerminalImagePaste {
     static void paste(@NonNull Activity activity, @NonNull TerminalSession session, @NonNull Uri uri,
                       @NonNull String mimeType, @Nullable Runnable release) {
         Context context = activity.getApplicationContext();
-        String title = session.getTitle();
+        int pid = session.isRunning() ? session.getPid() : -1;
         EXECUTOR.execute(() -> {
             Result result;
             File image = null;
@@ -105,7 +106,7 @@ final class TerminalImagePaste {
                 if (release != null) release.run();
             }
             result = image == null ? Result.failed("Could not read the pasted image")
-                : deliver(context, title == null ? "" : title, mimeType, image);
+                : deliver(context, pid, mimeType, image);
             activity.runOnUiThread(() -> apply(activity, session, result));
         });
     }
@@ -164,7 +165,7 @@ final class TerminalImagePaste {
 
     /** Runs the guest helper and maps its last line ("key" or "text PAYLOAD") to a result. */
     @NonNull
-    static Result deliver(@NonNull Context context, @NonNull String title, @NonNull String mimeType, @NonNull File image) {
+    static Result deliver(@NonNull Context context, int pid, @NonNull String mimeType, @NonNull File image) {
         if (!TermuxNix.isProvisioned() || !TermuxNix.isReady()) return Result.text(image.getPath());
         List<String> command = new ArrayList<>();
         command.add(TermuxNix.NIXPP_PATH);
@@ -173,8 +174,11 @@ final class TerminalImagePaste {
         command.add(HELPER);
         command.add("--type");
         command.add(mimeType);
-        command.add("--title");
-        command.add(title);
+        if (pid > 0) {
+            // The helper finds the session's SSH connection below its shell process.
+            command.add("--pid");
+            command.add(Integer.toString(pid));
+        }
         command.add(image.getPath());
         ProcessBuilder builder = new ProcessBuilder(command);
         builder.environment().clear();

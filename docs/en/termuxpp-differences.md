@@ -461,9 +461,14 @@ the guest helper `termuxpp-image-paste`:
 - For a session on the phone, the guest's `wl-paste` serves the image, so a
   program that reads images with wl-clipboard, such as Claude Code's Ctrl+V,
   attaches it.
-- For a session whose title names another host (`t:HOST:`, `user@HOST` or
-  `tmux:SESSION@HOST`), the helper puts the image on that host's clipboard with
-  `wl-copy` over the guest's SSH configuration.
+- For a session whose foreground process is an SSH connection (`ssh`,
+  `autossh`, or `mosh-client`, whose host is reached with `ssh`), the helper
+  puts the image on that host's clipboard with `wl-copy`. It finds the
+  connection below the session's shell process and connects again with the same
+  destination and connection options (`-p`, `-l`, `-i`, `-J`, `-F`, `-o`,
+  `-S`, ...), without forwards or a remote command. ProxyJump helpers,
+  `-N`/`-f` tunnels and background connections are not used; the search
+  follows pschmitt/tmux-ssh-split.
 
 TermuxPP then sends Ctrl+V to the session. A host without `wl-copy` gets the
 file copied to `~/.cache/termuxpp-paste/` instead, and its path is pasted.
