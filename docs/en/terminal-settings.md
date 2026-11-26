@@ -736,7 +736,7 @@ extra-keys:
 ```
 
 In **Extra keys → Edit layout**, open a row’s menu and choose **Columns in this row**.
-New slots appear as **+** in the editor and stay blank in the terminal until assigned a key.
+New slots appear as faint spacers (␣) in the editor and stay blank in the terminal until assigned a key.
 In YAML, each list under `extra-keys.keys` is a row, and each entry is one column.
 An empty string reserves a blank slot.
 
@@ -749,6 +749,28 @@ their respective bindings.
 extra-keys:
   keys:
     - [{key: LEFT, fling-left: HOME}, {key: DOWN, fling-down: PGDN}, {key: RIGHT, fling-right: END}]
+```
+
+A key, or any of its gestures, can run an app **action** instead of sending input: `action` takes
+the same names as the gesture settings (`open-left-sidebar`, `open-right-sidebar`, `new-session`,
+`next-session`, `previous-session`, `open-session-switcher`, `open-tmux-switcher`, `open-menu`,
+`show-keyboard`, `toggle-keyboard`, `toggle-text-input`, `font-size-up`, `font-size-down`).
+Use `macro` to send keys and `command` to run a command. An action key shows a symbol unless
+`display` sets a label. **Double tap** (`double-tap`) binds a second tap within the double-tap
+timeout; only keys that have one wait for it, so other keys stay instant.
+
+A **long-press menu** (`menu`) lists up to 12 alternates, each a key name or a key object with
+`key`, `macro`, `command` or `action`. Long-press the key, slide to an item and lift the finger to
+choose it; the item nearest to the finger is highlighted, starting with the one above the key.
+A key has either a long-press menu or a `hold` key, not both. In the layout editor, use
+**Long-press menu → Add menu item**.
+
+```yaml
+extra-keys:
+  keys:
+    - - {key: "|", popup: "-", menu: ["~", "/", "\\"]}
+      - {action: open-left-sidebar, double-tap: {action: open-right-sidebar}}
+      - {key: ESC, fling-left: {action: previous-session}, fling-right: {action: next-session}}
 ```
 
 A key object can set `inset` from 0 to 8 dp to leave space on each side of its keycap.

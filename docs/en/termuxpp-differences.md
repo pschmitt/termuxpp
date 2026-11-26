@@ -346,7 +346,8 @@ Empty rows and spacers stay visible so they can be selected. An inline inspector
 edits every key attribute and updates the preview while you type: the tap action
 (key, macro, shell command or spacer, with a palette of special keys), label, text
 and background colors (swatches or hex), corner label (automatic, custom text or off) and spacing, and the swipe-up,
-long-press and left, right and down fling gestures. Undo and redo cover every
+long-press, double-tap and left, right and down fling gestures, a long-press menu, and app
+actions such as opening the sidebar for the tap or any gesture. Undo and redo cover every
 change. An optional **Advanced JSON** editor preserves support for complex layouts,
 and key attributes the editor does not know are retained. Layout changes remain a
 draft until **Save**; **Cancel** asks before discarding them and leaves the file
@@ -567,8 +568,13 @@ Command strings are redacted from property and execution logs. Sources: [gesture
 and [gesture documentation](terminal-settings.md#tap-and-swipe-actions).
 
 An extra key can define a `hold` key independently of its swipe-up `popup`.
-It can also bind left, right, and down flings. The horizontal bindings take priority
-over a row swipe starting on that key.
+It can also bind left, right, and down flings and a double tap, and a long press can open a menu
+of up to 12 alternates that the finger slides across, like the accent popup of a phone keyboard.
+Any of these, and the tap itself, can send a key, a macro, run a command or run an app `action`
+such as `open-left-sidebar`. The horizontal bindings take priority over a row swipe starting on
+that key. Only keys with a double tap delay their single tap. Sources:
+[long-press menu](../../termux-shared/src/main/java/dev/pschmitt/termux/shared/termux/extrakeys/ExtraKeyMenu.java)
+and [key actions](../../app/src/main/java/com/termux/app/terminal/io/TermuxTerminalExtraKeys.java).
 A held modifier arms for one keypress and shows its label while armed.
 Tap the shared key to cancel the alternate modifier, double-tap to lock it,
 or tap locked Shift to return to the primary key.

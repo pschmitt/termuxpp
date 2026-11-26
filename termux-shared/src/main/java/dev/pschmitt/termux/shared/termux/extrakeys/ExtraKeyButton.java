@@ -8,7 +8,11 @@ import androidx.annotation.Nullable;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import dev.pschmitt.termux.shared.termux.settings.properties.TerminalGestureAction;
+
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.stream.Collectors;
 
 public class ExtraKeyButton {
@@ -30,6 +34,18 @@ public class ExtraKeyButton {
 
     /** The shell command run by the button instead of sending a key or macro. */
     public static final String KEY_COMMAND = "command";
+
+    /** An app action, such as {@code open-left-sidebar}, run instead of a key, macro or command. */
+    public static final String KEY_ACTION = "action";
+
+    /** Alternates shown in a menu on a long press: {@code menu: ['~', '/', '\\']}. */
+    public static final String KEY_MENU = "menu";
+
+    /** The alternate sent by a double tap. */
+    public static final String KEY_DOUBLE_TAP = "double-tap";
+
+    /** The most items a long-press menu can have. */
+    public static final int MAX_MENU_ITEMS = 12;
 
 
     /**
@@ -66,6 +82,10 @@ public class ExtraKeyButton {
     @Nullable private final ExtraKeyButton flingLeft;
     @Nullable private final ExtraKeyButton flingRight;
     @Nullable private final ExtraKeyButton flingDown;
+    @Nullable private final TerminalGestureAction action;
+    /** Set by {@link ExtraKeysInfo} after construction. */
+    @Nullable private List<ExtraKeyButton> menu;
+    @Nullable private ExtraKeyButton doubleTap;
 
 
     /**
@@ -112,11 +132,19 @@ public class ExtraKeyButton {
         String keyFromConfig = getStringFromJson(config, KEY_KEY_NAME);
         String macroFromConfig = getStringFromJson(config, KEY_MACRO);
         String commandFromConfig = getStringFromJson(config, KEY_COMMAND);
+        String actionFromConfig = getStringFromJson(config, KEY_ACTION);
         String[] keys;
-        if (commandFromConfig != null && (keyFromConfig != null || macroFromConfig != null)) {
+        if (actionFromConfig != null) {
+            if (keyFromConfig != null || macroFromConfig != null || commandFromConfig != null)
+                throw new JSONException("An action cannot be combined with key, macro or command");
+            this.action = parseKeyAction(actionFromConfig);
+            keys = new String[0];
+            this.macro = false;
+        } else if (commandFromConfig != null && (keyFromConfig != null || macroFromConfig != null)) {
             throw new JSONException("Command cannot be combined with key or macro");
         } else if (commandFromConfig != null) {
             if (commandFromConfig.trim().isEmpty()) throw new JSONException("Command cannot be blank");
+            this.action = null;
             keys = new String[0];
             this.macro = false;
         } else if (keyFromConfig != null && macroFromConfig != null) {
@@ -124,11 +152,13 @@ public class ExtraKeyButton {
         } else if (keyFromConfig != null) {
             keys = new String[]{keyFromConfig};
             this.macro = false;
+            this.action = null;
         } else if (macroFromConfig != null) {
             keys = macroFromConfig.split(" ");
             this.macro = true;
+            this.action = null;
         } else {
-            throw new JSONException("All keys have to specify either key or macro");
+            throw new JSONException("All keys have to specify a key, macro, command or action");
         }
 
         for (int i = 0; i < keys.length; i++) {
@@ -150,6 +180,8 @@ public class ExtraKeyButton {
             this.display = displayFromConfig;
         } else if (commandFromConfig != null) {
             this.display = "CMD";
+        } else if (action != null) {
+            this.display = actionSymbol(action);
         } else {
             this.display = Arrays.stream(keys)
                 .map(key -> extraKeyDisplayMap.get(key, key))
@@ -157,6 +189,8 @@ public class ExtraKeyButton {
         }
 
         this.popup = popup;
+        if (config.has(KEY_HOLD) && config.has(KEY_MENU))
+            throw new JSONException("A key can have a long-press key or a long-press menu, not both");
         if (config.has(KEY_HOLD)) {
             Object value = config.get(KEY_HOLD);
             if (!(value instanceof String) || ((String) value).trim().isEmpty())
@@ -178,6 +212,66 @@ public class ExtraKeyButton {
                 hint = getStringFromJson(config, "hint");
                 break;
         }
+    }
+
+    /**
+     * Parses an app action for a key. {@code send-keys} and {@code run-command} are not actions
+     * here: a key uses {@code macro} and {@code command} for them.
+     */
+    @NonNull
+    static TerminalGestureAction parseKeyAction(@NonNull String value) throws JSONException {
+        TerminalGestureAction action = TerminalGestureAction.parse(value);
+        if (action == null || action == TerminalGestureAction.NONE
+            || action == TerminalGestureAction.SEND_KEYS || action == TerminalGestureAction.RUN_COMMAND)
+            throw new JSONException("Unknown extra key action \"" + value + "\"; use macro for keys and command for commands");
+        return action;
+    }
+
+    /** The default label of a key that runs an action. */
+    @NonNull
+    public static String actionSymbol(@NonNull TerminalGestureAction action) {
+        switch (action) {
+            case SHOW_KEYBOARD:
+            case TOGGLE_KEYBOARD: return "⌨";
+            case TOGGLE_TEXT_INPUT: return "✎";
+            case NEXT_SESSION: return "»";
+            case PREVIOUS_SESSION: return "«";
+            case NEW_SESSION: return "+";
+            case OPEN_SIDEBAR: return "☰";
+            case OPEN_RIGHT_SIDEBAR: return "☰›";
+            case OPEN_SESSION_SWITCHER: return "⇆";
+            case OPEN_TMUX_SWITCHER: return "▦";
+            case OPEN_MENU: return "⋮";
+            case FONT_SIZE_UP: return "A+";
+            case FONT_SIZE_DOWN: return "A−";
+            default: return action.getValue();
+        }
+    }
+
+    /** The app action this button runs, or {@code null} if it sends input or runs a command. */
+    @Nullable
+    public TerminalGestureAction getAction() {
+        return action;
+    }
+
+    /** The long-press menu items, or {@code null}. */
+    @Nullable
+    public List<ExtraKeyButton> getMenu() {
+        return menu;
+    }
+
+    void setMenu(@Nullable List<ExtraKeyButton> menu) {
+        this.menu = menu == null || menu.isEmpty() ? null : Collections.unmodifiableList(menu);
+    }
+
+    /** The alternate for a double tap, or {@code null}. */
+    @Nullable
+    public ExtraKeyButton getDoubleTap() {
+        return doubleTap;
+    }
+
+    void setDoubleTap(@Nullable ExtraKeyButton doubleTap) {
+        this.doubleTap = doubleTap;
     }
 
     @Nullable

@@ -85,6 +85,11 @@ public class TermuxTerminalExtraKeys extends TerminalExtraKeys {
 
     @Override
     public void onExtraKeyButtonClick(View view, ExtraKeyButton buttonInfo, MaterialButton button) {
+        if (buttonInfo.getAction() != null) {
+            if (mTermuxTerminalViewClient != null)
+                mTermuxTerminalViewClient.performGestureAction(buttonInfo.getAction());
+            return;
+        }
         if (buttonInfo.getCommand() != null) {
             mTermuxTerminalViewClient.runGestureCommand(buttonInfo.getCommand(),
                 mActivity.getProperties().getGestureCommandContext());

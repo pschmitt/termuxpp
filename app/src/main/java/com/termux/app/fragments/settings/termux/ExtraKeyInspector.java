@@ -34,7 +34,7 @@ final class ExtraKeyInspector extends LinearLayout {
     interface Listener { void onKeyEdited(@NonNull JSONObject key); }
 
     static final String[] HINT_MODES = {"auto", "custom", "off"};
-    static final String[] ALTERNATES = {"popup", "fling-left", "fling-right", "fling-down"};
+    static final String[] ALTERNATES = {"popup", "double-tap", "fling-left", "fling-right", "fling-down"};
 
     private final ExtraKeyActionEditor tap;
     private final ExtraKeyColorField textColor;
@@ -47,6 +47,9 @@ final class ExtraKeyInspector extends LinearLayout {
     private final TextView insetValue;
     private final ExtraKeyActionEditor[] alternates;
     private final ExtraKeyActionEditor hold;
+    private final LinearLayout menuItems;
+    private final MaterialButton addMenuItem;
+    private final java.util.List<ExtraKeyActionEditor> menuEditors = new java.util.ArrayList<>();
     private JSONObject original = new JSONObject();
     @Nullable private Listener listener;
     private boolean binding;
@@ -58,9 +61,10 @@ final class ExtraKeyInspector extends LinearLayout {
         ExtraKeyActionEditor.Mode key = ExtraKeyActionEditor.Mode.KEY;
         ExtraKeyActionEditor.Mode macro = ExtraKeyActionEditor.Mode.MACRO;
         ExtraKeyActionEditor.Mode command = ExtraKeyActionEditor.Mode.COMMAND;
+        ExtraKeyActionEditor.Mode action = ExtraKeyActionEditor.Mode.ACTION;
 
         tap = new ExtraKeyActionEditor(context, R.string.extra_editor_section_tap, R.string.extra_editor_value_key,
-            key, macro, command, ExtraKeyActionEditor.Mode.BLANK);
+            key, macro, command, action, ExtraKeyActionEditor.Mode.BLANK);
         addView(tap);
 
         addView(heading(context, R.string.extra_editor_section_look));
@@ -109,17 +113,34 @@ final class ExtraKeyInspector extends LinearLayout {
 
         addView(heading(context, R.string.extra_editor_section_gestures));
         alternates = new ExtraKeyActionEditor[]{
-            new ExtraKeyActionEditor(context, R.string.extra_editor_swipe_up, R.string.extra_editor_value_key, none, key, macro, command),
-            new ExtraKeyActionEditor(context, R.string.extra_editor_fling_left, R.string.extra_editor_value_key, none, key, macro, command),
-            new ExtraKeyActionEditor(context, R.string.extra_editor_fling_right, R.string.extra_editor_value_key, none, key, macro, command),
-            new ExtraKeyActionEditor(context, R.string.extra_editor_fling_down, R.string.extra_editor_value_key, none, key, macro, command),
+            new ExtraKeyActionEditor(context, R.string.extra_editor_swipe_up, R.string.extra_editor_value_key, none, key, macro, command, action),
+            new ExtraKeyActionEditor(context, R.string.extra_editor_double_tap, R.string.extra_editor_value_key, none, key, macro, command, action),
+            new ExtraKeyActionEditor(context, R.string.extra_editor_fling_left, R.string.extra_editor_value_key, none, key, macro, command, action),
+            new ExtraKeyActionEditor(context, R.string.extra_editor_fling_right, R.string.extra_editor_value_key, none, key, macro, command, action),
+            new ExtraKeyActionEditor(context, R.string.extra_editor_fling_down, R.string.extra_editor_value_key, none, key, macro, command, action),
         };
         addView(alternates[0]);
+        addView(alternates[1]);
         hold = new ExtraKeyActionEditor(context, R.string.extra_editor_long_press, R.string.extra_editor_value_hold, none, key);
         addView(hold);
-        addView(alternates[1]);
         addView(alternates[2]);
         addView(alternates[3]);
+        addView(alternates[4]);
+
+        addView(heading(context, R.string.extra_editor_menu_title));
+        TextView menuHelp = new TextView(context);
+        menuHelp.setText(R.string.extra_editor_menu_help);
+        addView(menuHelp);
+        menuItems = new LinearLayout(context);
+        menuItems.setOrientation(VERTICAL);
+        addView(menuItems);
+        addMenuItem = new MaterialButton(context, null, com.google.android.material.R.attr.borderlessButtonStyle);
+        addMenuItem.setText(R.string.extra_editor_menu_add);
+        addMenuItem.setOnClickListener(v -> {
+            ExtraKeyActionEditor item = addMenuEditor(null);
+            item.startEntry(ExtraKeyActionEditor.Mode.KEY);
+        });
+        addView(addMenuItem);
 
         ExtraKeyActionEditor.Listener changed = this::changed;
         tap.setListener(changed);
@@ -160,6 +181,10 @@ final class ExtraKeyInspector extends LinearLayout {
         inset.setValue(Math.max(0, Math.min(8, Math.round(dp * 2) / 2f)));
         for (int i = 0; i < ALTERNATES.length; i++) alternates[i].bind(key.opt(ALTERNATES[i]));
         hold.bindHold(key.optString("hold", null), key.optString("hold-display", null));
+        menuItems.removeAllViews();
+        menuEditors.clear();
+        org.json.JSONArray menu = key.optJSONArray("menu");
+        for (int i = 0; menu != null && i < menu.length(); i++) addMenuEditor(menu.opt(i));
         updateInset();
         binding = false;
     }
@@ -172,6 +197,7 @@ final class ExtraKeyInspector extends LinearLayout {
     JSONObject build() {
         boolean valid = tap.check() & textColor.check() & backgroundColor.check() & hold.check();
         for (ExtraKeyActionEditor alternate : alternates) valid &= alternate.check();
+        for (ExtraKeyActionEditor item : menuEditors) valid &= item.check();
         if (!valid) return null;
         try {
             JSONObject edited = new JSONObject(original.toString());
@@ -212,6 +238,15 @@ final class ExtraKeyInspector extends LinearLayout {
                 edited.put("hold", hold.value().trim());
                 if (!hold.label().isEmpty()) edited.put("hold-display", hold.label());
             }
+            edited.remove("menu");
+            if (!menuEditors.isEmpty()) {
+                org.json.JSONArray previous = original.optJSONArray("menu");
+                org.json.JSONArray menu = new org.json.JSONArray();
+                for (int i = 0; i < menuEditors.size(); i++) {
+                    menu.put(menuEditors.get(i).nested(previous == null ? null : previous.opt(i)));
+                }
+                edited.put("menu", menu);
+            }
             ExtraKeysLayout.validate(edited);
             tap.showError(null);
             return edited;
@@ -219,6 +254,30 @@ final class ExtraKeyInspector extends LinearLayout {
             tap.showError(e.getMessage());
             return null;
         }
+    }
+
+    private ExtraKeyActionEditor addMenuEditor(@Nullable Object item) {
+        ExtraKeyActionEditor.Mode key = ExtraKeyActionEditor.Mode.KEY;
+        ExtraKeyActionEditor editor = new ExtraKeyActionEditor(getContext(), R.string.extra_editor_menu_item,
+            R.string.extra_editor_value_key, key, ExtraKeyActionEditor.Mode.MACRO,
+            ExtraKeyActionEditor.Mode.COMMAND, ExtraKeyActionEditor.Mode.ACTION);
+        if (item != null) editor.bind(item);
+        editor.setListener(this::changed);
+        MaterialButton remove = new MaterialButton(getContext(), null, com.google.android.material.R.attr.borderlessButtonStyle);
+        remove.setText(R.string.extra_editor_menu_remove);
+        remove.setOnClickListener(v -> {
+            int index = menuEditors.indexOf(editor);
+            menuEditors.remove(index);
+            menuItems.removeView(editor);
+            menuItems.removeView(remove);
+            addMenuItem.setEnabled(true);
+            changed();
+        });
+        menuEditors.add(editor);
+        menuItems.addView(editor);
+        menuItems.addView(remove);
+        addMenuItem.setEnabled(menuEditors.size() < dev.pschmitt.termux.shared.termux.extrakeys.ExtraKeyButton.MAX_MENU_ITEMS);
+        return editor;
     }
 
     private void changed() {

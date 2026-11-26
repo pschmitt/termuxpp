@@ -183,6 +183,40 @@ public class PropertyDialogsTest {
         activity.getSupportFragmentManager().executePendingTransactions();
     }
 
+    @Test public void inspectorBindsAppActionsAndBuildsALongPressMenu() throws Exception {
+        SettingsActivity activity = activity();
+        ExtraKeysEditorDialog dialog = editor(activity, "[['|','ESC']]");
+        View root = dialog.requireDialog().getWindow().getDecorView();
+        preview(dialog).getChildAt(1).performClick();
+        view(root, Button.class, "Action").performClick();
+        view(root, Button.class, "Open left sidebar").performClick();
+        org.json.JSONObject esc = new org.json.JSONArray(draft(dialog)).getJSONArray(0).getJSONObject(1);
+        assertEquals("open-left-sidebar", esc.getString("action"));
+        assertFalse(esc.has("key"));
+        assertEquals("☰", ((android.widget.TextView) preview(dialog).getChildAt(1)).getText().toString());
+
+        preview(dialog).getChildAt(0).performClick();
+        for (String item : new String[]{"~", "/", "\\"}) {
+            view(root, Button.class, "Add menu item").performClick();
+            java.util.List<EditText> fields = new java.util.ArrayList<>();
+            collectFields(root, "Key or text", fields);
+            fields.get(fields.size() - 1).setText(item);
+        }
+        org.json.JSONObject pipe = new org.json.JSONArray(draft(dialog)).getJSONArray(0).getJSONObject(0);
+        assertEquals("|", pipe.getString("key"));
+        org.json.JSONArray menu = pipe.getJSONArray("menu");
+        assertEquals(3, menu.length());
+        assertEquals("~", menu.getString(0));
+        assertEquals("/", menu.getString(1));
+        assertEquals("\\", menu.getString(2));
+        view(root, Button.class, "Remove menu item").performClick();
+        pipe = new org.json.JSONArray(draft(dialog)).getJSONArray(0).getJSONObject(0);
+        assertEquals(2, pipe.getJSONArray("menu").length());
+        assertEquals("/", pipe.getJSONArray("menu").getString(0));
+        dialog.dismiss();
+        activity.getSupportFragmentManager().executePendingTransactions();
+    }
+
     @Test public void cancellingAChangedDraftAsksBeforeDiscarding() {
         SettingsActivity activity = activity();
         ExtraKeysEditorDialog dialog = editor(activity, "[['ESC']]");

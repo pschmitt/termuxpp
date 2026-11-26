@@ -34,6 +34,15 @@
     <string name="extra_editor_fling_left">Fling left</string>
     <string name="extra_editor_fling_right">Fling right</string>
     <string name="extra_editor_fling_down">Fling down</string>
+    <string name="extra_editor_double_tap">Double tap</string>
+    <string name="extra_editor_menu_title">Long-press menu</string>
+    <string name="extra_editor_menu_help">Long-press the key, slide to an item and lift to choose it. A key can have a long-press key or a menu, not both.</string>
+    <string name="extra_editor_menu_item">Menu item</string>
+    <string name="extra_editor_menu_add">Add menu item</string>
+    <string name="extra_editor_menu_remove">Remove menu item</string>
+    <string name="extra_editor_mode_action">Action</string>
+    <string name="extra_editor_action_help">Runs an app action, such as opening the sidebar.</string>
+    <string name="extra_editor_action_required">Choose an action</string>
 
     <string name="extra_editor_mode_none">None</string>
     <string name="extra_editor_mode_key">Key</string>

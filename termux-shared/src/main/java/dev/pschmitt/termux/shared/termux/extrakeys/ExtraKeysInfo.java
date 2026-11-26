@@ -14,6 +14,9 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * A {@link Class} that defines the info needed by {@link ExtraKeysView} to display the extra key
  * views.
@@ -164,6 +167,8 @@ public class ExtraKeysInfo {
                     readAlternate(jobject, "fling-right", extraKeyDisplayMap, extraKeyAliasMap),
                     readAlternate(jobject, "fling-down", extraKeyDisplayMap, extraKeyAliasMap),
                     extraKeyDisplayMap, extraKeyAliasMap);
+                buttons[i][j].setDoubleTap(readAlternate(jobject, ExtraKeyButton.KEY_DOUBLE_TAP, extraKeyDisplayMap, extraKeyAliasMap));
+                buttons[i][j].setMenu(readMenu(jobject, extraKeyDisplayMap, extraKeyAliasMap));
             }
         }
 
@@ -176,6 +181,23 @@ public class ExtraKeysInfo {
                                                 ExtraKeysConstants.ExtraKeyDisplayMap aliasMap) throws JSONException {
         return config.has(name)
             ? new ExtraKeyButton(normalizeKeyConfig(config.get(name)), displayMap, aliasMap) : null;
+    }
+
+    @Nullable
+    private static List<ExtraKeyButton> readMenu(JSONObject config,
+                                                 ExtraKeysConstants.ExtraKeyDisplayMap displayMap,
+                                                 ExtraKeysConstants.ExtraKeyDisplayMap aliasMap) throws JSONException {
+        if (!config.has(ExtraKeyButton.KEY_MENU)) return null;
+        Object value = config.get(ExtraKeyButton.KEY_MENU);
+        if (!(value instanceof JSONArray)) throw new JSONException("A key menu must be a list of keys");
+        JSONArray items = (JSONArray) value;
+        if (items.length() == 0) throw new JSONException("A key menu needs at least one item");
+        if (items.length() > ExtraKeyButton.MAX_MENU_ITEMS)
+            throw new JSONException("A key menu can have at most " + ExtraKeyButton.MAX_MENU_ITEMS + " items");
+        List<ExtraKeyButton> menu = new ArrayList<>();
+        for (int i = 0; i < items.length(); i++)
+            menu.add(new ExtraKeyButton(normalizeKeyConfig(items.get(i)), displayMap, aliasMap));
+        return menu;
     }
 
     /**

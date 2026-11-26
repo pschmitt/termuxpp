@@ -21,6 +21,8 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.termux.R;
 
+import dev.pschmitt.termux.shared.termux.settings.properties.TerminalGestureAction;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -29,7 +31,7 @@ import org.json.JSONObject;
  * a space-separated macro, a shell command, a blank spacer or nothing, plus an optional label.
  */
 final class ExtraKeyActionEditor extends LinearLayout {
-    enum Mode { NONE, KEY, MACRO, COMMAND, BLANK }
+    enum Mode { NONE, KEY, MACRO, COMMAND, ACTION, BLANK }
 
     /** Keys offered as one-tap chips. Special keys first, then common terminal symbols. */
     static final String[] PALETTE = {"ESC", "TAB", "CTRL", "ALT", "SHIFT", "FN", "ENTER", "BKSP", "DEL", "INS",
@@ -45,6 +47,8 @@ final class ExtraKeyActionEditor extends LinearLayout {
     private final TextInputLayout valueField;
     private final TextInputEditText value;
     private final HorizontalScrollView palette;
+    private final HorizontalScrollView actionScroll;
+    private final ChipGroup actions;
     private final TextInputLayout labelField;
     private final TextInputEditText label;
     private final int valueHint;
@@ -99,6 +103,22 @@ final class ExtraKeyActionEditor extends LinearLayout {
         value = input(valueField);
         palette = buildPalette(context);
         addView(palette);
+        actions = new ChipGroup(context);
+        actions.setSingleSelection(true);
+        actions.setSingleLine(true);
+        for (TerminalGestureAction action : keyActions()) {
+            Chip chip = new Chip(context);
+            chip.setId(View.generateViewId());
+            chip.setTag(action.getValue());
+            chip.setCheckable(true);
+            chip.setText(action.getLabel());
+            actions.addView(chip);
+        }
+        actions.setOnCheckedStateChangeListener((group, checked) -> notifyChanged());
+        actionScroll = new HorizontalScrollView(context);
+        actionScroll.setHorizontalScrollBarEnabled(false);
+        actionScroll.addView(actions);
+        addView(actionScroll);
         labelField = field(context);
         labelField.setHint(context.getString(R.string.extra_editor_label));
         label = input(labelField);
@@ -119,7 +139,8 @@ final class ExtraKeyActionEditor extends LinearLayout {
         } else if (source instanceof JSONObject) {
             JSONObject object = (JSONObject) source;
             display = object.optString("display");
-            if (object.has("command")) { mode = Mode.COMMAND; text = object.optString("command"); }
+            if (object.has("action")) { mode = Mode.ACTION; text = object.optString("action"); }
+            else if (object.has("command")) { mode = Mode.COMMAND; text = object.optString("command"); }
             else if (object.has("macro")) { mode = Mode.MACRO; text = object.optString("macro"); }
             else if (object.has("key")) {
                 text = object.optString("key");
@@ -128,7 +149,8 @@ final class ExtraKeyActionEditor extends LinearLayout {
         }
         if (!supports(mode)) mode = modes[0];
         setMode(mode);
-        value.setText(text);
+        checkAction(mode == Mode.ACTION ? text : null);
+        value.setText(mode == Mode.ACTION ? "" : text);
         label.setText(display);
         valueField.setError(null);
         binding = false;
@@ -164,6 +186,12 @@ final class ExtraKeyActionEditor extends LinearLayout {
     /** Validates required input and shows the error inline. */
     boolean check() {
         Mode mode = mode();
+        if (mode == Mode.ACTION) {
+            boolean chosen = selectedAction() != null;
+            help.setVisibility(VISIBLE);
+            help.setText(chosen ? R.string.extra_editor_action_help : R.string.extra_editor_action_required);
+            return chosen;
+        }
         boolean needsValue = mode == Mode.KEY || mode == Mode.MACRO || mode == Mode.COMMAND;
         if (needsValue && value().trim().isEmpty()) {
             valueField.setError(getContext().getString(R.string.extra_required));
@@ -182,8 +210,10 @@ final class ExtraKeyActionEditor extends LinearLayout {
         target.remove("key");
         target.remove("macro");
         target.remove("command");
+        target.remove("action");
         target.remove("display");
         switch (mode()) {
+            case ACTION: target.put("action", selectedAction()); break;
             case KEY: target.put("key", value()); break;
             case MACRO: target.put("macro", value().trim()); break;
             case COMMAND: target.put("command", value()); break;
@@ -223,18 +253,47 @@ final class ExtraKeyActionEditor extends LinearLayout {
         Mode mode = mode();
         boolean hasValue = mode == Mode.KEY || mode == Mode.MACRO || mode == Mode.COMMAND;
         valueField.setVisibility(hasValue ? VISIBLE : GONE);
-        labelField.setVisibility(hasValue ? VISIBLE : GONE);
+        labelField.setVisibility(hasValue || mode == Mode.ACTION ? VISIBLE : GONE);
+        actionScroll.setVisibility(mode == Mode.ACTION ? VISIBLE : GONE);
         palette.setVisibility(mode == Mode.KEY || mode == Mode.MACRO ? VISIBLE : GONE);
         valueField.setHint(getContext().getString(mode == Mode.MACRO ? R.string.extra_editor_value_macro
             : mode == Mode.COMMAND ? R.string.extra_editor_value_command : valueHint));
         int helpText = mode == Mode.BLANK ? R.string.extra_editor_blank_help
             : mode == Mode.NONE ? R.string.extra_editor_none_help
+            : mode == Mode.ACTION ? R.string.extra_editor_action_help
             : mode == Mode.COMMAND ? 0 : R.string.extra_editor_palette_help;
         help.setVisibility(helpText == 0 ? GONE : VISIBLE);
         if (helpText != 0) help.setText(helpText);
         value.setInputType(mode == Mode.COMMAND
             ? InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
             : InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+    }
+
+    /** The app actions a key can run; keys and commands have their own modes. */
+    static TerminalGestureAction[] keyActions() {
+        java.util.List<TerminalGestureAction> result = new java.util.ArrayList<>();
+        for (TerminalGestureAction action : TerminalGestureAction.values()) {
+            if (action != TerminalGestureAction.NONE && action != TerminalGestureAction.SEND_KEYS
+                && action != TerminalGestureAction.RUN_COMMAND) result.add(action);
+        }
+        return result.toArray(new TerminalGestureAction[0]);
+    }
+
+    @Nullable
+    private String selectedAction() {
+        View checked = actions.findViewById(actions.getCheckedChipId());
+        return checked == null ? null : (String) checked.getTag();
+    }
+
+    private void checkAction(@Nullable String value) {
+        actions.clearCheck();
+        if (value == null) return;
+        TerminalGestureAction parsed = TerminalGestureAction.parse(value);
+        if (parsed == null) return;
+        for (int i = 0; i < actions.getChildCount(); i++) {
+            View chip = actions.getChildAt(i);
+            if (parsed.getValue().equals(chip.getTag())) actions.check(chip.getId());
+        }
     }
 
     private HorizontalScrollView buildPalette(Context context) {
@@ -293,6 +352,7 @@ final class ExtraKeyActionEditor extends LinearLayout {
             case KEY: return R.string.extra_editor_mode_key;
             case MACRO: return R.string.extra_editor_mode_macro;
             case COMMAND: return R.string.extra_editor_mode_command;
+            case ACTION: return R.string.extra_editor_mode_action;
             case BLANK: return R.string.extra_editor_mode_blank;
             default: return R.string.extra_editor_mode_none;
         }

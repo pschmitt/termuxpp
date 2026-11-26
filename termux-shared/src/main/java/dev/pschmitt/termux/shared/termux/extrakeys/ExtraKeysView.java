@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.res.Configuration;
 import android.graphics.drawable.Drawable;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.text.TextPaint;
 import android.text.TextUtils;
@@ -345,6 +346,14 @@ public final class ExtraKeysView extends GridLayout {
     protected Handler mHandler;
     protected Runnable mLongPressRunnable;
     protected int mLongPressCount;
+    /** The long-press menu that is open, see {@link ExtraKeyButton#getMenu()}. */
+    @Nullable private ExtraKeyMenu mKeyMenu;
+    /** The finger position of the current press, so a long-press menu opens under it. */
+    private float mPressRawX;
+    private float mPressRawY;
+    /** A single tap waiting to see whether a second tap makes it a double tap. */
+    @Nullable private Runnable mPendingTap;
+    @Nullable private MaterialButton mPendingTapButton;
     @Nullable private Typeface mKeyTypeface;
     private ExtraKeyAnimation mKeyAnimation = ExtraKeyAnimation.DEFAULT;
     private final DecelerateInterpolator mKeyReleaseInterpolator = new DecelerateInterpolator();
@@ -623,6 +632,8 @@ public final class ExtraKeysView extends GridLayout {
         stopScheduledExecutors();
         if (mPopupWindow != null) dismissPopup();
         dismissKeyPreview();
+        dismissKeyMenu();
+        cancelPendingTap();
         for (SpecialButtonState state : mSpecialButtons.values()) {
             state.buttons.clear();
             state.presentationUpdates.clear();
@@ -685,8 +696,32 @@ public final class ExtraKeysView extends GridLayout {
                     });
                 }
 
+                ExtraKeyButton doubleTap = buttonInfo.getDoubleTap();
+                registerAlternateModifier(doubleTap);
+                if (buttonInfo.getMenu() != null) {
+                    for (ExtraKeyButton item : buttonInfo.getMenu()) registerAlternateModifier(item);
+                }
                 button.setOnClickListener(view -> {
                     performExtraKeyButtonHapticFeedback(view, buttonInfo, button);
+                    if (doubleTap != null) {
+                        // Only keys with a double tap wait for a second tap; others stay instant.
+                        if (mPendingTap != null && mPendingTapButton == button) {
+                            cancelPendingTap();
+                            onAnyExtraKeyButtonClick(view, doubleTap, button);
+                        } else {
+                            flushPendingTap();
+                            mPendingTapButton = button;
+                            mPendingTap = () -> {
+                                mPendingTap = null;
+                                mPendingTapButton = null;
+                                onAnyExtraKeyButtonClick(view, buttonInfo, button);
+                            };
+                            if (mHandler == null) mHandler = new Handler(Looper.getMainLooper());
+                            mHandler.postDelayed(mPendingTap, ViewConfiguration.getDoubleTapTimeout());
+                        }
+                        return;
+                    }
+                    flushPendingTap();
                     if (hasHeldModifier && mSpecialButtons.get(SpecialButton.valueOf(hold.getKey()))
                         .onAlternateTap(SystemClock.uptimeMillis(), ViewConfiguration.getDoubleTapTimeout())) return;
                     onAnyExtraKeyButtonClick(view, buttonInfo, button);
@@ -703,6 +738,8 @@ public final class ExtraKeysView extends GridLayout {
                 button.setOnTouchListener((view, event) -> {
                     switch (event.getActionMasked()) {
                         case MotionEvent.ACTION_DOWN:
+                            mPressRawX = event.getRawX();
+                            mPressRawY = event.getRawY();
                             if (fling != null) fling.start(event);
                             animateKeyPress(button, true);
                             view.setBackgroundColor(mButtonActiveBackgroundColor);
@@ -711,6 +748,13 @@ public final class ExtraKeysView extends GridLayout {
                             return true;
 
                         case MotionEvent.ACTION_MOVE:
+                            if (mKeyMenu != null) {
+                                if (mKeyMenu.track(event.getRawX(), event.getRawY()))
+                                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK);
+                                return true;
+                            }
+                            mPressRawX = event.getRawX();
+                            mPressRawY = event.getRawY();
                             if (fling != null && mPopupWindow == null && mLongPressCount == 0 && fling.move(event)) {
                                 stopScheduledExecutors();
                                 dismissKeyPreview();
@@ -748,12 +792,24 @@ public final class ExtraKeysView extends GridLayout {
                             view.setBackgroundColor(getRestingBackgroundColor(buttonInfo));
                             stopScheduledExecutors();
                             if (mPopupWindow != null) dismissPopup();
+                            dismissKeyMenu();
                             return true;
 
                         case MotionEvent.ACTION_UP:
                             animateKeyPress(button, false);
                             view.setBackgroundColor(getRestingBackgroundColor(buttonInfo));
                             stopScheduledExecutors();
+                            if (mKeyMenu != null) {
+                                mKeyMenu.track(event.getRawX(), event.getRawY());
+                                ExtraKeyButton choice = mKeyMenu.selected();
+                                dismissKeyMenu();
+                                if (fling != null) fling.finish();
+                                if (choice != null) {
+                                    performExtraKeyButtonHapticFeedback(view, choice, button);
+                                    onAnyExtraKeyButtonClick(view, choice, button);
+                                }
+                                return true;
+                            }
                             if (fling != null) {
                                 if (mPopupWindow == null && mLongPressCount == 0) {
                                     ExtraKeyButton alternate = fling.release(event);
@@ -798,7 +854,8 @@ public final class ExtraKeysView extends GridLayout {
                 button.setLayoutParams(param);
 
                 if (buttonInfo.getKey().isEmpty() && buttonInfo.getDisplay().isEmpty()
-                    && buttonInfo.getCommand() == null && hold == null && buttonInfo.getPopup() == null) {
+                    && buttonInfo.getCommand() == null && buttonInfo.getAction() == null && hold == null
+                    && buttonInfo.getPopup() == null && buttonInfo.getMenu() == null && doubleTap == null) {
                     button.setVisibility(INVISIBLE);
                 }
                 addView(button);
@@ -1007,7 +1064,9 @@ public final class ExtraKeysView extends GridLayout {
         stopScheduledExecutors();
         mLongPressCount = 0;
         ExtraKeyButton hold = buttonInfo.getHold();
-        if (hold != null) {
+        if (buttonInfo.getMenu() != null) {
+            scheduleLongPress(() -> showKeyMenu(view, buttonInfo, button));
+        } else if (hold != null) {
             scheduleLongPress(() -> performHold(view, hold, button));
         } else if (mRepetitiveKeys.contains(buttonInfo.getKey())) {
             // Auto repeat key if long pressed until ACTION_UP stops it by calling stopScheduledExecutors.
@@ -1044,8 +1103,44 @@ public final class ExtraKeysView extends GridLayout {
         }
     }
 
+    private void showKeyMenu(View view, ExtraKeyButton buttonInfo, MaterialButton button) {
+        dismissKeyPreview();
+        if (mPopupWindow != null) dismissPopup();
+        dismissKeyMenu();
+        int panel = mRoundedTheme ? mRoundedNavigationBackgroundColor : getRestingBackgroundColor(buttonInfo);
+        if (Color.alpha(panel) < 0xF0) panel = 0xF0303134;
+        mKeyMenu = new ExtraKeyMenu(view, buttonInfo.getMenu(), mPressRawX, mPressRawY, panel,
+            mButtonTextColor, mButtonActiveTextColor, mButtonActiveBackgroundColor,
+            getButtonCornerRadiusPx(), mKeyTypeface, mButtonTextAllCaps);
+        view.setBackgroundColor(getRestingBackgroundColor(buttonInfo));
+        // Sliding sideways picks an item; the toolbar must not take it as a row swipe.
+        if (view.getParent() != null) view.getParent().requestDisallowInterceptTouchEvent(true);
+        performExtraKeyButtonHapticFeedback(view, buttonInfo, button);
+    }
+
+    private void dismissKeyMenu() {
+        if (mKeyMenu == null) return;
+        mKeyMenu.dismiss();
+        mKeyMenu = null;
+    }
+
+    /** Runs a waiting single tap now, before a different key is handled. */
+    private void flushPendingTap() {
+        Runnable tap = mPendingTap;
+        cancelPendingTap();
+        if (tap != null) tap.run();
+    }
+
+    private void cancelPendingTap() {
+        if (mPendingTap != null && mHandler != null) mHandler.removeCallbacks(mPendingTap);
+        mPendingTap = null;
+        mPendingTapButton = null;
+    }
+
     @Override
     protected void onDetachedFromWindow() {
+        cancelPendingTap();
+        dismissKeyMenu();
         stopScheduledExecutors();
         if (mPopupWindow != null) dismissPopup();
         dismissKeyPreview();
