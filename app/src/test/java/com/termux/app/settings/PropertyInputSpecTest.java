@@ -319,7 +319,7 @@ public class PropertyInputSpecTest {
         valid(rowBackgroundKey, "#123", "#201B29", "#80123456");
         invalid(rowBackgroundKey, "blue");
         String animationKey = TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION;
-        assertArrayEquals(new String[]{"key-preview", "press-in", "pop", "lift", "off"}, PropertyInputSpec.choices(animationKey));
+        assertArrayEquals(new String[]{"key-preview", "key-bubble", "press-in", "pop", "lift", "off"}, PropertyInputSpec.choices(animationKey));
 
         for (String key : TermuxPropertyConstants.TERMUX_APP_PROPERTIES_LIST) {
             if (key.equals("extra-keys-style") || key.equals(TermuxPropertyConstants.KEY_GESTURE_COMMAND_CONTEXT)

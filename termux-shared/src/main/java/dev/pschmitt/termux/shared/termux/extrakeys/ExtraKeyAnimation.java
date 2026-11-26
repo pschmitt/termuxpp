@@ -5,6 +5,7 @@ import androidx.annotation.Nullable;
 /** Motion applied to an extra key during a press and release. */
 public enum ExtraKeyAnimation {
     KEY_PREVIEW("key-preview", 1, 0, 0),
+    KEY_BUBBLE("key-bubble", 1, 0, 0),
     PRESS_IN("press-in", 0.91f, 0, 150),
     POP("pop", 1.10f, 0, 180),
     LIFT("lift", 1, -4, 160),
@@ -22,6 +23,10 @@ public enum ExtraKeyAnimation {
         this.pressedScale = pressedScale;
         this.pressedOffsetDp = pressedOffsetDp;
         this.releaseDurationMs = releaseDurationMs;
+    }
+
+    boolean showsPreview() {
+        return this == KEY_PREVIEW || this == KEY_BUBBLE;
     }
 
     @Nullable

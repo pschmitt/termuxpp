@@ -478,7 +478,7 @@ public final class PropertyInputSpec {
             case TermuxPropertyConstants.KEY_TERMINAL_TOOLBAR_HEIGHT_SCALE_FACTOR:
                 return toolbarHeight(value);
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION:
-                return ExtraKeyAnimation.parse(value) != null ? null : "Choose Press in, Pop, Lift, Key preview, or Off";
+                return ExtraKeyAnimation.parse(value) != null ? null : "Choose Key preview, Key bubble, Press in, Pop, Lift, or Off";
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_THEME:
                 for (String theme : choices(key)) {
                     if (theme.equalsIgnoreCase(value.trim())) return null;

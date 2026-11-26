@@ -574,7 +574,7 @@ leave blank slots for unassigned keys.
 [Extra-key appearance](terminal-settings.md#extra-key-appearance).
 
 TermuxPP adds optional extra-key press and release motion. Key preview is the
-default, and Press in, Pop, Lift, and Off are available in `extra-keys.animation`.
+default, and Key bubble, Press in, Pop, Lift, and Off are available in `extra-keys.animation`.
 
 Configured tap, volume-button and extra-key swipe actions briefly confirm the
 chosen action in a pill above the keys. Motion respects Android's animation

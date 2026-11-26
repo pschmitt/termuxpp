@@ -730,7 +730,7 @@ public final class ExtraKeysView extends GridLayout {
                                 if (mPopupWindow != null && y > 0) {
                                     view.setBackgroundColor(mButtonActiveBackgroundColor);
                                     dismissPopup();
-                                    if (mKeyAnimation == ExtraKeyAnimation.KEY_PREVIEW) showKeyPreview(button);
+                                    if (mKeyAnimation.showsPreview()) showKeyPreview(button);
                                 }
                             }
                             return true;
@@ -866,7 +866,7 @@ public final class ExtraKeysView extends GridLayout {
     }
 
     private void animateKeyPress(MaterialButton button, boolean pressed) {
-        if (mKeyAnimation == ExtraKeyAnimation.KEY_PREVIEW) {
+        if (mKeyAnimation.showsPreview()) {
             if (pressed) showKeyPreview(button);
             else dismissKeyPreview();
             return;
@@ -895,8 +895,9 @@ public final class ExtraKeysView extends GridLayout {
         if (key.getWindowToken() == null) return;
 
         float density = getResources().getDisplayMetrics().density;
-        int padding = Math.round(10 * density);
-        int gap = Math.round(3 * density);
+        boolean bubble = mKeyAnimation == ExtraKeyAnimation.KEY_BUBBLE;
+        int padding = Math.round((bubble ? 12 : 10) * density);
+        int gap = Math.round((bubble ? -3 : 3) * density);
         TextView label = new TextView(getContext());
         CharSequence text = key.getText();
         if (key.getTransformationMethod() != null)
@@ -907,12 +908,18 @@ public final class ExtraKeysView extends GridLayout {
         label.setTextSize(24);
         label.setGravity(Gravity.CENTER);
         label.setPadding(padding, 0, padding, 0);
-        label.setMinWidth(Math.max(key.getWidth(), Math.round(48 * density)));
-        label.setMinHeight(Math.round(50 * density));
+        int size = Math.round((bubble ? 48 : 50) * density);
+        label.setMinWidth(bubble ? size : Math.max(key.getWidth(), Math.round(48 * density)));
+        label.setMinHeight(size);
+        if (bubble) {
+            label.setIncludeFontPadding(false);
+            label.setSingleLine(true);
+            label.setEllipsize(TextUtils.TruncateAt.END);
+        }
         label.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         GradientDrawable background = new GradientDrawable();
         background.setColor(mButtonActiveBackgroundColor);
-        background.setCornerRadius(12 * density);
+        background.setCornerRadius(bubble ? size / 2f : 12 * density);
         label.setBackground(background);
         label.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
 
@@ -925,6 +932,12 @@ public final class ExtraKeysView extends GridLayout {
         mKeyPreview.setElevation(5 * density);
         mKeyPreview.showAsDropDown(key, (key.getWidth() - width) / 2,
             -key.getHeight() - height - gap, Gravity.LEFT);
+        if (bubble && (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || ValueAnimator.areAnimatorsEnabled())) {
+            label.setScaleX(0.92f);
+            label.setScaleY(0.92f);
+            label.animate().scaleX(1).scaleY(1).setDuration(90)
+                .setInterpolator(mKeyReleaseInterpolator).start();
+        }
     }
 
     private void dismissKeyPreview() {

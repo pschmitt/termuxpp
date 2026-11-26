@@ -692,8 +692,9 @@ extra-keys:
 
 Choose **Extra keys animation** in **Settings → Properties → Extra keys** and
 tap a preview key to try it. In YAML, set `extra-keys.animation` to
-`key-preview` (default), `press-in`, `pop`, `lift`, or `off`. Key preview shows
-an enlarged label above the pressed key. Off keeps the pressed-key color.
+`key-preview` (default), `key-bubble`, `press-in`, `pop`, `lift`, or `off`. Key preview shows
+an enlarged label above the pressed key. Key bubble uses a compact round preview close to the key.
+Off keeps the pressed-key color.
 
 | Key | Applies to | Theme default |
 | --- | --- | --- |
