@@ -1675,6 +1675,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
 
 
+    /** Whether a settings reload waits for the activity to be shown again, for tests. */
+    static boolean isPropertiesReloadPending() {
+        return pendingPropertiesReload;
+    }
+
     public static void onPropertiesEditedFromSettings(Context context) {
         // Settings can stop the terminal activity, which temporarily unregisters its receiver.
         pendingPropertiesReload = true;
@@ -1717,6 +1722,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         @Override
         public void onReceive(Context context, Intent intent) {
             if (intent == null) return;
+
+            // Apply a reload that arrives in the background when the activity is shown again.
+            if (!mIsVisible && TERMUX_ACTIVITY.ACTION_RELOAD_STYLE.equals(intent.getAction()))
+                pendingPropertiesReload = true;
 
             if (mIsVisible) {
                 fixTermuxActivityBroadcastReceiverIntent(intent);

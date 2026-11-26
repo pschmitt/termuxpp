@@ -960,7 +960,8 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
             return createSessionFromCommand(args.isNull(1) ? null : args.getString(1), args.getJSONArray(2));
         if ("reload-settings".equals(command) && args.length() == 1) {
             mProperties.loadTermuxPropertiesFromDisk();
-            sendBroadcast(new Intent(TERMUX_ACTIVITY.ACTION_RELOAD_STYLE).setPackage(getPackageName()));
+            // Also marks the reload as pending: a stopped activity has no receiver and would miss it.
+            TermuxActivity.onPropertiesEditedFromSettings(this);
             return JSONObject.NULL;
         }
         if ("switcher".equals(command) && args.length() == 1) {
