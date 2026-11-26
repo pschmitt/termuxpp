@@ -1022,7 +1022,8 @@ then
   if [ "$root" != "$HOME/.local/state/rworker/jobs" ]
   then
     umask 007
-    chmod 2770 "$job"
+    # Without the setgid bit (refused in some sandboxes) the group still gets in.
+    chmod 2770 "$job" 2>/dev/null || chmod 0770 "$job"
   fi
   printf '%s\n' {topic} > "$job/topic"
   date -u +%FT%TZ > "$job/started"
@@ -1655,9 +1656,10 @@ mod tests {
             .unwrap()
             .path();
         use std::os::unix::fs::PermissionsExt;
+        // 2770 on a worker; build sandboxes refuse the setgid bit.
         assert_eq!(
-            fs::metadata(&job).unwrap().permissions().mode() & 0o7777,
-            0o2770
+            fs::metadata(&job).unwrap().permissions().mode() & 0o777,
+            0o770
         );
         assert_eq!(
             fs::metadata(job.join("log")).unwrap().permissions().mode() & 0o777,
