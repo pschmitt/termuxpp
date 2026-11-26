@@ -19,14 +19,32 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::time::{Duration, Instant};
 
-/// Account of an OpenStack worker; hosted (GitHub) leases use [`HOSTED_USER`].
-const ADHOC_USER: &str = "agent";
-const HOSTED_USER: &str = "rworker-build";
+/// The login account every rworker worker reports (`user` of `up`, a lease's
+/// `endpoint.user`); workers that report none have the account of their kind.
+const LEGACY_ADHOC_USER: &str = "agent";
+const LEGACY_HOSTED_USER: &str = "rworker-build";
+
+fn login_user(reported: Option<&str>, hosted: bool) -> Result<String> {
+    let user = match reported.filter(|user| !user.is_empty()) {
+        Some(user) => user,
+        None if hosted => LEGACY_HOSTED_USER,
+        None => LEGACY_ADHOC_USER,
+    };
+    ensure!(
+        user.len() <= 32
+            && user.starts_with(|c: char| c.is_ascii_lowercase() || c == '_')
+            && user
+                .chars()
+                .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || matches!(c, '_' | '-')),
+        "the controller returned an invalid login account"
+    );
+    Ok(user.to_owned())
+}
 /// Where the worker keeps the pinned GitHub host keys and cache credentials.
 const WORKER_DIR: &str = ".cache/nixpp-setup";
 /// The daemon a GitHub runner lease serves its own store with (installed
-/// by the rworker job agent).
-const HOSTED_DAEMON: &str = "/home/rworker-build/.local/bin/rworker-nix-daemon";
+/// by the rworker job agent), in the login account's home.
+const HOSTED_DAEMON: &str = ".local/bin/rworker-nix-daemon";
 /// Selects that store for Nix commands run in a session on the lease. The
 /// build user owns it, so it is trusted and the cache options apply; the
 /// runner's system Nix would ignore them.
@@ -182,7 +200,7 @@ enum Address {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Worker {
     name: String,
-    user: &'static str,
+    user: String,
     address: Address,
     host_key: String,
     release: Release,
@@ -434,7 +452,7 @@ fn parse_adhoc(reply: &str) -> Result<Worker> {
     );
     Ok(Worker {
         name: name.to_owned(),
-        user: ADHOC_USER,
+        user: login_user(value.get("user").and_then(Value::as_str), false)?,
         address: Address::Direct(address.to_owned()),
         host_key: parse_host_key(field(&value, "host_key")?)?,
         release: Release::Adhoc(name.to_owned()),
@@ -477,7 +495,7 @@ fn parse_hosted_status(reply: &str, id: &str, name: &str) -> Result<Hosted> {
                 .context("the runner has no relay port")?;
             Hosted::Ready(Worker {
                 name: name.to_owned(),
-                user: HOSTED_USER,
+                user: login_user(endpoint.get("user").and_then(Value::as_str), true)?,
                 address: Address::Relay(port),
                 host_key: parse_host_key(field(endpoint, "host_key")?)?,
                 release: Release::Hosted(id.to_owned()),
@@ -546,8 +564,9 @@ impl Worker {
     pub fn store_uri(&self) -> String {
         if self.is_hosted() {
             format!(
-                "ssh-ng://{}?remote-program={HOSTED_DAEMON}",
-                self.destination()
+                "ssh-ng://{}?remote-program=/home/{}/{HOSTED_DAEMON}",
+                self.destination(),
+                self.user
             )
         } else {
             format!("ssh-ng://{}", self.destination())
@@ -974,9 +993,17 @@ pub fn build_script(
     script
 }
 
-/// Where the rworker job agent keeps a worker's jobs (`rworker jobs`), one
-/// directory each with `topic`, `started`, `pid`, `log` and, when done, `exit`.
-const RWORKER_JOBS: &str = "$HOME/.local/state/rworker/jobs";
+/// Where the rworker job tools keep a worker's jobs (`rworker jobs`), one
+/// directory each with `topic`, `started`, `pid`, `log` and, when done,
+/// `exit`: `$RWORKER_JOBS_DIR` on current workers, the shared
+/// `/var/lib/rworker/jobs` (group `rworker`), or the login account's own on
+/// older ones; the same order as rworker's `src/jobs.sh`. A job in the shared
+/// directory is readable and writable for the group, like rworker's own.
+const RWORKER_JOBS: &str = r#"if [ -n "${RWORKER_JOBS_DIR:-}" ]; then root=$RWORKER_JOBS_DIR
+elif [ -d /var/lib/rworker/jobs ] && [ -w /var/lib/rworker/jobs ]; then root=/var/lib/rworker/jobs
+else root="$HOME/.local/state/rworker/jobs"
+fi
+"#;
 
 /// Run `command` as an rworker job: its output (build logs, `-L`) also goes to
 /// the job's log, so `rworker logs -f` follows the build like any other job.
@@ -989,9 +1016,14 @@ fn rworker_job(topic: &str, command: &str) -> String {
         .take(255)
         .collect();
     format!(
-        r#"job=""
-if mkdir -p "{RWORKER_JOBS}" 2>/dev/null && job=$(mktemp -d "{RWORKER_JOBS}/nixpp-XXXXXXXX" 2>/dev/null)
+        r#"{RWORKER_JOBS}job=""
+if mkdir -p "$root" 2>/dev/null && job=$(mktemp -d "$root/nixpp-XXXXXXXX" 2>/dev/null)
 then
+  if [ "$root" != "$HOME/.local/state/rworker/jobs" ]
+  then
+    umask 007
+    chmod 2770 "$job"
+  fi
   printf '%s\n' {topic} > "$job/topic"
   date -u +%FT%TZ > "$job/started"
   printf '%s\n' "$$" > "$job/pid"
@@ -1456,6 +1488,21 @@ mod tests {
             worker.store_uri(),
             "ssh-ng://rworker-build@gha-01234567?remote-program=/home/rworker-build/.local/bin/rworker-nix-daemon"
         );
+        // Current runners report their account, rworker.
+        let reported = format!(
+            r#"{{"state":"ready","endpoint":{{"port":40123,"host_key":"{KEY}","user":"rworker"}}}}"#
+        );
+        let Hosted::Ready(worker) = parse_hosted_status(&reported, &id, &name).unwrap() else {
+            panic!("expected a ready worker");
+        };
+        assert_eq!(
+            worker.store_uri(),
+            "ssh-ng://rworker@gha-01234567?remote-program=/home/rworker/.local/bin/rworker-nix-daemon"
+        );
+        let invalid = format!(
+            r#"{{"state":"ready","endpoint":{{"port":40123,"host_key":"{KEY}","user":"x; rm"}}}}"#
+        );
+        assert!(parse_hosted_status(&invalid, &id, &name).is_err());
         let ports = parse_hosted_status(
             r#"{"state":"ready","endpoint":{"port":22,"host_key":"ssh-ed25519 AAAA"}}"#,
             &id,
@@ -1590,6 +1637,32 @@ mod tests {
         assert_eq!(fs::read_to_string(job.join("log")).unwrap(), "building\n");
         assert_eq!(fs::read_to_string(job.join("exit")).unwrap(), "3\n");
         assert!(job.join("started").is_file() && job.join("pid").is_file());
+
+        // In a shared job directory (RWORKER_JOBS_DIR) the job is the group's too.
+        let shared = tempfile::tempdir().unwrap();
+        let output = Command::new("sh")
+            .arg("-c")
+            .arg(&script)
+            .env("HOME", home.path())
+            .env("RWORKER_JOBS_DIR", shared.path())
+            .output()
+            .unwrap();
+        assert_eq!(output.stdout, b"/nix/store/out\n");
+        let job = fs::read_dir(shared.path())
+            .unwrap()
+            .next()
+            .unwrap()
+            .unwrap()
+            .path();
+        use std::os::unix::fs::PermissionsExt;
+        assert_eq!(
+            fs::metadata(&job).unwrap().permissions().mode() & 0o7777,
+            0o2770
+        );
+        assert_eq!(
+            fs::metadata(job.join("log")).unwrap().permissions().mode() & 0o777,
+            0o660
+        );
 
         // Without a place for jobs the build still runs.
         let output = Command::new("sh")
