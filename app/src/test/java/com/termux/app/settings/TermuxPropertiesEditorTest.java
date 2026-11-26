@@ -33,76 +33,74 @@ public class TermuxPropertiesEditorTest {
 
     @Rule public TemporaryFolder temp = new TemporaryFolder();
 
-    @Test public void legacyIsCopiedWithoutChangingOriginal() throws Exception {
-        File legacy = temp.newFile("termux.properties");
-        String original = "# keep this comment\nunknown=value\nfullscreen=false\n";
-        Files.write(legacy.toPath(), original.getBytes(StandardCharsets.ISO_8859_1));
-        File target = new File(temp.getRoot(), "new/termuxpp.properties");
-        TermuxPropertiesEditor editor = new TermuxPropertiesEditor(target, Arrays.asList(target.toString(), legacy.toString()));
-        assertEquals("false", editor.read().getProperty("fullscreen"));
-        editor.set("fullscreen", "true");
-        assertEquals("true", editor.read().getProperty("fullscreen"));
-        assertEquals("value", editor.read().getProperty("unknown"));
-        assertTrue(new String(Files.readAllBytes(target.toPath()), StandardCharsets.ISO_8859_1).contains("# keep this comment"));
-        assertEquals(original, new String(Files.readAllBytes(legacy.toPath()), StandardCharsets.ISO_8859_1));
-        editor.set("fullscreen", null);
-        assertNull(editor.read().getProperty("fullscreen"));
+    private static String text(File file) throws Exception {
+        return new String(Files.readAllBytes(file.toPath()), StandardCharsets.UTF_8);
     }
 
-    @Test public void escapedAndDuplicateKeysAndContinuationsAreReplaced() throws Exception {
-        File target = temp.newFile("termuxpp.properties");
-        Files.write(target.toPath(), ("# comment ending in \\\nfullscreen = false\nfullscr\\u0065en=true\nextra-keys=one\\\n two\nunknown=keep\n").getBytes(StandardCharsets.ISO_8859_1));
-        TermuxPropertiesEditor editor = new TermuxPropertiesEditor(target, Arrays.asList(target.toString()));
+    @Test public void legacyIsMigratedOnFirstUse() throws Exception {
+        File legacy = temp.newFile("termuxpp.properties");
+        Files.write(legacy.toPath(), "# old\nfullscreen=false\nterminal-tmux-sidebar-style=subtle\nunknown=dropped\n"
+            .getBytes(StandardCharsets.UTF_8));
+        File target = new File(temp.getRoot(), "config.yaml");
+        TermuxPropertiesEditor editor = new TermuxPropertiesEditor(target, Arrays.asList(legacy.toString()));
+        assertEquals("false", editor.read().getProperty("fullscreen"));
+        assertNull(editor.read().getProperty("unknown"));
+        assertFalse(legacy.exists());
+        assertTrue(new File(legacy + ".migrated").isFile());
+        assertTrue(text(target).contains("appearance:\n  fullscreen: false\n"));
+        assertTrue(text(target).contains("tmux:\n  sidebar:\n    style: subtle\n"));
+
+        editor.set("fullscreen", "true");
+        assertEquals("true", editor.read().getProperty("fullscreen"));
         editor.set("fullscreen", null);
         assertNull(editor.read().getProperty("fullscreen"));
-        editor.set("extra-keys", "Unicode \u2603\nnext");
-        assertEquals("Unicode \u2603\nnext", editor.read().getProperty("extra-keys"));
-        assertEquals("keep", editor.read().getProperty("unknown"));
+        assertEquals("subtle", editor.read().getProperty("terminal-tmux-sidebar-style"));
+    }
+
+    @Test public void extraKeysAreWrittenAsRows() throws Exception {
+        File target = new File(temp.getRoot(), "config.yaml");
+        TermuxPropertiesEditor editor = new TermuxPropertiesEditor(target, Arrays.asList());
+        editor.set("extra-keys", "[['ESC', {key: '/', popup: BACKSLASH}], ['CTRL']]");
+        assertTrue(text(target), text(target).contains("extra-keys:\n  keys:\n    - [ESC, {key: /, popup: BACKSLASH}]\n    - [CTRL]\n"));
+        assertEquals("[[\"ESC\",{\"key\":\"\\/\",\"popup\":\"BACKSLASH\"}],[\"CTRL\"]]",
+            editor.read().getProperty("extra-keys"));
     }
 
     @Test public void interruptedAtomicWriteRecoversBeforeEditing() throws Exception {
-        File target = new File(temp.getRoot(), "termuxpp.properties");
-        File backup = new File(target + ".bak");
-        Files.write(backup.toPath(), "unknown=recovered\n".getBytes(StandardCharsets.ISO_8859_1));
-        TermuxPropertiesEditor editor = new TermuxPropertiesEditor(target, Arrays.asList(target.toString()));
-        assertEquals("recovered", editor.read().getProperty("unknown"));
+        File target = new File(temp.getRoot(), "config.yaml");
+        Files.write(new File(target + ".bak").toPath(), "appearance:\n  night-mode: true\n".getBytes(StandardCharsets.UTF_8));
+        TermuxPropertiesEditor editor = new TermuxPropertiesEditor(target, Arrays.asList());
+        assertEquals("true", editor.read().getProperty("night-mode"));
         editor.set("fullscreen", "true");
-        assertEquals("recovered", editor.read().getProperty("unknown"));
+        assertEquals("true", editor.read().getProperty("night-mode"));
         assertEquals("true", editor.read().getProperty("fullscreen"));
     }
 
     @Test public void literalUtf8IsPreserved() throws Exception {
-        File target = temp.newFile("termuxpp.properties");
-        String original = "# Grüße ☃\nunknown=日本語\n";
-        Files.write(target.toPath(), original.getBytes(StandardCharsets.UTF_8));
-        TermuxPropertiesEditor editor = new TermuxPropertiesEditor(target, Arrays.asList(target.toString()));
-        assertEquals("日本語", editor.read().getProperty("unknown"));
-        editor.set("fullscreen", "true");
-        assertEquals("日本語", editor.read().getProperty("unknown"));
-        assertTrue(new String(Files.readAllBytes(target.toPath()), StandardCharsets.UTF_8).startsWith(original));
+        File target = new File(temp.getRoot(), "config.yaml");
+        TermuxPropertiesEditor editor = new TermuxPropertiesEditor(target, Arrays.asList());
+        editor.set("terminal-triple-tap-focus-title", "Grüße ☃ 日本語");
+        assertEquals("Grüße ☃ 日本語", editor.read().getProperty("terminal-triple-tap-focus-title"));
+        assertTrue(text(target).contains("Grüße ☃ 日本語"));
     }
 
-    @Test public void symlinkSourcesAreSkippedAndWriteTargetsRejected() throws Exception {
-        File real = temp.newFile("real.properties");
-        byte[] original = "unknown=untouched\n".getBytes(StandardCharsets.UTF_8);
+    @Test public void symlinkTargetsAreRejected() throws Exception {
+        File real = temp.newFile("real.yaml");
+        byte[] original = "appearance:\n  fullscreen: false\n".getBytes(StandardCharsets.UTF_8);
         Files.write(real.toPath(), original);
-        File link = new File(temp.getRoot(), "termuxpp.properties");
+        File link = new File(temp.getRoot(), "config.yaml");
         Files.createSymbolicLink(link.toPath(), real.toPath());
-        TermuxPropertiesEditor editor = new TermuxPropertiesEditor(link, Arrays.asList(link.toString(), real.toString()));
-        assertEquals("untouched", editor.read().getProperty("unknown"));
+        TermuxPropertiesEditor editor = new TermuxPropertiesEditor(link, Arrays.asList());
         assertThrows(java.io.IOException.class, () -> editor.set("fullscreen", "true"));
         assertArrayEquals(original, Files.readAllBytes(real.toPath()));
-        File target = new File(temp.getRoot(), "safe.properties");
-        TermuxPropertiesEditor fallback = new TermuxPropertiesEditor(target, Arrays.asList(link.toString(), target.toString()));
-        assertNull(fallback.read().getProperty("unknown"));
     }
 
     @Test public void malformedFileIsNotOverwritten() throws Exception {
-        File target = temp.newFile("termuxpp.properties");
-        byte[] original = "broken=\\uXXXX\n".getBytes(StandardCharsets.ISO_8859_1);
+        File target = temp.newFile("config.yaml");
+        byte[] original = "appearance: [unclosed\n".getBytes(StandardCharsets.UTF_8);
         Files.write(target.toPath(), original);
-        TermuxPropertiesEditor editor = new TermuxPropertiesEditor(target, Arrays.asList(target.toString()));
-        assertThrows(IllegalArgumentException.class, () -> editor.set("fullscreen", "true"));
+        TermuxPropertiesEditor editor = new TermuxPropertiesEditor(target, Arrays.asList());
+        assertThrows(java.io.IOException.class, () -> editor.set("fullscreen", "true"));
         assertArrayEquals(original, Files.readAllBytes(target.toPath()));
     }
 }

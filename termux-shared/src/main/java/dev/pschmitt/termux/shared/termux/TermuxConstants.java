@@ -722,8 +722,10 @@ public final class TermuxConstants {
 
 
 
-    /** Termux app properties primary (canonical) file path */
-    public static final String TERMUX_PROPERTIES_PRIMARY_FILE_PATH = TERMUX_CONFIG_TERMUXPP_DIR_PATH + "/termuxpp.properties"; // Default: "/data/data/dev.pschmitt.termux/files/home/.config/termuxpp/termuxpp.properties"
+    /** Termux app settings file path: grouped YAML, see TermuxConfigSchema. */
+    public static final String TERMUX_PROPERTIES_PRIMARY_FILE_PATH = TERMUX_CONFIG_TERMUXPP_DIR_PATH + "/config.yaml"; // Default: "/data/data/dev.pschmitt.termux/files/home/.config/termuxpp/config.yaml"
+    /** The former settings file in the Java properties format, migrated to {@link #TERMUX_PROPERTIES_PRIMARY_FILE_PATH}. */
+    public static final String TERMUX_LEGACY_PROPERTIES_FILE_PATH = TERMUX_CONFIG_TERMUXPP_DIR_PATH + "/termuxpp.properties"; // Default: "/data/data/dev.pschmitt.termux/files/home/.config/termuxpp/termuxpp.properties"
     /** Termux app properties primary file */
     public static final File TERMUX_PROPERTIES_PRIMARY_FILE = new File(TERMUX_PROPERTIES_PRIMARY_FILE_PATH);
 
@@ -742,7 +744,13 @@ public final class TermuxConstants {
      * modify the values for security properties like {@link #PROP_ALLOW_EXTERNAL_APPS} set by users
      * without their explicit consent. */
     public static final List<String> TERMUX_PROPERTIES_FILE_PATHS_LIST = Arrays.asList(
-        TERMUX_PROPERTIES_PRIMARY_FILE_PATH,
+        TERMUX_PROPERTIES_PRIMARY_FILE_PATH);
+
+    /** The legacy Java properties settings files, in lookup order. The first one found is migrated once to
+     * {@link #TERMUX_PROPERTIES_PRIMARY_FILE_PATH} and renamed with a {@code .migrated} suffix; the app does not
+     * read them otherwise. */
+    public static final List<String> TERMUX_LEGACY_PROPERTIES_FILE_PATHS_LIST = Arrays.asList(
+        TERMUX_LEGACY_PROPERTIES_FILE_PATH,
         TERMUX_CONFIG_TERMUXPP_DIR_PATH + "/termux.properties",
         TERMUX_PROPERTIES_SECONDARY_FILE_PATH,
         TERMUX_PROPERTIES_TERTIARY_FILE_PATH);

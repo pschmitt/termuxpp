@@ -106,7 +106,7 @@ path on stderr before copying it. The dry run reports the same target, and
 `--json` keeps the machine-readable result on stdout.
 
 `nixpp reapply` reruns the active guest generation's activation and restores
-managed files such as `termuxpp.properties`. The controller preserves the
+managed files such as `config.yaml`. The controller preserves the
 current and previous generation selections. `nixpp hm` invokes the guest's
 installed Home Manager CLI. [Guest command reference](../../pkgs/nixpp/source/README.md)
 
@@ -341,31 +341,40 @@ literal text; and configure labels, macros and swipe-up actions without writing
 JSON. An optional **Advanced JSON** editor preserves support for complex layouts. Existing custom key attributes are retained. Layout changes remain a draft
 until **Save**, and **Cancel** leaves the file unchanged.
 
-These controls edit the properties file itself, not a competing Android preference
+These controls edit the settings file itself, not a competing Android preference
 store. Clear a text field or select **App default** to remove an override; the layout
 editor has **Restore default layout** followed by **Save**. Settings such as
 transcript size may require a new session or an app restart.
 
-The canonical file is **`~/.config/termuxpp/termuxpp.properties`**. Reads use the
-first existing file in this order, without merging:
+The settings file is **`~/.config/termuxpp/config.yaml`**, grouped by topic
+(`appearance`, `terminal`, `sessions`, `tmux`, `keyboard`, `extra-keys`,
+`gestures`, `integrations`, `power`), with real booleans, numbers and the extra
+keys as a list of rows. The app keeps the former key names internally and in its
+settings screens; [the settings file reference](terminal-settings.md#settings-file)
+maps each one to its path. A change in the app rewrites the whole file in that
+layout, without comments, with an atomic write.
+
+TermuxPP no longer reads Java properties settings files. When there is no
+`config.yaml`, the app converts the first of these it finds once and renames
+it with a `.migrated` suffix:
 
 1. `~/.config/termuxpp/termuxpp.properties`
 2. `~/.config/termuxpp/termux.properties` (previous fork filename)
 3. `~/.config/termux/termux.properties`
 4. `~/.termux/termux.properties`
 
-On the first GUI change, the selected legacy file is copied into the canonical
-file before applying the change. The legacy original is retained. Comments and
-unknown properties are preserved; updates use an atomic write. Once the canonical
-file exists, it takes precedence even when an override is reset. Shell edits and
-`termux-reload-settings` continue to work. The adapted first-run profile script
-creates the new canonical filename only when none of the supported files exists.
+The deprecated `use-black-ui` becomes `appearance.night-mode`; other keys the
+layout does not know are left out and logged. The adapted first-run profile
+script still installs the packaged example, which the app then migrates; it
+skips that once `config.yaml` exists.
 
-This is an intentional fork difference. Upstream retains its `termux.properties`
-filename and legacy configuration locations. Sources: [upstream constants](https://github.com/termux/termux-app/blob/master/termux-shared/src/main/java/com/termux/shared/termux/TermuxConstants.java),
+This is an intentional fork difference. Upstream reads `termux.properties` in
+the Java properties format from its legacy configuration locations. Sources: [upstream constants](https://github.com/termux/termux-app/blob/master/termux-shared/src/main/java/com/termux/shared/termux/TermuxConstants.java),
 [fork constants](../../termux-shared/src/main/java/dev/pschmitt/termux/shared/termux/TermuxConstants.java),
 [properties GUI](../../app/src/main/java/com/termux/app/fragments/settings/termux/PropertiesPreferencesFragment.java),
 [file editor](../../app/src/main/java/com/termux/app/settings/TermuxPropertiesEditor.java),
+[YAML layout](../../termux-shared/src/main/java/dev/pschmitt/termux/shared/termux/settings/properties/TermuxConfigSchema.java),
+[migration](../../termux-shared/src/main/java/dev/pschmitt/termux/shared/termux/settings/properties/TermuxConfigMigration.java),
 and [helper adaptation rules](../../app/src/main/resources/termuxpp/helper-rewrites.tsv).
 
 ## Scope
@@ -574,8 +583,8 @@ configured property values. Sources: [search index](../../app/src/main/java/com/
 and [Settings navigation](../../app/src/main/java/com/termux/app/activities/SettingsActivity.java).
 
 TermuxPP offers **Terminal engine** in the properties settings. Set
-`terminal-engine=libghostty` in `termuxpp.properties` to use libghostty for new
-sessions, or `terminal-engine=termux` to select the default Termux engine.
+`terminal.engine: libghostty` in `config.yaml` to use libghostty for new
+sessions, or `terminal.engine: termux` to select the default Termux engine.
 Open a new session after changing the setting or reloading the file.
 The libghostty build supports arm64-v8a and uses the existing
 TermuxPP view to display Kitty graphics from libghostty. TermuxPP uses the
@@ -591,7 +600,7 @@ in the tested workload.
 [TermuxPP emulator](../../terminal-emulator/src/main/java/com/termux/terminal/TerminalEmulator.java)
 [Upstream Termux emulator](https://github.com/termux/termux-app/blob/master/terminal-emulator/src/main/java/com/termux/terminal/TerminalEmulator.java)
 
-Set `create-session-on-single-session-switch=true` in `termuxpp.properties` to
+Set `sessions.create-on-single-session-switch: true` in `config.yaml` to
 create and open a new terminal when previous or next session is invoked with
 only one terminal open. This applies to keyboard shortcuts and configured
 gestures, including the extra-keys swipe. The default is to keep the current session.

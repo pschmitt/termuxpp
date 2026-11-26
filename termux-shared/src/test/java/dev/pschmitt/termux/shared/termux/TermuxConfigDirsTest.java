@@ -45,12 +45,14 @@ public class TermuxConfigDirsTest {
         assertEquals(Arrays.asList(
             home + "/.config/termuxpp", home + "/.config/termux", home + "/.termux"),
             TermuxConstants.TERMUX_CONFIG_DIR_PATHS_LIST);
+        assertEquals(Arrays.asList(home + "/.config/termuxpp/config.yaml"),
+            TermuxConstants.TERMUX_PROPERTIES_FILE_PATHS_LIST);
         assertEquals(Arrays.asList(
             home + "/.config/termuxpp/termuxpp.properties",
             home + "/.config/termuxpp/termux.properties",
             home + "/.config/termux/termux.properties",
             home + "/.termux/termux.properties"),
-            TermuxConstants.TERMUX_PROPERTIES_FILE_PATHS_LIST);
+            TermuxConstants.TERMUX_LEGACY_PROPERTIES_FILE_PATHS_LIST);
         assertEquals(Arrays.asList(
             home + "/.config/termuxpp/tasker",
             home + "/.config/termux/tasker",

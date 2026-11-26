@@ -174,7 +174,7 @@ public class TermuxHelperRewritesTest {
             }
         }
         Assert.assertEquals(1, counts[TermuxHelperRewrites.Kind.IDENTITY.ordinal()]);
-        Assert.assertEquals(30, counts[TermuxHelperRewrites.Kind.RULE.ordinal()]);
+        Assert.assertEquals(32, counts[TermuxHelperRewrites.Kind.RULE.ordinal()]);
         Assert.assertEquals(1, counts[TermuxHelperRewrites.Kind.APPEND.ordinal()]);
         Assert.assertEquals(5, counts[TermuxHelperRewrites.Kind.REQUIRE.ordinal()]);
         Assert.assertEquals(12, counts[TermuxHelperRewrites.Kind.FORBID.ordinal()]);
@@ -194,13 +194,16 @@ public class TermuxHelperRewritesTest {
         List<TermuxHelperRewrites.Rule> rules = forkRules();
         for (String file : new String[]{"etc/profile.d/init-termux-properties.sh", "bin/termux-reload-settings"}) {
             String upgraded = TermuxHelperRewrites.apply(rules, file, previousPropertiesHelper(file));
-            assertContainsNewFilename(upgraded);
+            assertContainsNewFilename(file, upgraded);
             Assert.assertEquals(upgraded, TermuxHelperRewrites.apply(rules, file, upgraded));
         }
     }
 
-    private void assertContainsNewFilename(String text) {
-        Assert.assertTrue(text.contains("/.config/termuxpp/termuxpp.properties"));
+    private void assertContainsNewFilename(String file, String text) {
+        // The example settings are still copied as termuxpp.properties, which the app migrates to YAML; the
+        // reload help names the settings file the app reads.
+        Assert.assertTrue(text, text.contains(file.endsWith("termux-reload-settings")
+            ? "/.config/termuxpp/config.yaml" : "/.config/termuxpp/termuxpp.properties"));
     }
 
     @Test
@@ -339,7 +342,7 @@ public class TermuxHelperRewritesTest {
     public void reloadSettingsHelpNamesTheCanonicalConfigDir() throws IOException {
         List<TermuxHelperRewrites.Rule> rules = forkRules();
         String reload = TermuxHelperRewrites.apply(rules, "bin/termux-reload-settings", stockHelper("termux-reload-settings"));
-        Assert.assertTrue(reload.contains("~/.config/termuxpp/termuxpp.properties"));
+        Assert.assertTrue(reload.contains("~/.config/termuxpp/config.yaml"));
         Assert.assertTrue(reload.contains("~/.config/termuxpp/colors.properties"));
         Assert.assertTrue(reload.contains("~/.config/termuxpp/font.ttf"));
         Assert.assertFalse(reload.contains("~/.termux/"));
@@ -412,7 +415,9 @@ public class TermuxHelperRewritesTest {
         String home = "/data/data/dev.pschmitt.termux/files/home";
         // Nothing is created while the canonical file (or either stock place) exists.
         Assert.assertTrue(adapted.contains("[ ! -e " + home + "/.config/termuxpp/termuxpp.properties ]"));
-        Assert.assertTrue(adapted.contains("[ ! -e " + home + "/.config/termuxpp/termux.properties ]; then\n"));
+        Assert.assertTrue(adapted.contains("[ ! -e " + home + "/.config/termuxpp/termux.properties ]"));
+        // Nor once the settings are in config.yaml, which the app migrates the example to.
+        Assert.assertTrue(adapted.contains("[ ! -e " + home + "/.config/termuxpp/config.yaml ]; then\n"));
         Assert.assertTrue(adapted.contains("[ ! -f " + home + "/.config/termux/termux.properties ]"));
         Assert.assertTrue(adapted.contains("[ ! -e " + home + "/.termux/termux.properties ]"));
         // The example is copied to the canonical dir, never to ~/.termux.
@@ -508,7 +513,7 @@ public class TermuxHelperRewritesTest {
     public void strictParseAcceptsTheRealForkTableWithThirtyEightRows() throws IOException {
         String rendered = TermuxHelperRewrites.render(
             TermuxHelperRewrites.readResource(TermuxHelperRewrites.TABLE_RESOURCE), forkValues());
-        Assert.assertEquals(49, TermuxHelperRewrites.parseStrict(rendered).size());
+        Assert.assertEquals(51, TermuxHelperRewrites.parseStrict(rendered).size());
         Assert.assertEquals(TermuxHelperRewrites.parse(rendered).size(), TermuxHelperRewrites.parseStrict(rendered).size());
     }
 

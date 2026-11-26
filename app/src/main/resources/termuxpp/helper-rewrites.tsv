@@ -31,7 +31,8 @@
 # There are deliberately no require or forbid rows for the motd, a custom motd must never fail the hook.
 # The stock profile script init-termux-properties.sh copies an example termux.properties into ~/.termux when
 # there is none in the two stock places, which would put a stale second copy next to the one in
-# ~/.config/termuxpp. The rows add the canonical file to the condition and make the example go there. They
+# ~/.config/termuxpp. The rows add the canonical file to the condition and make the example go there; the
+# last one also skips the example once config.yaml exists (the app migrates the example to it). They
 # are written without tabs (tabs separate the fields) and without the data directory (only fixed text).
 identity	/data/data/com.termux	@DATA_DIR@
 rule	bin/login	export LD_PRELOAD="/	export LD_PRELOAD="${@REDIRECT_SO_VAR@:+$@REDIRECT_SO_VAR@:}/
@@ -69,7 +70,7 @@ require	bin/login	termuxpp_motd	@FORK_ONLY@
 require	bin/login	termuxpp_shell	@FORK_ONLY@
 forbid	bin/login	~/.termux/motd.sh	@FORK_ONLY@
 forbid	bin/login	~/.termux/shell	@FORK_ONLY@
-require	bin/termux-reload-settings	~/@CONFIG_DIR_NAME@/termuxpp.properties	@FORK_ONLY@
+require	bin/termux-reload-settings	~/@CONFIG_DIR_NAME@/config.yaml	@FORK_ONLY@
 forbid	bin/termux-reload-settings	~/.termux/	@FORK_ONLY@
 rule	etc/motd	Welcome to Termux!	Welcome to @PRODUCT_NAME@!
 rule	etc/motd	Docs:       https://termux.dev/docs	Docs:       @DOCS_URL@
@@ -79,6 +80,8 @@ rule	etc/profile.d/init-termux-properties.sh	/home/.termux/termux.properties ]; 
 rule	etc/profile.d/init-termux-properties.sh	/files/home/.termux\n	/files/home/@CONFIG_DIR_NAME@\n
 rule	etc/profile.d/init-termux-properties.sh	/home/.termux/\n	/home/@CONFIG_DIR_NAME@/termuxpp.properties\n
 rule	bin/termux-reload-settings	~/@CONFIG_DIR_NAME@/termux.properties	~/@CONFIG_DIR_NAME@/termuxpp.properties
+rule	bin/termux-reload-settings	~/@CONFIG_DIR_NAME@/termuxpp.properties	~/@CONFIG_DIR_NAME@/config.yaml
 rule	etc/profile.d/init-termux-properties.sh	/home/.termux/termux.properties ] && [ ! -e @DATA_DIR@/files/home/@CONFIG_DIR_NAME@/termux.properties ]; then	/home/.termux/termux.properties ] && [ ! -e @DATA_DIR@/files/home/@CONFIG_DIR_NAME@/termuxpp.properties ]; then
 rule	etc/profile.d/init-termux-properties.sh	/home/@CONFIG_DIR_NAME@/\n	/home/@CONFIG_DIR_NAME@/termuxpp.properties\n
 rule	etc/profile.d/init-termux-properties.sh	/home/@CONFIG_DIR_NAME@/termuxpp.properties ]; then	/home/@CONFIG_DIR_NAME@/termuxpp.properties ] && [ ! -e @DATA_DIR@/files/home/@CONFIG_DIR_NAME@/termux.properties ]; then
+rule	etc/profile.d/init-termux-properties.sh	/home/@CONFIG_DIR_NAME@/termux.properties ]; then	/home/@CONFIG_DIR_NAME@/termux.properties ] && [ ! -e @DATA_DIR@/files/home/@CONFIG_DIR_NAME@/config.yaml ]; then

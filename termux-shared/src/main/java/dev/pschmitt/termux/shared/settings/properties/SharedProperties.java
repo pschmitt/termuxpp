@@ -239,9 +239,24 @@ public class SharedProperties {
         }
 
         try {
-            try (FileInputStream in = new FileInputStream(propertiesFile)) {
-                Logger.logVerbose(LOG_TAG, "Loading properties from \"" + propertiesFile.getAbsolutePath() + "\" file");
-                properties.load(new InputStreamReader(in, StandardCharsets.UTF_8));
+            if (propertiesFile.getName().endsWith(".yaml")) {
+                // The grouped YAML settings file, flattened into the keys used everywhere else.
+                Logger.logVerbose(LOG_TAG, "Loading settings from \"" + propertiesFile.getAbsolutePath() + "\" file");
+                java.util.List<String> unknown = new java.util.ArrayList<>();
+                java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+                try (FileInputStream in = new FileInputStream(propertiesFile)) {
+                    byte[] buffer = new byte[8192];
+                    for (int count; (count = in.read(buffer)) != -1; ) bytes.write(buffer, 0, count);
+                }
+                properties = dev.pschmitt.termux.shared.termux.settings.properties.TermuxYamlConfig.read(
+                    new String(bytes.toByteArray(), StandardCharsets.UTF_8), unknown);
+                if (!unknown.isEmpty())
+                    Logger.logWarn(LOG_TAG, "Ignoring unknown settings in \"" + propertiesFile.getAbsolutePath() + "\": " + unknown);
+            } else {
+                try (FileInputStream in = new FileInputStream(propertiesFile)) {
+                    Logger.logVerbose(LOG_TAG, "Loading properties from \"" + propertiesFile.getAbsolutePath() + "\" file");
+                    properties.load(new InputStreamReader(in, StandardCharsets.UTF_8));
+                }
             }
         } catch (Exception e) {
             if (context != null)

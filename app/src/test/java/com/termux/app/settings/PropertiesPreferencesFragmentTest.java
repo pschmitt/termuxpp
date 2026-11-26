@@ -41,10 +41,11 @@ public class PropertiesPreferencesFragmentTest {
         assertNotNull(((ListPreference) editor.findPreference(TermuxConstants.PROP_ALLOW_EXTERNAL_APPS)).getDialogMessage());
     }
 
-    @Test public void canonicalFilenamePrecedesAllLegacyLocations() {
-        assertTrue(TermuxConstants.TERMUX_PROPERTIES_PRIMARY_FILE_PATH.endsWith("/.config/termuxpp/termuxpp.properties"));
-        assertEquals(TermuxConstants.TERMUX_PROPERTIES_PRIMARY_FILE_PATH, TermuxConstants.TERMUX_PROPERTIES_FILE_PATHS_LIST.get(0));
-        assertEquals(TermuxConstants.TERMUX_CONFIG_TERMUXPP_DIR_PATH + "/termux.properties", TermuxConstants.TERMUX_PROPERTIES_FILE_PATHS_LIST.get(1));
-        assertEquals(4, TermuxConstants.TERMUX_PROPERTIES_FILE_PATHS_LIST.size());
+    @Test public void theYamlFileIsTheOnlySettingsFile() {
+        assertTrue(TermuxConstants.TERMUX_PROPERTIES_PRIMARY_FILE_PATH.endsWith("/.config/termuxpp/config.yaml"));
+        assertEquals(java.util.Collections.singletonList(TermuxConstants.TERMUX_PROPERTIES_PRIMARY_FILE_PATH),
+            TermuxConstants.TERMUX_PROPERTIES_FILE_PATHS_LIST);
+        assertEquals(TermuxConstants.TERMUX_LEGACY_PROPERTIES_FILE_PATH, TermuxConstants.TERMUX_LEGACY_PROPERTIES_FILE_PATHS_LIST.get(0));
+        assertEquals(4, TermuxConstants.TERMUX_LEGACY_PROPERTIES_FILE_PATHS_LIST.size());
     }
 }

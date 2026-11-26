@@ -5,7 +5,8 @@ page_ref: /docs/apps/termux/terminal-settings.html
 # Terminal settings
 
 Open **Settings → Properties** to edit settings or search for a property from
-the main Settings screen. The editor writes `~/.config/termuxpp/termuxpp.properties`.
+the main Settings screen. The editor writes `~/.config/termuxpp/config.yaml`
+([Settings file](#settings-file)).
 In a provisioned Nix guest, the app uses the guest's home first, with native
 files as fallbacks. Edit the file in the same home to manage it through dotfiles.
 
@@ -105,18 +106,133 @@ presets use the selected face for all styles, with bold and italic derived by
 the renderer. Palette changes apply to open sessions when you return to the
 terminal.
 
+## Settings file
+
+The settings live in `~/.config/termuxpp/config.yaml`, grouped by topic.
+This page names each setting by its key, as the settings screens do; the
+table below gives its place in the file. For example:
+
+```yaml
+appearance:
+  night-mode: true
+sessions:
+  picker-position: terminal
+tmux:
+  sidebar:
+    style: rounded
+extra-keys:
+  keys:
+    - [ESC, {key: /, popup: BACKSLASH}, HOME, UP, END, PGUP]
+    - [TAB, CTRL, ALT, LEFT, DOWN, RIGHT, PGDN]
+gestures:
+  tap:
+    double:
+      action: open-sidebar
+```
+
+`extra-keys.keys` is a list of rows, each a list of keys; the same layout
+in the former JSON string still works. Unknown paths are ignored and logged.
+When you change a setting in the app, it rewrites the whole file in this
+layout, without comments.
+
+The app migrates the former `termuxpp.properties` once: if there is no
+`config.yaml`, it converts the first of `~/.config/termuxpp/termuxpp.properties`,
+`~/.config/termuxpp/termux.properties`, `~/.config/termux/termux.properties`
+and `~/.termux/termux.properties` it finds, renames that file with a
+`.migrated` suffix and does not read properties files afterwards.
+`use-black-ui` becomes `appearance.night-mode`; keys the layout does not know
+are left out and logged.
+
+| YAML path | Setting (former properties key) |
+| --- | --- |
+| `appearance.fullscreen` | `fullscreen` |
+| `appearance.fullscreen-workaround` | `use-fullscreen-workaround` |
+| `appearance.night-mode` | `night-mode` |
+| `appearance.toast-position` | `terminal-toast-position` |
+| `appearance.disable-session-change-toast` | `disable-terminal-session-change-toast` |
+| `terminal.engine` | `terminal-engine` |
+| `terminal.margin.horizontal` | `terminal-margin-horizontal` |
+| `terminal.margin.vertical` | `terminal-margin-vertical` |
+| `terminal.cursor.style` | `terminal-cursor-style` |
+| `terminal.cursor.blink-rate` | `terminal-cursor-blink-rate` |
+| `terminal.transcript-rows` | `terminal-transcript-rows` |
+| `terminal.toolbar-height` | `terminal-toolbar-height` |
+| `terminal.bell` | `bell-character` |
+| `terminal.open-url-on-click` | `terminal-onclick-url-open` |
+| `terminal.default-working-directory` | `default-working-directory` |
+| `sessions.picker-position` | `terminal-picker-position` |
+| `sessions.create-on-single-session-switch` | `create-session-on-single-session-switch` |
+| `sessions.tmpdir-max-age-days` | `delete-tmpdir-files-older-than-x-days-on-exit` |
+| `sessions.nix.session` | `nix-session` |
+| `sessions.nix.user` | `nix-user` |
+| `tmux.sidebar.layout` | `terminal-tmux-sidebar-layout` |
+| `tmux.sidebar.style` | `terminal-tmux-sidebar-style` |
+| `keyboard.back-key` | `back-key` |
+| `keyboard.hide-on-startup` | `hide-soft-keyboard-on-startup` |
+| `keyboard.toggle-behaviour` | `soft-keyboard-toggle-behaviour` |
+| `keyboard.char-based-input` | `enforce-char-based-input` |
+| `keyboard.ctrl-space-workaround` | `ctrl-space-workaround` |
+| `keyboard.disable-hardware-shortcuts` | `disable-hardware-keyboard-shortcuts` |
+| `keyboard.shortcuts.create-session` | `shortcut.create-session` |
+| `keyboard.shortcuts.next-session` | `shortcut.next-session` |
+| `keyboard.shortcuts.previous-session` | `shortcut.previous-session` |
+| `keyboard.shortcuts.rename-session` | `shortcut.rename-session` |
+| `keyboard.volume-keys` | `volume-keys` |
+| `keyboard.volume.up.action` | `volume-up-action` |
+| `keyboard.volume.up.keys` | `volume-up-keys` |
+| `keyboard.volume.down.action` | `volume-down-action` |
+| `keyboard.volume.down.keys` | `volume-down-keys` |
+| `extra-keys.keys` | `extra-keys` |
+| `extra-keys.style` | `extra-keys-style` |
+| `extra-keys.all-caps` | `extra-keys-text-all-caps` |
+| `extra-keys.corner-radius` | `extra-keys-button-corner-radius` |
+| `extra-keys.active.text-color` | `extra-keys-button-active-text-color` |
+| `extra-keys.active.background-color` | `extra-keys-button-active-background-color` |
+| `extra-keys.swipe.left.action` | `extra-keys-swipe-left-action` |
+| `extra-keys.swipe.left.keys` | `extra-keys-swipe-left-keys` |
+| `extra-keys.swipe.left.command` | `extra-keys-swipe-left-command` |
+| `extra-keys.swipe.right.action` | `extra-keys-swipe-right-action` |
+| `extra-keys.swipe.right.keys` | `extra-keys-swipe-right-keys` |
+| `extra-keys.swipe.right.command` | `extra-keys-swipe-right-command` |
+| `extra-keys.swipe.long-left.action` | `extra-keys-long-swipe-left-action` |
+| `extra-keys.swipe.long-left.keys` | `extra-keys-long-swipe-left-keys` |
+| `extra-keys.swipe.long-left.command` | `extra-keys-long-swipe-left-command` |
+| `extra-keys.swipe.long-right.action` | `extra-keys-long-swipe-right-action` |
+| `extra-keys.swipe.long-right.keys` | `extra-keys-long-swipe-right-keys` |
+| `extra-keys.swipe.long-right.command` | `extra-keys-long-swipe-right-command` |
+| `gestures.animations` | `gesture-animations` |
+| `gestures.command-context` | `gesture-command-context` |
+| `gestures.feedback.style` | `gesture-feedback-style` |
+| `gestures.feedback.position` | `gesture-feedback-position` |
+| `gestures.tap.single.action` | `terminal-single-tap-action` |
+| `gestures.tap.single.keys` | `terminal-single-tap-keys` |
+| `gestures.tap.single.command` | `terminal-single-tap-command` |
+| `gestures.tap.double.action` | `terminal-double-tap-action` |
+| `gestures.tap.double.keys` | `terminal-double-tap-keys` |
+| `gestures.tap.double.command` | `terminal-double-tap-command` |
+| `gestures.tap.triple.action` | `terminal-triple-tap-action` |
+| `gestures.tap.triple.keys` | `terminal-triple-tap-keys` |
+| `gestures.tap.triple.command` | `terminal-triple-tap-command` |
+| `gestures.tap.triple.focus-title` | `terminal-triple-tap-focus-title` |
+| `gestures.swipe.{two,three}-finger.{up,down,left,right}.{action,keys,command}` | `terminal-{2,3}-finger-swipe-DIRECTION-TYPE` |
+| `integrations.allow-external-apps` | `allow-external-apps` |
+| `integrations.am-socket-server` | `run-termux-am-socket-server` |
+| `integrations.disable-file-share-receiver` | `disable-file-share-receiver` |
+| `integrations.disable-file-view-receiver` | `disable-file-view-receiver` |
+| `integrations.adb-shell.allowed-ssids` | `adb-shell-allowed-ssids` |
+| `power.wake-lock.timeout` | `wake-lock-timeout` |
+| `power.wake-lock.wifi` | `wake-lock-wifi` |
+
 ## Configuration files
 
-Keep `termuxpp.properties`, `colors.properties`,
+Keep `config.yaml`, `colors.properties`,
 and the terminal fonts under `~/.config/termuxpp`. The optional fonts are
 `font.ttf`, `font-italic.ttf`, `font-bold.ttf`, and `font-bold-italic.ttf`.
-The app accepts symlinked fonts. Properties files must be regular files.
+The app accepts symlinked fonts. The settings file must be a regular file.
 
-For the main properties, lookup checks `~/.config/termuxpp/termuxpp.properties`
-first, then `termux.properties` in `~/.config/termuxpp`, `~/.config/termux`,
-and `~/.termux`, in that order. Other appearance files use the same
-directory order. Lookup is per file. `XDG_CONFIG_HOME` does not change these
-paths. See [Built-in integrations](integrations.md) for script locations.
+Appearance files are looked up in `~/.config/termuxpp`, `~/.config/termux`
+and `~/.termux`, in that order. Lookup is per file. `XDG_CONFIG_HOME` does
+not change these paths. See [Built-in integrations](integrations.md) for script locations.
 
 Run `tpp-session reload-settings` after editing a file. In native sessions, TermuxPP's
 adapted `termux-tools` also reads `shell` and `motd.sh` in the same
@@ -133,7 +249,7 @@ existing setting unchanged.
 ## tmux sidebar layout
 
 Open **Settings → Properties → Appearance → Terminal tmux sidebar layout**
-or set `terminal-tmux-sidebar-layout` in `termuxpp.properties`.
+or set `terminal-tmux-sidebar-layout` in `config.yaml`.
 
 - `nested` (default) shows tmux windows below their terminal. Hold the terminal
   row to collapse or expand the windows, or to open the window picker.
@@ -147,7 +263,7 @@ tmux window, including when you switch with a keyboard shortcut.
 
 **Terminal tmux sidebar style** previews the active window with either a
 subtle outline and accent dot or a filled rounded accent pill. Set
-`terminal-tmux-sidebar-style = rounded` (default) or `subtle`.
+`tmux.sidebar.style: rounded` (default) or `subtle`.
 Both the layout and style dialogs show a preview before you save.
 
 The session picker and the tmux window picker use the same rows as the
@@ -166,8 +282,8 @@ the session picker and the tmux window picker open:
 - `terminal` in the middle of the terminal view, which stays above the
   keyboard while it is shown.
 
-You can also write `terminal-picker-position = terminal` in
-`termuxpp.properties` and run `tpp settings reload`.
+You can also write `sessions.picker-position: terminal` in
+`config.yaml` and run `tpp settings reload`.
 
 ## Terminal feedback position
 
@@ -175,8 +291,8 @@ Use **Settings → Properties → Appearance → terminal-toast-position** to mo
 short terminal messages such as the session number. The default is
 `top-center`. The nine values are `top-left`, `top-center`, `top-right`,
 `center-left`, `center`, `center-right`, `bottom-left`, `bottom-center`, and
-`bottom-right`. You can also write `terminal-toast-position = top-right` in
-`termuxpp.properties` and run `tpp-session reload-settings`.
+`bottom-right`. You can also write `appearance.toast-position: top-right` in
+`config.yaml` and run `tpp-session reload-settings`.
 
 ## Tap and swipe actions
 
@@ -185,14 +301,20 @@ Each finger count has separate up, down, left, and right bindings. Move the
 fingers together and lift to run the assigned action. By default, swiping down
 with two fingers opens the TermuxPP window picker for the current tmux
 attachment. The other seven swipes are unbound. Set
-`terminal-2-finger-swipe-down-action = none` to disable that binding.
+`gestures.swipe.two-finger.down.action: none` to disable that binding.
 Pinch-to-zoom continues to work.
 
-For example, set these in `termuxpp.properties`:
+For example, set these in `config.yaml`:
 
-```properties
-terminal-2-finger-swipe-left-action = next-session
-terminal-3-finger-swipe-up-action = open-sidebar
+```yaml
+gestures:
+  swipe:
+    two-finger:
+      left:
+        action: next-session
+    three-finger:
+      up:
+        action: open-sidebar
 ```
 
 Use the corresponding `-keys` or `-command` property for `send-keys` or
@@ -200,16 +322,16 @@ Use the corresponding `-keys` or `-command` property for `send-keys` or
 
 Custom taps, extra-key swipes, and volume-button actions show visual feedback
 by default. Turn **gesture-animations** off in **Settings → Properties →
-Gestures**, or set `gesture-animations = false` in `termuxpp.properties`.
+Gestures**, or set `gestures.animations: false` in `config.yaml`.
 The assigned actions still run. Choose **gesture-feedback-style** in the same
 settings group to select `soft-flash` (default), `touch-ripples`, `edge-glow`,
 `light-sweep`, `touch-bloom`, or `corner-brackets`. You can also set, for
-example, `gesture-feedback-style = touch-ripples` in `termuxpp.properties`.
+example, `gestures.feedback.style: touch-ripples` in `config.yaml`.
 Ripples and bloom start at the tap location; other actions use the terminal center.
 Choose **gesture-feedback-position** to place the gesture action pill at any of
 the nine terminal positions. Its default is `bottom-center`; it is independent
 of `terminal-toast-position`. For example, set
-`gesture-feedback-position = top-right` in `termuxpp.properties`.
+`gestures.feedback.position: top-right` in `config.yaml`.
 When Android animations are disabled, the action label remains visible briefly
 without an animated effect.
 
@@ -233,8 +355,8 @@ The gesture keys are independent and active at the same time. Valid values, case
 | `none` | Do nothing. |
 | `show-keyboard` | Show the soft keyboard. If it is already visible nothing changes. |
 | `toggle-keyboard` | Hide the soft keyboard if it is visible, otherwise show it. Before Android 6 the visibility cannot be read and this only shows it. |
-| `next-session` | Switch to the next session, wrapping around. With one session, creates a new one if `create-session-on-single-session-switch=true`. |
-| `previous-session` | Switch to the previous session, wrapping around. With one session, creates a new one if `create-session-on-single-session-switch=true`. |
+| `next-session` | Switch to the next session, wrapping around. With one session, creates a new one if `sessions.create-on-single-session-switch: true`. |
+| `previous-session` | Switch to the previous session, wrapping around. With one session, creates a new one if `sessions.create-on-single-session-switch: true`. |
 | `new-session` | Open a new terminal session and switch to it, like the **New** button. |
 | `toggle-text-input` | Switch the extra keys toolbar to its text input, or back to the extra keys. Does nothing while the toolbar is hidden. |
 | `open-sidebar` | Open the sidebar with the session list. It is not opened while it is locked closed in copy mode. |
@@ -304,15 +426,16 @@ intact.
 * `outer` runs in the native Termux prefix.
 
 An unset or blank command makes its `run-command` action do nothing. Commands are trusted shell
-code stored in `termuxpp.properties`; do not put credentials or other secrets in command text. The
+code stored in `config.yaml`; do not put credentials or other secrets in command text. The
 app redacts command values from its property and execution logs. Use a script that reads runtime
 secrets when a command needs them.
 
 Extra-key buttons can run commands too. Use a command object instead of `key` or `macro` in the
 `extra-keys` JSON, with an optional label:
 
-```properties
-extra-keys = [["ESC", {"command": "nix develop", "display": "DEV"}]]
+```yaml
+extra-keys:
+  keys: [["ESC", {"command": "nix develop", "display": "DEV"}]]
 ```
 
 The same `gesture-command-context` applies. A command button cannot also send a key or macro; it
@@ -390,9 +513,11 @@ action and gives a tick when it reaches that threshold.
 The preview is available with `gesture-animations` off. The row stays still and successful
 gestures skip confirmation in that mode. Example:
 
-```properties
-# A long swipe with the finger moving left to right opens a new session
-extra-keys-long-swipe-left-action = new-session
+```yaml
+extra-keys:
+  swipe:
+    long-left:
+      action: new-session
 ```
 
 ## Volume buttons
@@ -431,7 +556,7 @@ The `*-keys` keys are written as described in "Sending keys".
 * `send-keys` without a usable `volume-up-keys` or `volume-down-keys` is logged and does nothing,
   as if the action were `none`, which gives the button back to the system volume.
 * A value that is not listed is logged and `modifier` is used.
-* `volume-keys = volume` (the existing key) still wins over everything: both buttons then always
+* `keyboard.volume-keys: volume` (the existing key) still wins over everything: both buttons then always
   change the system volume and these keys are ignored.
 * Volume buttons of a full external (alphabetic) keyboard are never taken over, they stay with
   the system.
@@ -455,60 +580,62 @@ configurable and has no effect on other keys like `ESC`.
 
 ## Example
 
-```properties
-# Double tap hides the keyboard when it is visible and shows it otherwise
-terminal-double-tap-action = toggle-keyboard
-
-# Triple tap opens the sidebar
-terminal-triple-tap-action = open-sidebar
-
-# Alternatively the triple tap opens the terminal menu, the one that a long press opens
-# terminal-triple-tap-action = open-menu
-
-# Optional: keep the default single tap (show-keyboard) or turn it off with none
-terminal-single-tap-action = show-keyboard
-
-# Optional: swipe the extra keys row to the right to go to the previous session
-extra-keys-swipe-left-action = previous-session
-
-# Optional: double tap opens the text input of the extra keys toolbar
-terminal-double-tap-action = toggle-text-input
+```yaml
+gestures:
+  tap:
+    # Optional: keep the default single tap (show-keyboard) or turn it off with none
+    single:
+      action: show-keyboard
+    # Double tap hides the keyboard when it is visible and shows it otherwise.
+    # Alternatively toggle-text-input opens the text input of the extra keys toolbar.
+    double:
+      action: toggle-keyboard
+    # Triple tap opens the sidebar; open-menu would open the terminal menu instead,
+    # the one that a long press opens.
+    triple:
+      action: open-sidebar
+extra-keys:
+  swipe:
+    # Optional: swipe the extra keys row to the right to go to the previous session
+    left:
+      action: previous-session
 ```
 
 Sending keys:
 
-```properties
-# Double tap sends Escape
-terminal-double-tap-action = send-keys
-terminal-double-tap-keys = ESC
-
-# Triple tap sends Ctrl+L, which clears the screen in most shells
-terminal-triple-tap-action = send-keys
-terminal-triple-tap-keys = CTRL l
-
-# The swipe sends Escape, then ":q", then Enter, for example to leave vim
-extra-keys-swipe-left-action = send-keys
-extra-keys-swipe-left-keys = ESC :q ENTER
+```yaml
+gestures:
+  tap:
+    double:
+      action: send-keys
+      keys: ESC
+    triple:
+      action: send-keys
+      keys: CTRL l
+extra-keys:
+  swipe:
+    left:
+      action: send-keys
+      keys: ESC :q ENTER
 ```
 
 Volume buttons:
 
-```properties
-# Volume up grows the text, volume down shrinks it (hold to keep going)
-volume-up-action = font-size-up
-volume-down-action = font-size-down
-
-# Alternatively: volume up switches to the next session, volume down stays the virtual Ctrl key
-# volume-up-action = next-session
-
-# Alternatively: volume down sends Escape, volume up keeps the system volume
-# volume-down-action = send-keys
-# volume-down-keys = ESC
-# volume-up-action = none
+```yaml
+keyboard:
+  volume:
+    # Volume up grows the text, volume down shrinks it (hold to keep going)
+    up:
+      action: font-size-up
+    down:
+      action: font-size-down
+    # Alternatively: volume up switches to the next session (next-session) and
+    # volume down sends Escape (action: send-keys, keys: ESC); none keeps the
+    # system volume.
 ```
 
-Run `termux-reload-settings` after editing the file. Stock Termux does not read these keys and
-ignores them, so the same file can be shared with a stock installation.
+Run `termux-reload-settings` after editing the file. Stock Termux reads
+`termux.properties` and does not understand `config.yaml`.
 
 ## Extra-key appearance
 
@@ -531,11 +658,12 @@ key is unlatched (it is not reset when the finger is lifted).
 (the theme shape is used). Only the drawn background is rounded: the touch area of every key stays
 the full grid cell. A radius above half the key height makes a pill.
 
-```properties
-# TermuxPP purple: light lavender text on an active modifier, deep purple while a key is pressed
-extra-keys-button-active-text-color = #D8B4FE
-extra-keys-button-active-background-color = #3B1D6A
-extra-keys-button-corner-radius = 8
+```yaml
+extra-keys:
+  active:
+    text-color: #D8B4FE
+    background-color: #3B1D6A
+  corner-radius: 8
 ```
 
 ## URLs and hyperlinks
@@ -547,7 +675,7 @@ Opening a link is always something you do: nothing is ever opened when a program
 
 ## Tapping a link
 
-The tap opens links only when `terminal-onclick-url-open` is set to `true` in `termuxpp.properties`
+The tap opens links only when `terminal-onclick-url-open` is set to `true` in `config.yaml`
 (the setting that already existed for URLs in the text; it is off by default). A tap on
 
 - a hyperlink opens its address. If the text that is shown for the link is not its address, a
@@ -639,9 +767,10 @@ is held, the notification shows for how long.
 | `wake-lock-timeout` | Release the wake lock by itself after this many minutes (0 to 10080), so a forgotten one does not keep the phone awake | `0` (keep it until released) |
 | `wake-lock-wifi` | Also hold a high-performance Wi-Fi lock, which keeps the Wi-Fi radio out of power save | `false` |
 
-```properties
-# Release a forgotten wake lock after two hours
-wake-lock-timeout = 120
+```yaml
+power:
+  wake-lock:
+    timeout: 120
 ```
 
 ## Where it is implemented

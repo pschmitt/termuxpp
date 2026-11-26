@@ -46,7 +46,7 @@ public class TermuxInstallerBootstrapIntegrationTest {
         Assert.assertFalse(adapter.isStock());
         Assert.assertEquals(TermuxConstants.TERMUX_INTERNAL_PRIVATE_APP_DATA_DIR_PATH, adapter.dataDir());
         // Every row of the packaged table resolved: nothing was dropped for the app's real constants.
-        Assert.assertEquals(49, adapter.rules().size());
+        Assert.assertEquals(51, adapter.rules().size());
     }
 
     @Test

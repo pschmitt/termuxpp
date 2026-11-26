@@ -1,95 +1,48 @@
 package com.termux.app.settings;
 
-import android.util.AtomicFile;
-
-import dev.pschmitt.termux.shared.termux.TermuxConstants;
-import dev.pschmitt.termux.shared.termux.nix.TermuxNix;
 import android.system.ErrnoException;
 import android.system.Os;
 import android.system.OsConstants;
+import android.util.AtomicFile;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
 import dev.pschmitt.termux.shared.file.filesystem.FileType;
+import dev.pschmitt.termux.shared.termux.TermuxConstants;
+import dev.pschmitt.termux.shared.termux.nix.TermuxNix;
+import dev.pschmitt.termux.shared.termux.settings.properties.TermuxConfigMigration;
+import dev.pschmitt.termux.shared.termux.settings.properties.TermuxYamlConfig;
 
-import java.io.InputStreamReader;
-import java.io.StringReader;
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.FileInputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
+/**
+ * Reads and changes single settings in {@code config.yaml}, for the settings screens. A change rewrites the
+ * whole file in the grouped layout, so comments in it do not survive. A legacy properties file is migrated
+ * first, as the app does on start.
+ */
 public final class TermuxPropertiesEditor {
     private final File target;
-    private final List<String> paths;
+    private final List<String> legacyPaths;
 
     public TermuxPropertiesEditor() {
-        this(TermuxNix.configPaths(TermuxConstants.TERMUX_PROPERTIES_FILE_PATHS_LIST));
+        this(new File(TermuxNix.configPaths(TermuxConstants.TERMUX_PROPERTIES_FILE_PATHS_LIST).get(0)),
+            TermuxNix.configPaths(TermuxConstants.TERMUX_LEGACY_PROPERTIES_FILE_PATHS_LIST));
     }
 
-    private TermuxPropertiesEditor(List<String> paths) {
-        this(new File(paths.get(0)), paths);
-    }
-
-    public TermuxPropertiesEditor(File target, List<String> paths) {
+    /**
+     * @param target The YAML settings file.
+     * @param legacyPaths Legacy properties files to migrate from when the YAML file does not exist yet.
+     */
+    public TermuxPropertiesEditor(@NonNull File target, @NonNull List<String> legacyPaths) {
         this.target = target;
-        this.paths = paths;
-    }
-
-    private byte[] source() throws IOException {
-        for (String path : paths) {
-            File file = new File(path);
-            FileType type = fileType(path);
-            if (type != FileType.REGULAR && type != FileType.NO_EXIST) continue;
-            if (file.equals(target) && (type == FileType.REGULAR || new File(path + ".bak").isFile())) {
-                validateWriteTargets();
-                return new AtomicFile(file).readFully();
-            }
-            if (type == FileType.REGULAR && file.canRead()) {
-                try (FileInputStream input = new FileInputStream(file)) {
-                    ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-                    byte[] buffer = new byte[4096];
-                    int count;
-                    while ((count = input.read(buffer)) != -1) bytes.write(buffer, 0, count);
-                    return bytes.toByteArray();
-                }
-            }
-        }
-        return new byte[0];
-    }
-
-    public synchronized Properties read() throws IOException {
-        Properties properties = new Properties();
-        properties.load(new InputStreamReader(new ByteArrayInputStream(source()), StandardCharsets.UTF_8));
-        return properties;
-    }
-
-    private static byte[] withoutKey(byte[] original, String key) throws IOException {
-        String document = new String(original, StandardCharsets.UTF_8);
-        StringBuilder kept = new StringBuilder();
-        StringBuilder record = new StringBuilder();
-        for (String line : document.split("(?<=\\n)|(?<=\\r)(?!\\n)")) {
-            record.append(line);
-            String content = line.replaceFirst("[\\r\\n]+$", "");
-            String trimmed = content.trim();
-            boolean comment = record.length() == line.length() && (trimmed.startsWith("#") || trimmed.startsWith("!"));
-            int slashes = 0;
-            for (int i = content.length() - 1; i >= 0 && content.charAt(i) == '\\'; i--) slashes++;
-            if (!comment && (slashes & 1) != 0) continue;
-            Properties entry = new Properties();
-            entry.load(new StringReader(record.toString()));
-            if (!entry.containsKey(key)) kept.append(record);
-            record.setLength(0);
-        }
-        if (record.length() != 0) {
-            Properties entry = new Properties();
-            entry.load(new StringReader(record.toString()));
-            if (!entry.containsKey(key)) kept.append(record);
-        }
-        return kept.toString().getBytes(StandardCharsets.UTF_8);
+        this.legacyPaths = legacyPaths;
     }
 
     private static FileType fileType(String path) throws IOException {
@@ -99,42 +52,50 @@ public final class TermuxPropertiesEditor {
             return FileType.UNKNOWN;
         } catch (ErrnoException e) {
             if (e.errno == OsConstants.ENOENT) return FileType.NO_EXIST;
-            throw new IOException("Cannot inspect properties file", e);
+            throw new IOException("Cannot inspect settings file", e);
         }
     }
 
-    private void validateWriteTargets() throws IOException {
+    /** The settings file and AtomicFile's companions must be regular files; links are never followed. */
+    private void validateTargets() throws IOException {
         for (String suffix : new String[] {"", ".bak", ".new"}) {
-            FileType type = fileType(target.toString() + suffix);
+            FileType type = fileType(target + suffix);
             if (type != FileType.NO_EXIST && type != FileType.REGULAR)
-                throw new IOException("Properties write target is not a regular file");
+                throw new IOException("Settings file is not a regular file");
         }
     }
 
-    public synchronized void set(String key, String value) throws IOException {
-        validateWriteTargets();
-        byte[] original = source();
-        Properties existing = new Properties();
-        existing.load(new InputStreamReader(new ByteArrayInputStream(original), StandardCharsets.UTF_8));
-        Properties change = new Properties();
-        if (value != null) change.setProperty(key, value);
-        ByteArrayOutputStream encoded = new ByteArrayOutputStream();
-        change.store(encoded, null);
+    public synchronized Properties read() throws IOException {
+        List<String> legacy = new ArrayList<>(legacyPaths);
+        legacy.remove(target.getPath());
+        TermuxConfigMigration.migrate(target, legacy);
+        if (!target.exists() && !new File(target + ".bak").exists()) return new Properties();
+        if (target.exists() && fileType(target.getPath()) != FileType.REGULAR)
+            throw new IOException("Settings file is not a regular file");
+        String text = new String(new AtomicFile(target).readFully(), StandardCharsets.UTF_8);
+        try {
+            return TermuxYamlConfig.read(text, null);
+        } catch (IllegalArgumentException e) {
+            throw new IOException(e.getMessage(), e);
+        }
+    }
+
+    /** Set a setting by its key, or remove it with a null value. */
+    public synchronized void set(@NonNull String key, @Nullable String value) throws IOException {
+        validateTargets();
+        Properties properties = read();
+        if (value == null) properties.remove(key);
+        else properties.setProperty(key, value);
+        byte[] document = TermuxYamlConfig.write(properties, null).getBytes(StandardCharsets.UTF_8);
+
         File parent = target.getParentFile();
-        if (!parent.isDirectory() && !parent.mkdirs()) throw new IOException("Cannot create properties directory");
+        if (parent != null && !parent.isDirectory() && !parent.mkdirs())
+            throw new IOException("Cannot create settings directory");
         AtomicFile atomic = new AtomicFile(target);
         FileOutputStream output = null;
         try {
             output = atomic.startWrite();
-            output.write(withoutKey(original, key));
-            // A blank line terminates a possible continuation at the end of the original file.
-            output.write('\n');
-            output.write('\n');
-            if (value != null) {
-                String property = new String(encoded.toByteArray(), StandardCharsets.ISO_8859_1)
-                    .replaceFirst("^#[^\\r\\n]*[\\r\\n]+", "");
-                output.write(property.getBytes(StandardCharsets.ISO_8859_1));
-            }
+            output.write(document);
             atomic.finishWrite(output);
         } catch (IOException e) {
             if (output != null) atomic.failWrite(output);

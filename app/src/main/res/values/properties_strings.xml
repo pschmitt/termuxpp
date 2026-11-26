@@ -5,7 +5,7 @@
     <string name="properties_help">About properties</string>
     <string name="properties_value">Value</string>
     <string name="properties_open_session_shelf">Open Session shelf</string>
-    <string name="properties_explanation">Saved to ~/.config/termuxpp/termuxpp.properties. Legacy settings are copied on the first change; the original is kept. Clear a text field or select App default to reset a setting. Changes reload when returning to the terminal; some require a new session or app restart. Text fields accept the same syntax as the properties file.</string>
+    <string name="properties_explanation">Saved to ~/.config/termuxpp/config.yaml, which is rewritten without comments when a setting changes here. A legacy termuxpp.properties or termux.properties is migrated once and renamed to .migrated. Clear a text field or select App default to reset a setting. Changes reload when returning to the terminal; some require a new session or app restart.</string>
     <string name="properties_read_error">Cannot read properties. No settings will be overwritten.</string>
     <string name="properties_save_error">Could not save properties</string>
     <string name="properties_default">App default</string>

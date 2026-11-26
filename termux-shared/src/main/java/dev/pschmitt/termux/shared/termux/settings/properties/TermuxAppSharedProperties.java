@@ -7,6 +7,7 @@ import androidx.annotation.NonNull;
 import dev.pschmitt.termux.shared.termux.TermuxConstants;
 import dev.pschmitt.termux.shared.termux.nix.TermuxNix;
 
+import java.io.File;
 import java.util.List;
 
 public class TermuxAppSharedProperties extends TermuxSharedProperties {
@@ -23,6 +24,25 @@ public class TermuxAppSharedProperties extends TermuxSharedProperties {
     @Override
     protected List<String> getPropertiesFilePaths() {
         return TermuxNix.configPaths(super.getPropertiesFilePaths());
+    }
+
+    /** Migrates a legacy properties file to YAML first, once, so every load sees the current file. */
+    @Override
+    public synchronized void loadTermuxPropertiesFromDisk() {
+        migrateLegacyProperties();
+        super.loadTermuxPropertiesFromDisk();
+    }
+
+    /** Convert a legacy {@code termuxpp.properties} (or Termux's files) to {@code config.yaml} if there is none. */
+    public static void migrateLegacyProperties() {
+        try {
+            TermuxConfigMigration.migrate(
+                new File(TermuxNix.configPaths(TermuxConstants.TERMUX_PROPERTIES_FILE_PATHS_LIST).get(0)),
+                TermuxNix.configPaths(TermuxConstants.TERMUX_LEGACY_PROPERTIES_FILE_PATHS_LIST));
+        } catch (java.io.IOException e) {
+            dev.pschmitt.termux.shared.logger.Logger.logStackTraceWithMessage("TermuxAppSharedProperties",
+                "Could not migrate the legacy properties file", e);
+        }
     }
 
     /**
