@@ -136,6 +136,7 @@ public class TerminalContextMenuTest {
         BottomSheetDialog dialog = TerminalContextMenu.populateSheet(new TermuxContextMenuSheet(activity),
             activity.getResources(), session(null, true, 1, 1)).show(chosen::add);
         Assert.assertTrue(dialog.findViewById(R.id.context_header_icon).performLongClick());
+        org.robolectric.shadows.ShadowLooper.idleMainLooper();
         Assert.assertEquals(Arrays.asList(TerminalContextMenu.KILL_PROCESS), chosen);
     }
 
