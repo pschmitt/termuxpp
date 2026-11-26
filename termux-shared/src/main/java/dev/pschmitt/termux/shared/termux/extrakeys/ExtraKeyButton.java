@@ -58,6 +58,8 @@ public class ExtraKeyButton {
     @Nullable
     private final ExtraKeyButton popup;
     private final boolean customDisplay;
+    @Nullable final Integer textColor;
+    @Nullable final Integer backgroundColor;
     @Nullable private final ExtraKeyButton hold;
 
 
@@ -122,6 +124,8 @@ public class ExtraKeyButton {
 
         String displayFromConfig = getStringFromJson(config, KEY_DISPLAY_NAME);
         customDisplay = displayFromConfig != null;
+        textColor = readColor(config, "text-color");
+        backgroundColor = readColor(config, "background-color");
         if (customDisplay) {
             this.display = displayFromConfig;
         } else if (commandFromConfig != null) {
@@ -143,6 +147,14 @@ public class ExtraKeyButton {
         } else {
             hold = null;
         }
+    }
+
+    @Nullable
+    private static Integer readColor(JSONObject config, String key) throws JSONException {
+        if (!config.has(key)) return null;
+        Integer color = ExtraKeysColorParser.parseColor(config.getString(key));
+        if (color == null) throw new JSONException("Invalid extra key " + key);
+        return color;
     }
 
     public String getStringFromJson(@NonNull JSONObject config, @NonNull String key) {

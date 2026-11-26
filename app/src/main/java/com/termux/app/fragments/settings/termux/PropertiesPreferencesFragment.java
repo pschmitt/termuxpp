@@ -64,7 +64,7 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
         });
         screen.addPreference(help);
         Map<Integer, PreferenceCategory> categories = new LinkedHashMap<>();
-        for (int title : new int[]{R.string.properties_appearance, R.string.properties_sidebars, R.string.properties_keyboard,
+        for (int title : new int[]{R.string.properties_extra_keys, R.string.properties_appearance, R.string.properties_sidebars, R.string.properties_keyboard,
                 R.string.properties_gestures, R.string.properties_advanced}) {
             PreferenceCategory category = new PreferenceCategory(requireContext());
             category.setTitle(title);
@@ -151,12 +151,8 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
             if (preference instanceof DialogPreference)
                 ((DialogPreference) preference).setDialogTitle(preference.getTitle());
             preference.setOnPreferenceChangeListener((p, value) -> save(key, value.toString()));
-            if ("extra-keys".equals(key)) {
-                preference.setOrder(-1);
-                screen.addPreference(preference);
-            } else {
-                categories.get(categoryFor(key)).addPreference(preference);
-            }
+            if ("extra-keys".equals(key)) preference.setOrder(-1);
+            categories.get(categoryFor(key)).addPreference(preference);
         }
     }
 
@@ -171,6 +167,7 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
     }
 
     public static int categoryFor(@NonNull String key) {
+        if (key.startsWith("extra-keys") && !key.contains("-swipe-")) return R.string.properties_extra_keys;
         if (key.startsWith("extra-keys") || key.endsWith("-action") || key.endsWith("-keys")
             || key.endsWith("-command") || key.equals(TermuxPropertyConstants.KEY_GESTURE_COMMAND_CONTEXT)
             || key.equals(TermuxPropertyConstants.KEY_TERMINAL_TRIPLE_TAP_FOCUS_TITLE)

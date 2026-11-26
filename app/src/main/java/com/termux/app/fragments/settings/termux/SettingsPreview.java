@@ -115,13 +115,22 @@ final class SettingsPreview extends FrameLayout {
         try { scale = Float.parseFloat(value("terminal-toolbar-height", "1")); }
         catch (NumberFormatException e) { scale = 1; }
         if (Float.isNaN(scale) || scale < .4f || scale > 3) scale = 1;
-        int height = Math.round(dp(37.5f * scale));
-        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, height, Gravity.CENTER_VERTICAL);
-        addView(keyboard, params);
+        boolean interactive = key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION)
+            || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT);
+        String sample = "[[\"ESC\",\"CTRL\",\"ALT\",\"LEFT\",\"DOWN\",\"UP\",\"RIGHT\"]]";
         try {
-            keyboard.reload(new ExtraKeysInfo("[[\"ESC\",\"CTRL\",\"ALT\",\"LEFT\",\"DOWN\",\"UP\",\"RIGHT\"]]",
-                value("extra-keys-style", "default"), ExtraKeysConstants.CONTROL_CHARS_ALIASES), height);
-            if (key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION)) return;
+            String style = value("extra-keys-style", "default");
+            ExtraKeysInfo info;
+            try {
+                info = new ExtraKeysInfo(interactive ? value("extra-keys", sample) : sample,
+                    style, ExtraKeysConstants.CONTROL_CHARS_ALIASES);
+            } catch (org.json.JSONException invalidLayout) {
+                info = new ExtraKeysInfo(sample, style, ExtraKeysConstants.CONTROL_CHARS_ALIASES);
+            }
+            int height = Math.round(dp(Math.min(interactive ? 100 : 56, 37.5f * scale * info.getMatrix().length)));
+            addView(keyboard, new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, height, Gravity.CENTER_VERTICAL));
+            keyboard.reload(info, height);
+            if (interactive) return;
             // Show a latched Ctrl and a pressed arrow, without invoking terminal actions.
             for (int i = 0; i < keyboard.getChildCount(); i++) {
                 View child = keyboard.getChildAt(i);

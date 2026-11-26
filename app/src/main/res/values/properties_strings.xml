@@ -14,7 +14,8 @@
     <string name="properties_appearance">Appearance and terminal</string>
     <string name="properties_sidebars">Sidebars</string>
     <string name="properties_keyboard">Keyboard and input</string>
-    <string name="properties_gestures">Gestures and extra keys</string>
+    <string name="properties_extra_keys">Extra keys</string>
+    <string name="properties_gestures">Gestures</string>
     <string name="properties_advanced">Advanced</string>
     <string name="properties_external_apps_warning">Allow external apps to execute commands in TermuxPP. Only enable this if you trust the apps granted the Run commands permission.</string>
     <string name="extra_editor_title">Extra keys layout</string>
@@ -48,6 +49,9 @@
     <string name="extra_key_value">Key or text</string>
     <string name="extra_macro">Macro (space-separated key sequence)</string>
     <string name="extra_key_label">Display label (optional)</string>
+    <string name="extra_key_text_color">Text color (optional)</string>
+    <string name="extra_key_background_color">Background color (optional)</string>
+    <string name="extra_key_invalid_color">Use a hex color such as #303030</string>
     <string name="extra_hold_label">Long-press display label (optional)</string>
     <string name="extra_hold">Long-press key (optional)</string>
     <string name="extra_popup">Swipe-up key or text (optional)</string>

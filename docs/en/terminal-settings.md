@@ -671,13 +671,16 @@ Run `termux-reload-settings` after editing the file. Stock Termux reads
 
 ## Extra-key appearance
 
-**Extra keys font** under **Settings → Properties → Gestures** sets the font used
+**Extra keys font** under **Settings → Properties → Extra keys** sets the font used
 for the toolbar and its key previews. In YAML, set `extra-keys.font` to `system`
 (default), `terminal` (match the terminal font), `monospace`, or `serif`.
 
 In **Extra keys layout**, tap a key to edit its optional display label. Custom
 labels preserve their case. In YAML, use `display` for the main key,
 `hold-display` for a long-press key, or `popup.display` for a swipe-up key.
+Each key also accepts `text-color` and `background-color` in hexadecimal.
+Leave these blank in the editor to use the theme. Pressed and latched keys
+still follow the active key colors.
 
 ```yaml
 extra-keys:
@@ -685,7 +688,7 @@ extra-keys:
   keys: [[{key: CTRL, display: Ctrl, hold: SHIFT, hold-display: "⇧"}, TAB]]
 ```
 
-Choose **Extra keys animation** in **Settings → Properties → Gestures** and
+Choose **Extra keys animation** in **Settings → Properties → Extra keys** and
 tap a preview key to try it. In YAML, set `extra-keys.animation` to
 `key-preview` (default), `press-in`, `pop`, `lift`, or `off`. Key preview shows
 an enlarged label above the pressed key. Off keeps the pressed-key color.

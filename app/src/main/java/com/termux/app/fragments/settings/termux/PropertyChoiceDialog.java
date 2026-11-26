@@ -92,8 +92,11 @@ public class PropertyChoiceDialog extends ListPreferenceDialogFragmentCompat {
                 } else {
                     settingsPreview = new SettingsPreview(requireContext(), preference.getKey());
                     settingsPreview.setTag("property-visual-preview");
-                    int previewHeight = preference.getKey().endsWith("-action") ? 158
-                        : preference.getKey().startsWith("extra-keys") ? 56 : 124;
+                    String previewKey = preference.getKey();
+                    int previewHeight = previewKey.endsWith("-action") ? 158
+                        : previewKey.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT)
+                            || previewKey.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION) ? 104
+                        : previewKey.startsWith("extra-keys") ? 56 : 124;
                     int height = Math.round(previewHeight * getResources().getDisplayMetrics().density);
                     LinearLayout.LayoutParams visualLayout = new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT, height);

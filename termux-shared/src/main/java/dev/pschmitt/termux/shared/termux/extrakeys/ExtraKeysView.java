@@ -356,13 +356,9 @@ public final class ExtraKeysView extends GridLayout {
      */
     public int getRestingBackgroundColor(ExtraKeyButton buttonInfo) {
         ExtraKeyButton hold = buttonInfo.getHold();
-        if (hold != null && isActiveModifier(hold)) return getSpecialButtonBackgroundColor(true);
-        if (isSpecialButton(buttonInfo)) {
-            SpecialButtonState state = mSpecialButtons.get(SpecialButton.valueOf(buttonInfo.getKey()));
-            if (state != null)
-                return getSpecialButtonBackgroundColor(state.isActive);
-        }
-        return mButtonBackgroundColor;
+        if (mFillActiveSpecialButtons && (isActiveModifier(buttonInfo) || (hold != null && isActiveModifier(hold))))
+            return mButtonActiveBackgroundColor;
+        return buttonInfo.backgroundColor != null ? buttonInfo.backgroundColor : mButtonBackgroundColor;
     }
 
     /** Get the background color of a {@link SpecialButton} that is not being pressed. */
@@ -494,9 +490,10 @@ public final class ExtraKeysView extends GridLayout {
 
                 ExtraKeyButton hold = buttonInfo.getHold();
                 boolean hasHeldModifier = hold != null && isSpecialButton(hold);
+                boolean customColors = buttonInfo.textColor != null || buttonInfo.backgroundColor != null;
                 MaterialButton button;
                 if (isSpecialButton(buttonInfo)) {
-                    button = createSpecialButton(buttonInfo.getKey(), !hasHeldModifier);
+                    button = createSpecialButton(buttonInfo.getKey(), !hasHeldModifier && !customColors);
                     if (button == null) return;
                 } else {
                     button = new MaterialButton(getContext(), null, android.R.attr.buttonBarButtonStyle);
@@ -508,7 +505,13 @@ public final class ExtraKeysView extends GridLayout {
                 button.setAllCaps(mButtonTextAllCaps && !buttonInfo.hasCustomDisplay());
                 button.setPadding(0, 0, 0, 0);
                 applyButtonShape(button);
-                if (hasHeldModifier) bindHeldModifier(buttonInfo, hold, button);
+                if (customColors) updateKeyColors(buttonInfo, button, isActiveModifier(buttonInfo));
+                if (hasHeldModifier) {
+                    bindHeldModifier(buttonInfo, hold, button);
+                } else if (customColors && isSpecialButton(buttonInfo)) {
+                    SpecialButtonState state = mSpecialButtons.get(SpecialButton.valueOf(buttonInfo.getKey()));
+                    state.presentationUpdates.add(() -> updateKeyColors(buttonInfo, button, state.isActive));
+                }
                 if (hold != null) {
                     button.setOnLongClickListener(view -> {
                         performHold(view, hold, button);
@@ -730,6 +733,12 @@ public final class ExtraKeysView extends GridLayout {
         return isSpecialButton(key) && mSpecialButtons.get(SpecialButton.valueOf(key.getKey())).isActive;
     }
 
+    private void updateKeyColors(ExtraKeyButton key, MaterialButton button, boolean active) {
+        int textColor = key.textColor != null ? key.textColor : mButtonTextColor;
+        button.setTextColor(active ? mButtonActiveTextColor : textColor);
+        button.setBackgroundColor(getRestingBackgroundColor(key));
+    }
+
     private void bindHeldModifier(ExtraKeyButton primary, ExtraKeyButton hold, MaterialButton button) {
         SpecialButtonState held = mSpecialButtons.get(SpecialButton.valueOf(hold.getKey()));
         held.setIsCreated(true);
@@ -739,8 +748,7 @@ public final class ExtraKeysView extends GridLayout {
             ExtraKeyButton shown = heldActive ? hold : primary;
             button.setText(shown.getDisplay());
             button.setAllCaps(mButtonTextAllCaps && !shown.hasCustomDisplay());
-            button.setTextColor(active ? mButtonActiveTextColor : mButtonTextColor);
-            button.setBackgroundColor(getSpecialButtonBackgroundColor(active));
+            updateKeyColors(primary, button, active);
         };
         held.presentationUpdates.add(update);
         if (isSpecialButton(primary) && !primary.getKey().equals(hold.getKey()))
@@ -829,7 +837,8 @@ public final class ExtraKeysView extends GridLayout {
         button.setWidth(width);
         button.setHeight(height);
         applyButtonShape(button);
-        button.setBackgroundColor(mButtonActiveBackgroundColor);
+        if (extraButton.textColor != null) button.setTextColor(extraButton.textColor);
+        button.setBackgroundColor(extraButton.backgroundColor != null ? extraButton.backgroundColor : mButtonActiveBackgroundColor);
         mPopupWindow = new PopupWindow(this);
         mPopupWindow.setWidth(LayoutParams.WRAP_CONTENT);
         mPopupWindow.setHeight(LayoutParams.WRAP_CONTENT);

@@ -302,6 +302,8 @@ public class ExtraKeysEditorDialog extends DialogFragment {
         private AutoCompleteTextView popup;
         private AutoCompleteTextView hold;
         private EditText holdLabel;
+        private EditText textColor;
+        private EditText backgroundColor;
         private EditText popupLabel;
         private CheckBox macro;
         private CheckBox popupMacro;
@@ -347,6 +349,8 @@ public class ExtraKeysEditorDialog extends DialogFragment {
             macro.setChecked(original.has("macro"));
             form.addView(macro);
             label = input(form, R.string.extra_key_label, original.optString("display"));
+            textColor = input(form, R.string.extra_key_text_color, original.optString("text-color"));
+            backgroundColor = input(form, R.string.extra_key_background_color, original.optString("background-color"));
             hold = input(form, R.string.extra_hold, original.optString("hold"));
             holdLabel = input(form, R.string.extra_hold_label, original.optString("hold-display"));
             Object popupValue = original.opt("popup");
@@ -361,6 +365,8 @@ public class ExtraKeysEditorDialog extends DialogFragment {
             if (state != null) {
                 key.setText(state.getString("key"));
                 label.setText(state.getString("label"));
+                textColor.setText(state.getString("textColor", original.optString("text-color")));
+                backgroundColor.setText(state.getString("backgroundColor", original.optString("background-color")));
                 hold.setText(state.getString("hold", original.optString("hold")));
                 holdLabel.setText(state.getString("holdLabel", original.optString("hold-display")));
                 popup.setText(state.getString("popup"));
@@ -399,6 +405,8 @@ public class ExtraKeysEditorDialog extends DialogFragment {
                     edited.put(macro.isChecked() ? "macro" : "key", key.getText().toString());
                     if (label.getText().length() == 0) edited.remove("display");
                     else edited.put("display", label.getText().toString());
+                    if (!storeColor(edited, "text-color", textColor)
+                        || !storeColor(edited, "background-color", backgroundColor)) return;
                     String holdKey = hold.getText().toString().trim();
                     if (holdKey.isEmpty()) edited.remove("hold");
                     else edited.put("hold", holdKey);
@@ -423,8 +431,21 @@ public class ExtraKeysEditorDialog extends DialogFragment {
             });
         }
 
+        private boolean storeColor(JSONObject edited, String name, EditText field) throws JSONException {
+            String color = field.getText().toString().trim();
+            if (color.isEmpty()) edited.remove(name);
+            else if (ExtraKeysColorParser.parseColor(color) != null) edited.put(name, color);
+            else {
+                field.setError(getString(R.string.extra_key_invalid_color));
+                return false;
+            }
+            return true;
+        }
+
         @Override public void onSaveInstanceState(@NonNull Bundle out) {
             super.onSaveInstanceState(out);
+            out.putString("textColor", textColor.getText().toString());
+            out.putString("backgroundColor", backgroundColor.getText().toString());
             out.putString("key", key.getText().toString());
             out.putString("label", label.getText().toString());
             out.putString("hold", hold.getText().toString());
