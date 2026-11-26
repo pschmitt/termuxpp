@@ -50,10 +50,30 @@ scan_processes() {
 
 read_argv() {
   local pid="$1"
+  local i
 
   ARGV=()
   [[ -r "/proc/${pid}/cmdline" ]] || return 1
   mapfile -d '' -t ARGV < "/proc/${pid}/cmdline" 2>/dev/null || return 1
+  [[ "${#ARGV[@]}" -gt 0 ]] || return 1
+  # Guest programs run under the seccomp launcher, which shows up as
+  # "launcher [--reexec] [-b HOST:GUEST]... TARGET ARGV..." (droid-nix's
+  # bootstrap/launcher/launcher.c); unwrap it to the program's own argv.
+  if [[ "${ARGV[0]##*/}" == launcher ]]
+  then
+    i=1
+    [[ "${ARGV[$i]:-}" == --reexec ]] && i=$((i + 1))
+    while [[ "${ARGV[$i]:-}" == -b ]]
+    do
+      i=$((i + 2))
+    done
+    if [[ "$((i + 1))" -lt "${#ARGV[@]}" ]]
+    then
+      ARGV=("${ARGV[@]:$((i + 1))}")
+    else
+      ARGV=("${ARGV[@]:$i}")
+    fi
+  fi
   [[ "${#ARGV[@]}" -gt 0 ]]
 }
 
@@ -78,13 +98,14 @@ is_interactive_connection() {
   return 0
 }
 
-# Prints the PID of the session's foreground ssh, autossh or mosh-client,
-# preferring the most deeply nested one.
+# Prints the PID of the session's foreground ssh, autossh or mosh-client. The
+# shallowest one is the connection that was typed: ProxyCommand scripts and
+# ProxyJump run further ssh processes below it, in the same process group.
 find_connection() {
   local root="$1"
   local queue=("${root}:0")
   local best=""
-  local best_depth=-1
+  local best_depth=999999
   local entry pid depth child
 
   while [[ "${#queue[@]}" -gt 0 ]]
@@ -108,7 +129,7 @@ find_connection() {
     is_interactive_connection || continue
     # Only the connection the terminal is showing, not a background tunnel.
     [[ "${PGRP[$pid]:-}" == "${TPGID[$pid]:-x}" ]] || continue
-    if [[ "$depth" -gt "$best_depth" ]]
+    if [[ "$depth" -lt "$best_depth" ]]
     then
       best="$pid"
       best_depth="$depth"
