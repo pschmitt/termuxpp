@@ -132,7 +132,9 @@ final class SettingsPreview extends FrameLayout {
             } catch (org.json.JSONException invalidLayout) {
                 info = new ExtraKeysInfo(sample, style, ExtraKeysConstants.CONTROL_CHARS_ALIASES);
             }
-            int height = Math.round(dp(Math.min(interactive ? 100 : 56, 37.5f * scale * info.getMatrix().length)));
+            // Fit the dialog's preview box; the toolbar-height box holds the largest allowed scale.
+            float maxHeight = interactive ? 100 : key.equals("terminal-toolbar-height") ? 140 : 56;
+            int height = Math.round(dp(Math.min(maxHeight, 37.5f * scale * info.getMatrix().length)));
             addView(keyboard, new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, height, Gravity.CENTER_VERTICAL));
             keyboard.reload(info, height);
             if (interactive) return;
