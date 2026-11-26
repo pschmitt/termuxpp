@@ -440,7 +440,39 @@ The default is top center.
 ## Reloading settings
 
 The `tpp-session reload-settings` command reloads properties from disk and
-refreshes terminal styling in the app.
+refreshes terminal styling in the app. A reload requested while the terminal is
+in the background or the screen is off is applied when the terminal is shown
+again; upstream's reload broadcast reaches only a visible activity. Sources:
+[service](../../app/src/main/java/com/termux/app/TermuxService.java) and
+[activity](../../app/src/main/java/com/termux/app/TermuxActivity.java).
+
+## Image paste
+
+The terminal offers image types to the keyboard (`EditorInfo.contentMimeTypes`
+and the commit content API), so a keyboard such as Gboard pastes a copied
+screenshot, a GIF or a sticker into a session as it does in a messaging app.
+**Paste** in the terminal menu takes an image from the Android clipboard too.
+Upstream offers no content types and pastes clipboard text only.
+
+A terminal carries only text, so TermuxPP hands the image over as a file
+(`~/.cache/termuxpp-clipboard` in the native home, at most 32 MiB) and runs
+the guest helper `termuxpp-image-paste`:
+
+- For a session on the phone, the guest's `wl-paste` serves the image, so a
+  program that reads images with wl-clipboard, such as Claude Code's Ctrl+V,
+  attaches it.
+- For a session whose title names another host (`t:HOST:`, `user@HOST` or
+  `tmux:SESSION@HOST`), the helper puts the image on that host's clipboard with
+  `wl-copy` over the guest's SSH configuration.
+
+TermuxPP then sends Ctrl+V to the session. A host without `wl-copy` gets the
+file copied to `~/.cache/termuxpp-paste/` instead, and its path is pasted.
+Without the Nix guest the handover file's path is pasted. The
+`termuxpp-clipboard` guest package also provides `wl-copy` and `wl-paste` on
+the Android clipboard for text. Sources:
+[keyboard input](../../terminal-view/src/main/java/com/termux/view/TerminalView.java),
+[delivery](../../app/src/main/java/com/termux/app/terminal/TerminalImagePaste.java)
+and [guest tools](../../pkgs/nixpp/clipboard.nix).
 
 ## Multi-finger terminal swipes
 
