@@ -448,7 +448,8 @@ for hosts without it. Upstream Termux has no tmux integration.
 A shell-launched SSH attachment can publish its remote tmux windows under its
 TermuxPP sidebar entry. Tap a window to select it, or hold the terminal's
 sidebar entry and choose **Open window picker**. The sidebar refreshes as the
-active window, names, and window list change. Upstream Termux's sidebar lists Android terminal
+active window, names, and window list change. Choosing the active window closes
+the sidebar without sending another tmux switch. Upstream Termux's sidebar lists Android terminal
 sessions. [Upstream sidebar source](https://github.com/termux/termux-app/blob/master/app/src/main/java/com/termux/app/TermuxSessionsListViewController.java).
 
 TermuxPP hides the soft keyboard when the session sidebar opens and tries to

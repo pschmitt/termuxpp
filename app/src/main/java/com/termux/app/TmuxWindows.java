@@ -166,24 +166,28 @@ final class TmuxWindows {
         return entry == null ? new JSONArray() : entry.windows;
     }
 
-    boolean select(String terminal, String id) {
+    enum Selection { UNAVAILABLE, ALREADY_ACTIVE, SWITCH_REQUESTED }
+
+    Selection select(String terminal, String id) {
         Attachment entry = attachments.get(terminal);
-        if (entry == null) return false;
+        if (entry == null) return Selection.UNAVAILABLE;
         JSONArray windows = new JSONArray();
         boolean found = false;
         try {
             for (int i = 0; i < entry.windows.length(); i++) {
                 // A copy keeps the key order, so the helper's next snapshot of the switched window
                 // matches this one and does not redraw the sidebar again.
-                JSONObject row = new JSONObject(entry.windows.getJSONObject(i).toString());
-                boolean chosen = id.equals(row.optString("id"));
+                JSONObject previous = entry.windows.getJSONObject(i);
+                boolean chosen = id.equals(previous.optString("id"));
+                if (chosen && previous.optBoolean("active")) return Selection.ALREADY_ACTIVE;
+                JSONObject row = new JSONObject(previous.toString());
                 found |= chosen;
                 windows.put(row.put("active", chosen));
             }
         } catch (JSONException e) {
-            return false;
+            return Selection.UNAVAILABLE;
         }
-        if (!found) return false;
+        if (!found) return Selection.UNAVAILABLE;
 
         if (entry.token != null) {
             synchronized (signal) {
@@ -195,7 +199,7 @@ final class TmuxWindows {
         entry.windows = windows;
         entry.signature = windows.toString();
         onChange.run();
-        return true;
+        return Selection.SWITCH_REQUESTED;
     }
 
     /**

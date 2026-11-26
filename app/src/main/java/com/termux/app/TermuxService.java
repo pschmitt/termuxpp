@@ -925,9 +925,11 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     }
 
     boolean selectTmuxWindow(TerminalSession session, String windowId) {
-        if (!session.isRunning() || !tmuxWindows.select(session.mHandle, windowId)) return false;
+        if (!session.isRunning()) return false;
+        TmuxWindows.Selection selection = tmuxWindows.select(session.mHandle, windowId);
+        if (selection == TmuxWindows.Selection.UNAVAILABLE) return false;
         // The plugin's tmux takes the choice as keys typed into the terminal, wherever tmux runs.
-        if (tmuxWindows.isReported(session.mHandle))
+        if (selection == TmuxWindows.Selection.SWITCH_REQUESTED && tmuxWindows.isReported(session.mHandle))
             session.write(TmuxWindows.SELECT_KEYS + windowId.substring(1) + "\r");
         return true;
     }

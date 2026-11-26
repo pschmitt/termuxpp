@@ -45,7 +45,7 @@ public class TmuxWindowsTest {
 
     @Test
     public void choosingAWindowHighlightsItAtOnce() throws Exception {
-        assertTrue(windows.select(TERMINAL, "@2"));
+        assertEquals(TmuxWindows.Selection.SWITCH_REQUESTED, windows.select(TERMINAL, "@2"));
         assertEquals(1, changes);
         JSONArray rows = windows.get(TERMINAL);
         assertFalse(rows.getJSONObject(0).getBoolean("active"));
@@ -113,7 +113,7 @@ public class TmuxWindowsTest {
     @Test
     public void choosingAReportedWindowDoesNotWaitForAHelper() throws Exception {
         windows.report("plugin", report("@4\t1\t1\tzsh\ta\n@5\t2\t0\tzsh\tb\n"));
-        assertTrue(windows.select("plugin", "@5"));
+        assertEquals(TmuxWindows.Selection.SWITCH_REQUESTED, windows.select("plugin", "@5"));
         assertTrue(windows.get("plugin").getJSONObject(1).getBoolean("active"));
         // Nothing is queued for a helper: the service types the choice into the terminal instead.
         assertNull(windows.awaitSelection(TOKEN, 20));
@@ -140,9 +140,16 @@ public class TmuxWindowsTest {
     }
 
     @Test
+    public void choosingAnAlreadyActiveWindowDoesNotRedrawOrQueueACommand() throws Exception {
+        assertEquals(TmuxWindows.Selection.ALREADY_ACTIVE, windows.select(TERMINAL, "@1"));
+        assertNull(windows.awaitSelection(TOKEN, 20));
+        assertEquals(0, changes);
+    }
+
+    @Test
     public void unknownWindowsAreNotChosen() {
-        assertFalse(windows.select(TERMINAL, "@9"));
-        assertFalse(windows.select("other", "@1"));
+        assertEquals(TmuxWindows.Selection.UNAVAILABLE, windows.select(TERMINAL, "@9"));
+        assertEquals(TmuxWindows.Selection.UNAVAILABLE, windows.select("other", "@1"));
         assertEquals(0, changes);
     }
 }

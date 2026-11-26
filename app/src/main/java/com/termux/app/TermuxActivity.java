@@ -1341,8 +1341,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             Toast.makeText(this, R.string.ui_tmux_attachment_unavailable, Toast.LENGTH_SHORT).show();
             return;
         }
-        mTermuxTerminalSessionActivityClient.setCurrentSession(session);
         getDrawer().closeDrawers();
+        if (session != getCurrentSession()) mTermuxTerminalSessionActivityClient.setCurrentSession(session);
     }
 
     private final class Sidebar {
