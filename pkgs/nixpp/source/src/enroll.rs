@@ -558,6 +558,7 @@ fn from_lease(runtime: &Path, activation: &Activation<'_>, origin: &LeaseOrigin)
         }),
         github_known_hosts: origin.github_known_hosts.clone(),
         refresh: false,
+        topic: format!("nixpp setup {host}"),
     };
     let generation = lease::build(&lease, Some(&agent), &spec)?;
     lease.push_to_cache(&generation);

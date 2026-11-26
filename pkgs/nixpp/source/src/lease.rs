@@ -902,6 +902,9 @@ pub struct Build {
     /// Resolve the flake afresh instead of from Nix's cache of the last hour
     /// (`nixpp upgrade`: the latest revision or nothing).
     pub refresh: bool,
+    /// The rworker job topic the build is listed under on the worker, so that
+    /// `rworker jobs` and `rworker logs -f` can follow it.
+    pub topic: String,
 }
 
 /// A read-only binary cache the worker may substitute from.
@@ -921,6 +924,7 @@ pub fn build_script(
     cache: Option<&CacheOptions>,
     hosted: bool,
     refresh: bool,
+    topic: &str,
 ) -> String {
     let mut script = String::from("set -eu\n");
     if hosted {
@@ -935,6 +939,8 @@ pub fn build_script(
         "build".to_owned(),
         "--no-link".to_owned(),
         "--print-out-paths".to_owned(),
+        // Build logs, for the job log on the worker and the phone's output.
+        "-L".to_owned(),
     ];
     if refresh {
         command.push("--refresh".to_owned());
@@ -957,17 +963,51 @@ pub fn build_script(
         command.extend(["--override-input".to_owned(), name.clone(), url.clone()]);
     }
     command.extend(["--".to_owned(), format!("{flake}#{attribute}")]);
-    // Nothing is left to clean up: replace the shell.
-    script.push_str("exec ");
-    script.push_str(
+    script.push_str(&rworker_job(
+        topic,
         &command
             .iter()
             .map(|word| shell_quote(word))
             .collect::<Vec<_>>()
             .join(" "),
-    );
-    script.push('\n');
+    ));
     script
+}
+
+/// Where the rworker job agent keeps a worker's jobs (`rworker jobs`), one
+/// directory each with `topic`, `started`, `pid`, `log` and, when done, `exit`.
+const RWORKER_JOBS: &str = "$HOME/.local/state/rworker/jobs";
+
+/// Run `command` as an rworker job: its output (build logs, `-L`) also goes to
+/// the job's log, so `rworker logs -f` follows the build like any other job.
+/// The output path stays on standard output for nixpp. Without a job
+/// directory (an older worker image, a full disk) the build just runs.
+fn rworker_job(topic: &str, command: &str) -> String {
+    let topic: String = topic
+        .chars()
+        .map(|c| if c.is_control() { ' ' } else { c })
+        .take(255)
+        .collect();
+    format!(
+        r#"job=""
+if mkdir -p "{RWORKER_JOBS}" 2>/dev/null && job=$(mktemp -d "{RWORKER_JOBS}/nixpp-XXXXXXXX" 2>/dev/null)
+then
+  printf '%s\n' {topic} > "$job/topic"
+  date -u +%FT%TZ > "$job/started"
+  printf '%s\n' "$$" > "$job/pid"
+  : > "$job/log"
+fi
+if [ -z "$job" ]
+then
+  exec {command}
+fi
+# fd 3 keeps the output path on standard output; the logs go through tee.
+exec 3>&1
+{{ {command} 2>&1 1>&3 3>&-; printf '%s\n' "$?" > "$job/exit"; }} | tee -a "$job/log" >&2
+exit "$(cat "$job/exit")"
+"#,
+        topic = shell_quote(&topic),
+    )
 }
 
 /// The `ssh` command for `script` on the worker; with an agent socket the
@@ -1070,6 +1110,7 @@ pub fn build(lease: &Lease, agent: Option<&Agent>, spec: &Build) -> Result<Strin
         spec.cache.as_ref(),
         lease.worker.is_hosted(),
         spec.refresh,
+        &spec.topic,
     );
     let output = run_on_worker(lease, agent, &script, None, true)?;
     let generation = output
@@ -1457,7 +1498,7 @@ mod tests {
         );
         let none = worker_command(&lease, None, "true");
         assert!(!none.get_args().any(|arg| arg == "-A"));
-        let script = build_script("f", "a", &[], None, true, false);
+        let script = build_script("f", "a", &[], None, true, false, "t");
         assert!(!script.contains("nixpp-setup/key"));
         assert!(!script.contains("-oIdentitiesOnly"));
     }
@@ -1517,6 +1558,51 @@ mod tests {
     }
 
     #[test]
+    fn worker_builds_are_rworker_jobs_with_their_logs() {
+        let home = tempfile::tempdir().unwrap();
+        let script = rworker_job(
+            "nixpp upgrade p11\nx",
+            "sh -c 'echo /nix/store/out; echo building >&2; exit 3'",
+        );
+        let output = Command::new("sh")
+            .arg("-c")
+            .arg(&script)
+            .env("HOME", home.path())
+            .output()
+            .unwrap();
+        // Only the output path on standard output; the logs on standard error.
+        assert_eq!(output.stdout, b"/nix/store/out\n");
+        assert_eq!(output.stderr, b"building\n");
+        assert_eq!(output.status.code(), Some(3));
+        let jobs = home.path().join(".local/state/rworker/jobs");
+        let job = fs::read_dir(&jobs).unwrap().next().unwrap().unwrap().path();
+        assert!(
+            job.file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .starts_with("nixpp-")
+        );
+        assert_eq!(
+            fs::read_to_string(job.join("topic")).unwrap(),
+            "nixpp upgrade p11 x\n"
+        );
+        assert_eq!(fs::read_to_string(job.join("log")).unwrap(), "building\n");
+        assert_eq!(fs::read_to_string(job.join("exit")).unwrap(), "3\n");
+        assert!(job.join("started").is_file() && job.join("pid").is_file());
+
+        // Without a place for jobs the build still runs.
+        let output = Command::new("sh")
+            .arg("-c")
+            .arg(&script)
+            .env("HOME", "/nonexistent/home")
+            .output()
+            .unwrap();
+        assert_eq!(output.stdout, b"/nix/store/out\n");
+        assert_eq!(output.status.code(), Some(3));
+    }
+
+    #[test]
     fn build_script_has_overrides_and_cache_options() {
         let cache = CacheOptions {
             store: "s3://bucket?region=r&profile=niks3".to_owned(),
@@ -1533,10 +1619,18 @@ mod tests {
             Some(&cache),
             false,
             false,
+            "nixpp upgrade host",
         );
         assert!(script.starts_with("set -eu\nexport GIT_SSH_COMMAND=\""));
         assert!(!script.contains("--refresh"));
-        assert!(script.contains("\nexec 'nix' ") || script.contains("\nexec nix "));
+        assert!(
+            script.contains("  exec nix build ") || script.contains("  exec 'nix' 'build' "),
+            "{script}"
+        );
+        assert!(
+            script.contains(" -L ") || script.contains(" '-L' "),
+            "{script}"
+        );
         assert!(!script.contains("IdentitiesOnly"));
         assert!(!script.contains(" -i "), "the agent supplies the key");
         assert!(!script.contains("trap "));
@@ -1547,19 +1641,19 @@ mod tests {
         );
         assert!(script.contains("--option extra-trusted-public-keys 'key-1:abc key-2:def'"));
         assert!(script.contains("--override-input private 'git+ssh://git@github.com/a/b?rev=c'"));
-        assert!(script.ends_with("-- 'github:o/r/rev#termuxppConfigurations.host.system'\n"));
+        assert!(script.contains("-- 'github:o/r/rev#termuxppConfigurations.host.system'\n"));
         assert!(
             !script.contains("[niks3]"),
             "credentials never enter the command line"
         );
-        let plain = build_script("f", "a", &[], None, false, false);
+        let plain = build_script("f", "a", &[], None, false, false, "t");
         assert!(!plain.contains("AWS_SHARED"));
         assert!(!plain.contains("--override-input"));
         assert!(!plain.contains("NIX_CONFIG"));
-        let hosted = build_script("f", "a", &[], Some(&cache), true, false);
+        let hosted = build_script("f", "a", &[], Some(&cache), true, false, "t");
         assert!(hosted.starts_with(&format!("set -eu\n{HOSTED_NIX_CONFIG}")));
         assert!(hosted.contains("store = $HOME/.local/share/nix/rworker"));
-        let latest = build_script("f", "a", &[], None, false, true);
+        let latest = build_script("f", "a", &[], None, false, true, "t");
         assert!(latest.contains("--refresh"));
     }
 }

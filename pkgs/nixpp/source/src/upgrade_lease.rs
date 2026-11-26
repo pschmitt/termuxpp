@@ -291,6 +291,7 @@ fn run(plan: &Plan, job: &Job<'_>, builder: &mut dyn Builder) -> anyhow::Result<
         cache: cache_options,
         github_known_hosts: setup::GITHUB_KNOWN_HOSTS.to_owned(),
         refresh: job.refresh,
+        topic: format!("{TOPIC_PREFIX} {}", job.host),
     };
     let generation = lease::build(&lease, agent.as_ref(), &spec)?;
     lease.push_to_cache(&generation);

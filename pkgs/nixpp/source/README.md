@@ -204,7 +204,11 @@ code in the guest when `/etc/nixpp/upgrade.json` has a `lease` section. The
 guest leases a worker with the phone's key, builds `termuxppConfigurations.{host}.system`
 of the configured flake there, tries the signed cache for the result and else
 copies it from the worker, releases the lease and continues with the usual
-prepare and switch. `upgrade` resolves the flake with `--refresh`: it installs
+prepare and switch. The build runs as an rworker job named `nixpp-…` with the
+topic `nixpp upgrade {host}` (`nixpp setup {host}` during enrollment), and
+`nix build -L` writes its logs to the job as well as to the phone: follow it
+from a workstation with `rworker logs -f --topic nixpp`.
+`upgrade` resolves the flake with `--refresh`: it installs
 the latest revision or fails. Nothing falls back to an older, cached or
 published system, and a failed lease or build is a non-zero exit. The lease
 evaluates on the worker, so `--remote-eval` adds nothing. Without a `lease`
