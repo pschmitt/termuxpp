@@ -7,11 +7,8 @@ import static org.junit.Assert.assertTrue;
 
 import android.app.Dialog;
 import android.content.ClipboardManager;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.Window;
-import android.widget.PopupMenu;
-
+import androidx.appcompat.app.AlertDialog;
+import androidx.preference.Preference;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.termux.R;
@@ -46,14 +43,13 @@ public class ServicesPreferencesFragmentUiTest {
         assertNull(services.findPreference("services_status"));
         assertNotNull(services.findPreference("services_list"));
         assertNotNull(services.findPreference("boot_scripts"));
-        assertNull(services.findPreference("boot_script_setup"));
         assertNull(services.findPreference("boot_script_example"));
 
-        Menu menu = new PopupMenu(activity, services.requireView()).getMenu();
-        activity.onCreatePanelMenu(Window.FEATURE_OPTIONS_PANEL, menu);
-        MenuItem help = menu.findItem(R.id.boot_script_help);
+        Preference help = services.findPreference("boot_script_setup");
         assertNotNull(help);
-        assertTrue(activity.onMenuItemSelected(Window.FEATURE_OPTIONS_PANEL, help));
+        assertEquals("boot_scripts", help.getParent().getKey());
+        assertEquals(R.layout.ui_boot_script_help_icon, help.getWidgetLayoutResource());
+        help.performClick();
         Dialog setup = ShadowDialog.getLatestDialog();
         assertTrue(setup.isShowing());
         assertTrue(setup.findViewById(R.id.boot_script_copy).performClick());
@@ -61,5 +57,26 @@ public class ServicesPreferencesFragmentUiTest {
         assertEquals(activity.getString(R.string.boot_script_example),
             clipboard.getPrimaryClip().getItemAt(0).getText().toString());
         assertTrue(setup.isShowing());
+    }
+
+    @Test
+    public void adbShellOpensTheServiceMenuWithoutTheGuest() {
+        SettingsActivity activity = Robolectric.buildActivity(SettingsActivity.class).setup().get();
+        ServicesPreferencesFragment services = new ServicesPreferencesFragment();
+        activity.getSupportFragmentManager().beginTransaction()
+            .replace(R.id.settings, services)
+            .commitNow();
+
+        Preference adbShell = services.findPreference("adb-shell");
+        assertNotNull(adbShell);
+        assertTrue(adbShell.getSummary().toString().contains(activity.getString(R.string.nix_services_boot_off)));
+        adbShell.performClick();
+        AlertDialog actions = (AlertDialog) ShadowDialog.getLatestDialog();
+        assertTrue(actions.isShowing());
+        int[] labels = {R.string.nix_services_start, R.string.nix_services_stop,
+            R.string.nix_services_restart, R.string.nix_services_logs, R.string.nix_services_settings};
+        assertEquals(labels.length, actions.getListView().getCount());
+        for (int i = 0; i < labels.length; i++)
+            assertEquals(activity.getString(labels[i]), actions.getListView().getItemAtPosition(i));
     }
 }

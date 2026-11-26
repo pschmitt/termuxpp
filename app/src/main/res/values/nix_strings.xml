@@ -41,6 +41,7 @@
     <string name="nix_services_notification_default_on">Shown by default · individual services can override this</string>
     <string name="nix_services_notification_default_off">Hidden by default · individual services can override this</string>
     <string name="nix_services_notification_adb_title">Running notification · ADB shell</string>
+    <string name="nix_services_adb_enable_first">Enable ADB shell access under Settings → Debugging first.</string>
     <string-array name="nix_services_notification_options">
         <item>Use configuration</item>
         <item>Show</item>

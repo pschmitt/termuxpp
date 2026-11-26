@@ -80,6 +80,20 @@ public class AdbShellRecoveryTest {
         assertFalse(preferences().contains(AdbShellService.PREF_TOKEN));
     }
 
+    @Test public void manualStopPreservesAccessAndSuppressesRecoveryUntilStart() {
+        preferences().edit().putBoolean(AdbShellService.PREF_ENABLED, true)
+            .putString(AdbShellService.PREF_TOKEN, "existing-token").commit();
+
+        AdbShellService.stopFromSettings(application);
+        assertFalse(AdbShellRecovery.isRecoverable(application));
+        assertTrue(preferences().getBoolean(AdbShellService.PREF_ENABLED, false));
+        assertEquals("existing-token", preferences().getString(AdbShellService.PREF_TOKEN, null));
+
+        assertTrue(AdbShellService.startFromSettings(application, false));
+        assertTrue(AdbShellRecovery.isRecoverable(application));
+        assertEquals(AdbShellService.ACTION_START, shadowOf(application).getNextStartedService().getAction());
+    }
+
     @Test public void starterFailureIsContained() {
         preferences().edit().putBoolean(AdbShellService.PREF_ENABLED, true)
             .putString(AdbShellService.PREF_TOKEN, "existing-token").commit();

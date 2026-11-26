@@ -403,14 +403,20 @@ foreground notification; Android 13 and later also list active foreground
 services in the system task manager. Access approval notifications are separate.
 Source: [ADB shell service](../../app/src/main/java/com/termux/app/AdbShellService.java).
 
-When the managed Nix guest is available, **Settings → Services** lists
-its declared services and their enabled and running state. The page can start,
-stop, restart and view bounded logs for a service. Actions call the guest's `svc`
-interface with argument vectors; service names are validated before use. If the
-guest is unavailable, the service list describes its state. Pull down to refresh both lists. The Run at boot
-section lists the scripts selected by the Android boot receiver from the native
-TermuxPP home. The info icon opens the boot setup dialog. [Services settings](../../app/src/main/java/com/termux/app/fragments/settings/termux/ServicesPreferencesFragment.java)
-and [preferences entry](../../app/src/main/res/xml/root_preferences.xml).
+**Settings → Services** shows each service's runtime state and whether it starts
+on boot. Start, Stop, Restart, and View logs work for both ADB shell and declared
+Nix guest services. ADB shell uses the Android listener and its recent Android
+logs, and remains available without the guest. Enable ADB shell access under
+**Settings → Debugging** before starting it. Stop keeps the enrollment token and
+approved clients and suspends automatic startup across reboots. Start or Restart
+resumes automatic startup and follows the configured Wi-Fi policy.
+
+Guest actions use the guest's `svc` interface with validated service names.
+Upstream [termux-services](https://github.com/termux/termux-services) uses runit
+and stores logs under `$PREFIX/var/log/sv/`. The TermuxPP Run at boot section
+lists scripts selected by the Android boot receiver from the native TermuxPP
+home. Tap the info icon in that section to open the boot setup dialog.
+[Services settings](../../app/src/main/java/com/termux/app/fragments/settings/termux/ServicesPreferencesFragment.java).
 
 ## Terminal feedback position
 

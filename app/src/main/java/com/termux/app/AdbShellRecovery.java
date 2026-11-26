@@ -1,8 +1,6 @@
 package com.termux.app;
 
 import android.content.Context;
-import android.content.Intent;
-import android.os.Build;
 
 import androidx.annotation.NonNull;
 
@@ -27,6 +25,10 @@ public final class AdbShellRecovery {
 
     /** Returns whether a previously completed opt-in is present and worth restarting for. */
     static boolean isRecoverable(@NonNull Context context) {
+        return !AdbShellService.isManuallyStopped(context) && isConfigured(context);
+    }
+
+    public static boolean isConfigured(@NonNull Context context) {
         android.content.SharedPreferences preferences =
             context.getSharedPreferences(AdbShellService.PREFS_NAME, Context.MODE_PRIVATE);
         if (!preferences.getBoolean(AdbShellService.PREF_ENABLED, false)) return false;
@@ -60,12 +62,7 @@ public final class AdbShellRecovery {
     }
 
     private static void startService(Context context) {
-        Intent intent = new Intent(context, AdbShellService.class).setAction(AdbShellService.ACTION_START);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(intent);
-        } else {
-            context.startService(intent);
-        }
+        AdbShellService.requestStart(context, AdbShellService.ACTION_START);
     }
 
     private AdbShellRecovery() {}

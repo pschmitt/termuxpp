@@ -80,10 +80,12 @@ public final class AdbShellService extends Service {
 
     public static final String ACTION_START = "dev.pschmitt.termux.action.ADB_SHELL_START";
     public static final String ACTION_STOP = "dev.pschmitt.termux.action.ADB_SHELL_STOP";
+    private static final String ACTION_RESTART = "dev.pschmitt.termux.action.ADB_SHELL_RESTART";
     public static final String ACTION_AUTHORIZATIONS_CHANGED = "dev.pschmitt.termux.action.ADB_SHELL_AUTHORIZATIONS_CHANGED";
     public static final String PREFS_NAME = "adb_shell";
     public static final String PREF_ENABLED = "enabled";
     public static final String PREF_TOKEN = "token";
+    private static final String PREF_MANUALLY_STOPPED = "manually_stopped";
     public static final int PORT = 5522;
     private static final String TLS_PREFACE = "TERMUXPP/TLS/1";
 
@@ -91,7 +93,9 @@ public final class AdbShellService extends Service {
     private static final int NOTIFICATION_ID = 8022;
     private static final int MAX_PEM_BYTES = 16 * 1024;
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
-    private static final String LOG_TAG = "AdbShellService";
+    public static final String LOG_TAG = "AdbShellService";
+    /** Accessed on the main thread, which owns the Android service lifecycle. */
+    @Nullable private static AdbShellService activeService;
     private static final int BIND_ATTEMPTS = 5;
     private volatile boolean stopping;
     /** Identifies the current listener run; threads of an older run must not touch shared state. */
@@ -131,9 +135,44 @@ public final class AdbShellService extends Service {
         return token;
     }
 
+    public static boolean isManuallyStopped(Context context) {
+        return context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            .getBoolean(PREF_MANUALLY_STOPPED, false);
+    }
+
+    static void requestStart(Context context, String action) {
+        Intent intent = new Intent(context, AdbShellService.class).setAction(action);
+        ContextCompat.startForegroundService(context, intent);
+    }
+
+    /** Start or restart an already authorized listener from the foreground settings UI. */
+    public static boolean startFromSettings(Context context, boolean restart) {
+        if (!AdbShellRecovery.isConfigured(context)) return false;
+        requestStart(context, restart ? ACTION_RESTART : ACTION_START);
+        context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().remove(PREF_MANUALLY_STOPPED).apply();
+        return true;
+    }
+
+    /** Stop the listener and suppress automatic recovery while keeping its credentials. */
+    public static void stopFromSettings(Context context) {
+        context.stopService(new Intent(context, AdbShellService.class));
+        android.content.SharedPreferences preferences = context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+        if (preferences.getBoolean(PREF_ENABLED, false))
+            preferences.edit().putBoolean(PREF_MANUALLY_STOPPED, true).apply();
+        Logger.logInfo(LOG_TAG, "ADB shell stopped from Services");
+    }
+
+    public static String listenerStatus(Context context) {
+        if (activeService == null || isManuallyStopped(context)) return "down";
+        if (activeService.waitingForNetwork) return "waiting";
+        ServerSocket listener = activeService.serverSocket;
+        return listener != null && !listener.isClosed() ? "running" : "starting";
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();
+        activeService = this;
         createNotificationChannel(this);
         waitingForNetwork = !networkAllowsAccess();
         startForeground(TermuxConstants.TERMUX_APP_NOTIFICATION_ID, sharedForegroundNotification());
@@ -166,7 +205,8 @@ public final class AdbShellService extends Service {
             return START_NOT_STICKY;
         }
 
-        if (!getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getBoolean(PREF_ENABLED, false)) {
+        if (isManuallyStopped(this) ||
+            !getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getBoolean(PREF_ENABLED, false)) {
             stopServer();
             stopSelf(startId);
             return START_NOT_STICKY;
@@ -175,6 +215,10 @@ public final class AdbShellService extends Service {
         if (intent != null && ACTION_AUTHORIZATIONS_CHANGED.equals(intent.getAction())) {
             closeTlsClients();
         }
+        if (intent != null && ACTION_RESTART.equals(intent.getAction())) {
+            Logger.logInfo(LOG_TAG, "Restarting ADB shell from Services");
+            stopServer();
+        }
         updateOptionalNotification();
         updateNetworkAccess();
         return START_STICKY;
@@ -182,7 +226,8 @@ public final class AdbShellService extends Service {
 
     private void updateNetworkAccess() {
         networkHandler.removeCallbacks(networkCheck);
-        if (destroyed || !getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getBoolean(PREF_ENABLED, false)) return;
+        if (destroyed || isManuallyStopped(this) ||
+            !getSharedPreferences(PREFS_NAME, MODE_PRIVATE).getBoolean(PREF_ENABLED, false)) return;
 
         boolean allowed = networkAllowsAccess();
         if (allowed) {
@@ -202,7 +247,7 @@ public final class AdbShellService extends Service {
 
     /** The configured SSID allow-list, empty for any network. */
     @NonNull
-    private static String allowedSsids() {
+    public static String allowedSsids() {
         TermuxSharedProperties properties = TermuxAppSharedProperties.getProperties();
         if (properties == null) return "";
         return properties.getPropertyValue(TermuxPropertyConstants.KEY_ADB_SHELL_ALLOWED_SSIDS, "", true);
@@ -302,6 +347,7 @@ public final class AdbShellService extends Service {
     @Override
     public void onDestroy() {
         destroyed = true;
+        if (activeService == this) activeService = null;
         if (notificationSettingsObserver != null) notificationSettingsObserver.stopWatching();
         ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).cancel(NOTIFICATION_ID);
         networkHandler.removeCallbacks(networkCheck);
@@ -319,6 +365,7 @@ public final class AdbShellService extends Service {
             synchronized (this) {
                 if (listener == null || !isCurrent(run)) return;
                 serverSocket = listener;
+                Logger.logInfo(LOG_TAG, "ADB shell listening on loopback port " + PORT);
             }
             while (isCurrent(run)) {
                 Socket socket = listener.accept();
@@ -863,7 +910,7 @@ public final class AdbShellService extends Service {
         synchronized (AdbShellService.class) {
             new AdbShellAuthorizations(this).clear();
             getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit()
-                .putBoolean(PREF_ENABLED, false).remove(PREF_TOKEN).apply();
+                .putBoolean(PREF_ENABLED, false).remove(PREF_TOKEN).remove(PREF_MANUALLY_STOPPED).apply();
             deleteTlsFile("adb-shell-server.pk8");
             deleteTlsFile("adb-shell-server.crt");
             deleteTlsFile("adb-shell-client-ca.crt");

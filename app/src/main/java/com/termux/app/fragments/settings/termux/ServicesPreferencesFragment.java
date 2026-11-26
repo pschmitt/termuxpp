@@ -8,9 +8,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -23,15 +20,14 @@ import androidx.annotation.Keep;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
-import androidx.core.view.MenuItemCompat;
-import androidx.core.view.MenuProvider;
-import androidx.lifecycle.Lifecycle;
 import androidx.preference.Preference;
 import androidx.preference.PreferenceCategory;
 import androidx.preference.PreferenceViewHolder;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import com.termux.R;
+import com.termux.app.AdbShellRecovery;
+import com.termux.app.AdbShellService;
 import com.termux.app.ServiceNotificationPolicy;
 import com.termux.app.settings.GroupedPreferencesFragment;
 import com.google.android.material.color.MaterialColors;
@@ -54,6 +50,7 @@ import java.util.concurrent.Executors;
 
 import dev.pschmitt.termux.shared.interact.DialogUtils;
 import dev.pschmitt.termux.shared.interact.ShareUtils;
+import dev.pschmitt.termux.shared.logger.Logger;
 import dev.pschmitt.termux.shared.termux.TermuxConstants;
 import dev.pschmitt.termux.shared.termux.nix.TermuxNix;
 import dev.pschmitt.termux.shared.termux.shell.command.environment.TermuxShellEnvironment;
@@ -67,6 +64,7 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final Runnable adbShellRefresh = this::updateAdbShellRow;
     @Nullable private SwipeRefreshLayout swipeRefresh;
     private PreferenceCategory servicesCategory;
     private boolean busy;
@@ -100,32 +98,23 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
     }
 
     @Override
-    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
-        super.onViewCreated(view, savedInstanceState);
-        requireActivity().addMenuProvider(new MenuProvider() {
-            @Override
-            public void onCreateMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
-                MenuItem help = menu.add(Menu.NONE, R.id.boot_script_help, Menu.NONE, R.string.boot_setup_title);
-                help.setIcon(R.drawable.ui_ic_info);
-                MenuItemCompat.setIconTintList(help,
-                    ColorStateList.valueOf(ContextCompat.getColor(requireContext(), R.color.ui_on_surface)));
-                help.setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS);
-            }
-
-            @Override
-            public boolean onMenuItemSelected(@NonNull MenuItem item) {
-                if (item.getItemId() != R.id.boot_script_help) return false;
-                showBootSetup();
-                return true;
-            }
-        }, getViewLifecycleOwner(), Lifecycle.State.RESUMED);
-    }
-
-    @Override
     public void onResume() {
         super.onResume();
         if (swipeRefresh != null) swipeRefresh.setRefreshing(busy);
         refreshPage();
+        updateAdbShellRow();
+    }
+
+    @Override
+    public void onPause() {
+        mainHandler.removeCallbacks(adbShellRefresh);
+        super.onPause();
+    }
+
+    private void updateAdbShellRow() {
+        Preference row = servicesCategory.findPreference(ServiceNotificationPolicy.ADB_SHELL);
+        if (row != null) row.setSummary(serviceRowSummary(adbShellStatus()));
+        mainHandler.postDelayed(adbShellRefresh, 1000);
     }
 
     @Override
@@ -171,13 +160,6 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
         scripts.removeAll();
         String home = TermuxConstants.TERMUX_HOME_DIR_PATH;
         List<File> files = BootReceiver.getBootScripts(home);
-        if (files.isEmpty()) {
-            Preference empty = new Preference(requireContext());
-            empty.setTitle(R.string.boot_scripts_empty);
-            empty.setIconSpaceReserved(false);
-            empty.setSelectable(false);
-            scripts.addPreference(empty);
-        }
         File defaultDirectory = new File(TermuxConstants.TERMUX_CONFIG_TERMUXPP_DIR_PATH, "boot");
         for (File file : files) {
             Preference script = new Preference(requireContext());
@@ -188,6 +170,17 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
             script.setSelectable(false);
             scripts.addPreference(script);
         }
+        Preference help = new Preference(requireContext()) {
+            @Override
+            protected void onClick() {
+                showBootSetup();
+            }
+        };
+        help.setKey("boot_script_setup");
+        help.setTitle(files.isEmpty() ? R.string.boot_scripts_empty : R.string.boot_setup_title);
+        help.setIconSpaceReserved(false);
+        help.setWidgetLayoutResource(R.layout.ui_boot_script_help_icon);
+        scripts.addPreference(help);
     }
 
     private void refreshServices() {
@@ -229,7 +222,8 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
                 }
                 servicesCategory.removeAll();
                 if (loaded.isEmpty()) showServicePlaceholder(getString(R.string.nix_services_empty));
-                for (Service service : loaded) addServicePreference(service);
+                for (Service service : loaded)
+                    if (!ServiceNotificationPolicy.ADB_SHELL.equals(service.name)) addServicePreference(service);
                 addAdbShellIfMissing();
             });
         });
@@ -237,10 +231,18 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
 
     private void addAdbShellIfMissing() {
         if (servicesCategory.findPreference(ServiceNotificationPolicy.ADB_SHELL) != null) return;
-        boolean enabled = requireContext().getSharedPreferences(com.termux.app.AdbShellService.PREFS_NAME,
-            Context.MODE_PRIVATE).getBoolean(com.termux.app.AdbShellService.PREF_ENABLED, false);
-        addServicePreference(new Service(ServiceNotificationPolicy.ADB_SHELL,
-            enabled ? "unknown" : "down", enabled));
+        addServicePreference(adbShellStatus());
+    }
+
+    private Service adbShellStatus() {
+        Context context = requireContext();
+        String status = AdbShellService.listenerStatus(context);
+        boolean enabled = AdbShellRecovery.isConfigured(context) && !AdbShellService.isManuallyStopped(context);
+        List<String> ssids = new ArrayList<>();
+        for (String ssid : AdbShellService.allowedSsids().split(","))
+            if (!ssid.trim().isEmpty()) ssids.add(ssid.trim());
+        return new Service(ServiceNotificationPolicy.ADB_SHELL, status, enabled,
+            !ssids.isEmpty(), ssids, false, false, "waiting".equals(status), null);
     }
 
     private void showServicePlaceholder(CharSequence message) {
@@ -254,13 +256,15 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
     }
 
     private void addServicePreference(@NonNull Service service) {
+        boolean adbShell = ServiceNotificationPolicy.ADB_SHELL.equals(service.name);
         Preference preference = new Preference(requireContext()) {
             @Override
             public void onBindViewHolder(@NonNull PreferenceViewHolder holder) {
                 super.onBindViewHolder(holder);
                 ImageView icon = (ImageView) holder.findViewById(android.R.id.icon);
                 if (icon != null) {
-                    int color = ContextCompat.getColor(getContext(), serviceStatusColor(service));
+                    int color = ContextCompat.getColor(getContext(),
+                        serviceStatusColor(adbShell ? adbShellStatus() : service));
                     icon.setImageTintList(ColorStateList.valueOf(color));
                 }
             }
@@ -268,9 +272,9 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
         preference.setIcon(R.drawable.ui_ic_service_status);
         preference.setKey(service.name);
         preference.setTitle(service.name);
-        preference.setSummary(serviceStatus(service));
+        preference.setSummary(serviceRowSummary(service));
         preference.setOnPreferenceClickListener(clicked -> {
-            showServiceActions(service);
+            showServiceActions(adbShell ? adbShellStatus() : service);
             return true;
         });
         servicesCategory.addPreference(preference);
@@ -278,10 +282,6 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
 
     private void showServiceActions(@NonNull Service service) {
         Context context = requireContext();
-        if ("adb-shell".equals(service.name)) {
-            showNotificationChoice(service.name, getString(R.string.nix_services_notification_adb_title));
-            return;
-        }
         String[] actions = {
             getString(R.string.nix_services_start),
             getString(R.string.nix_services_stop),
@@ -291,14 +291,16 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
         };
         View header = LayoutInflater.from(context).inflate(R.layout.ui_guest_service_details, null);
         ((TextView) header.findViewById(R.id.service_detail_title)).setText(service.name);
-        String boot = getString(service.enabled ? R.string.nix_services_boot_on : R.string.nix_services_boot_off);
         ((TextView) header.findViewById(R.id.service_detail_summary))
-            .setText(getString(R.string.nix_services_service_summary, serviceStatus(service), boot) + "\n" + wifiSummary(service));
+            .setText(serviceRowSummary(service) + "\n" + wifiSummary(service));
         DialogUtils.builder(context)
             .setCustomTitle(header)
             .setItems(actions, (dialog, which) -> {
                 if (which == 4) {
-                    editSettings(service);
+                    if (ServiceNotificationPolicy.ADB_SHELL.equals(service.name))
+                        showNotificationChoice(service.name, getString(R.string.nix_services_notification_adb_title));
+                    else
+                        editSettings(service);
                     return;
                 }
                 String action = new String[]{"start", "stop", "restart", "logs"}[which];
@@ -330,26 +332,48 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
 
     private void runServiceAction(@NonNull Service service, @NonNull String action) {
         if (busy) return;
+        boolean adbShell = ServiceNotificationPolicy.ADB_SHELL.equals(service.name);
+        if (adbShell && !"logs".equals(action)) {
+            CommandResult result;
+            try {
+                if ("stop".equals(action)) {
+                    AdbShellService.stopFromSettings(requireContext());
+                    result = new CommandResult(0, "");
+                } else if (AdbShellService.startFromSettings(requireContext(), "restart".equals(action))) {
+                    result = new CommandResult(0, "");
+                } else {
+                    result = new CommandResult(1, getString(R.string.nix_services_adb_enable_first));
+                }
+            } catch (RuntimeException e) {
+                result = new CommandResult(1, e.getMessage());
+            }
+            showServiceActionResult(service, action, result);
+            return;
+        }
         setBusy(true);
         executor.execute(() -> {
-            CommandResult result = runGuestCommand("svc", action, service.name);
+            CommandResult result = adbShell
+                ? runCommand(new ProcessBuilder("/system/bin/logcat", "-b", "main", "-d", "-t", "200",
+                    "-v", "time", Logger.getFullTag(AdbShellService.LOG_TAG) + ":I", "*:S"))
+                : runGuestCommand("svc", action, service.name);
             mainHandler.post(() -> {
                 if (!isAdded()) return;
                 setBusy(false);
-                if (result.exitCode != 0) {
-                    showTextDialog(getString(R.string.nix_services_action_failed, action),
-                        concise(result.output));
-                } else if ("logs".equals(action)) {
-                    showTextDialog(getString(R.string.nix_services_logs_title, service.name),
-                        result.output);
-                } else {
-                    Toast.makeText(requireContext(),
-                        getString(R.string.nix_services_action_done, action, service.name),
-                        Toast.LENGTH_SHORT).show();
-                }
-                refreshServices();
+                showServiceActionResult(service, action, result);
+                if (!adbShell) refreshServices();
             });
         });
+    }
+
+    private void showServiceActionResult(Service service, String action, CommandResult result) {
+        if (result.exitCode != 0) {
+            showTextDialog(getString(R.string.nix_services_action_failed, action), concise(result.output));
+        } else if ("logs".equals(action)) {
+            showTextDialog(getString(R.string.nix_services_logs_title, service.name), result.output);
+        } else {
+            Toast.makeText(requireContext(), getString(R.string.nix_services_action_done, action, service.name),
+                Toast.LENGTH_SHORT).show();
+        }
     }
 
     @NonNull
@@ -359,14 +383,18 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
         command.add("enter");
         command.add("--");
         for (String argument : arguments) command.add(argument);
+        ProcessBuilder builder = new ProcessBuilder(command);
+        builder.environment().clear();
+        Context context = getContext();
+        if (context == null) return new CommandResult(1, "");
+        builder.environment().putAll(new TermuxShellEnvironment().getEnvironment(context, false));
+        builder.directory(new File(TermuxConstants.TERMUX_HOME_DIR_PATH));
+        return runCommand(builder);
+    }
+
+    private static CommandResult runCommand(ProcessBuilder builder) {
         Process process = null;
         try {
-            ProcessBuilder builder = new ProcessBuilder(command);
-            builder.environment().clear();
-            Context context = getContext();
-            if (context == null) return new CommandResult(1, "");
-            builder.environment().putAll(new TermuxShellEnvironment().getEnvironment(context, false));
-            builder.directory(new File(TermuxConstants.TERMUX_HOME_DIR_PATH));
             builder.redirectErrorStream(true);
             process = builder.start();
             process.getOutputStream().close();
@@ -469,6 +497,11 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
             return getString(R.string.nix_services_waiting_for_wifi);
         if (service.status.isEmpty()) return service.status;
         return Character.toUpperCase(service.status.charAt(0)) + service.status.substring(1);
+    }
+
+    private String serviceRowSummary(Service service) {
+        String boot = getString(service.enabled ? R.string.nix_services_boot_on : R.string.nix_services_boot_off);
+        return getString(R.string.nix_services_service_summary, serviceStatus(service), boot);
     }
 
     private void setBusy(boolean value) {
