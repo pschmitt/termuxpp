@@ -724,6 +724,7 @@ extra-keys:
 
 **Extra keys theme** selects the default toolbar appearance or **Rounded (Gboard-inspired)**,
 which gives unstyled keys rounded, spaced caps and picks a light or dark palette with the app.
+Escape and the four arrow keys use a subdued tint by default.
 **Extra keys row background color** sets the color behind the keys. A custom background,
 corner radius, active color, or per-key color takes precedence over the theme.
 

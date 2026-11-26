@@ -225,6 +225,8 @@ public final class ExtraKeysView extends GridLayout {
 
     private final Drawable mDefaultRowBackground;
     private boolean mRoundedTheme;
+    private int mRoundedNavigationTextColor;
+    private int mRoundedNavigationBackgroundColor;
     private final Map<MaterialButton, ExtraKeyButton> mFlingKeys = new HashMap<>();
     private final Map<MaterialButton, String> mKeyHints = new HashMap<>();
     private final TextPaint mHintPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
@@ -470,6 +472,8 @@ public final class ExtraKeysView extends GridLayout {
                 == Configuration.UI_MODE_NIGHT_YES;
             mButtonTextColor = dark ? 0xFFE3E5E5 : 0xFF222629;
             mButtonBackgroundColor = dark ? 0xFF37393B : 0xFFE0E3E7;
+            mRoundedNavigationTextColor = dark ? 0xFFD5E2EC : 0xFF25394A;
+            mRoundedNavigationBackgroundColor = dark ? 0xFF3D454B : 0xFFCBD7E2;
             if (rowColor == null) rowColor = dark ? 0xFF1C1F20 : 0xFFF2F4F7;
             if (activeText == null) activeText = dark ? 0xFFF0F2F2 : 0xFF222629;
             if (activeBackground == null) activeBackground = dark ? 0xFF50565A : 0xFFCED3D8;
@@ -504,7 +508,8 @@ public final class ExtraKeysView extends GridLayout {
         ExtraKeyButton hold = buttonInfo.getHold();
         if (mFillActiveSpecialButtons && (isActiveModifier(buttonInfo) || (hold != null && isActiveModifier(hold))))
             return mButtonActiveBackgroundColor;
-        return buttonInfo.backgroundColor != null ? buttonInfo.backgroundColor : mButtonBackgroundColor;
+        if (buttonInfo.backgroundColor != null) return buttonInfo.backgroundColor;
+        return usesRoundedNavigationTint(buttonInfo) ? mRoundedNavigationBackgroundColor : mButtonBackgroundColor;
     }
 
     /** Get the background color of a {@link SpecialButton} that is not being pressed. */
@@ -937,8 +942,23 @@ public final class ExtraKeysView extends GridLayout {
         return isSpecialButton(key) && mSpecialButtons.get(SpecialButton.valueOf(key.getKey())).isActive;
     }
 
+    private boolean usesRoundedNavigationTint(ExtraKeyButton key) {
+        if (!mRoundedTheme) return false;
+        switch (key.getKey()) {
+            case "ESC":
+            case "LEFT":
+            case "RIGHT":
+            case "UP":
+            case "DOWN":
+                return true;
+            default:
+                return false;
+        }
+    }
+
     private void updateKeyColors(ExtraKeyButton key, MaterialButton button, boolean active) {
-        int textColor = key.textColor != null ? key.textColor : mButtonTextColor;
+        int defaultTextColor = usesRoundedNavigationTint(key) ? mRoundedNavigationTextColor : mButtonTextColor;
+        int textColor = key.textColor != null ? key.textColor : defaultTextColor;
         button.setTextColor(active ? mButtonActiveTextColor : textColor);
         button.setBackgroundColor(getRestingBackgroundColor(key));
     }
