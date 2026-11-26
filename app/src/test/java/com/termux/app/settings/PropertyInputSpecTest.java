@@ -307,11 +307,18 @@ public class PropertyInputSpecTest {
         invalid(gesturePositionKey, "top", "center-top", "bottom right");
         valid(toastKey, toastPositions);
         invalid(toastKey, "top", "center-top", "bottom right");
+        String fontKey = TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT;
+        assertArrayEquals(new String[]{"system", "terminal", "monospace", "serif"}, PropertyInputSpec.choices(fontKey));
+        valid(fontKey, "system", "terminal", "monospace", "serif");
+        invalid(fontKey, "unknown");
+        String animationKey = TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION;
+        assertArrayEquals(new String[]{"key-preview", "press-in", "pop", "lift", "off"}, PropertyInputSpec.choices(animationKey));
+
         for (String key : TermuxPropertyConstants.TERMUX_APP_PROPERTIES_LIST) {
             if (key.equals("extra-keys-style") || key.equals(TermuxPropertyConstants.KEY_GESTURE_COMMAND_CONTEXT)
                 || key.equals(toastKey) || key.equals(engineKey) || key.equals(feedbackKey)
                 || key.equals(gesturePositionKey) || key.equals(tmuxKey) || key.equals(tmuxStyle)
-                || key.equals(pickerKey)) continue;
+                || key.equals(pickerKey) || key.equals(fontKey) || key.equals(animationKey)) continue;
             assertEquals(key, 0, PropertyInputSpec.choices(key).length);
         }
         assertEquals(0, PropertyInputSpec.choices(null).length);
