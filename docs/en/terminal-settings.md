@@ -672,7 +672,7 @@ Run `termux-reload-settings` after editing the file. Stock Termux reads
 
 Choose **Extra keys animation** in **Settings → Properties → Gestures** and
 tap a preview key to try it. In YAML, set `extra-keys.animation` to
-`press-in` (default), `pop`, `lift`, `key-preview`, or `off`. Key preview shows
+`key-preview` (default), `press-in`, `pop`, `lift`, or `off`. Key preview shows
 an enlarged label above the pressed key. Off keeps the pressed-key color.
 
 | Key | Applies to | Theme default |

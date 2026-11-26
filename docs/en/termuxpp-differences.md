@@ -559,8 +559,8 @@ Tap the shared key to cancel the alternate modifier, double-tap to lock it,
 or tap locked Shift to return to the primary key.
 Upstream uses long presses to lock modifiers or repeat keys. [Upstream extra-key view](https://github.com/termux/termux-app/blob/master/termux-shared/src/main/java/com/termux/shared/termux/extrakeys/ExtraKeysView.java).
 
-TermuxPP adds optional extra-key press and release motion. Press in is the
-default, and Pop, Lift, Key preview, and Off are available in `extra-keys.animation`.
+TermuxPP adds optional extra-key press and release motion. Key preview is the
+default, and Press in, Pop, Lift, and Off are available in `extra-keys.animation`.
 
 Configured tap, volume-button and extra-key swipe actions briefly confirm the
 chosen action in a pill above the keys. Motion respects Android's animation
