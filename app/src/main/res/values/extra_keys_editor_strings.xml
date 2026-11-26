@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="extra_editor_preview_help">Tap a key to edit it. Long-press a key and drag it to move it, also into another row.</string>
+    <string name="extra_editor_undo">Undo</string>
+    <string name="extra_editor_redo">Redo</string>
+    <string name="extra_editor_select_key">Select a key in the preview to edit it, or use a row handle to add keys.</string>
+    <string name="extra_editor_selected">Row %1$d · key %2$d</string>
+    <string name="extra_editor_row_number">%1$d ⋮</string>
+    <string name="extra_editor_row_handle">Row %1$d options</string>
+    <string name="extra_editor_add_key_to_row">Add key to row %1$d</string>
+    <string name="extra_editor_move_left">Move left</string>
+    <string name="extra_editor_move_right">Move right</string>
+    <string name="extra_editor_move_up">Move to row above</string>
+    <string name="extra_editor_move_down">Move to row below</string>
+    <string name="extra_editor_insert_before">Insert key before</string>
+    <string name="extra_editor_insert_after">Insert key after</string>
+    <string name="extra_editor_duplicate">Duplicate key</string>
+    <string name="extra_editor_delete">Delete key</string>
+    <string name="extra_editor_row_add_key">Add key at end</string>
+    <string name="extra_editor_row_insert_above">Insert row above</string>
+    <string name="extra_editor_row_insert_below">Insert row below</string>
+    <string name="extra_editor_row_duplicate">Duplicate row</string>
+    <string name="extra_editor_clear_all">Remove all rows</string>
+    <string name="extra_editor_clear_all_confirm">Remove every row from the draft? The toolbar will have no extra keys after you save.</string>
+    <string name="extra_editor_discard">Discard changes</string>
+    <string name="extra_editor_discard_confirm">Discard the changes to this layout?</string>
+    <string name="extra_editor_keep_editing">Keep editing</string>
+
+    <string name="extra_editor_section_tap">Tap</string>
+    <string name="extra_editor_section_look">Appearance</string>
+    <string name="extra_editor_section_gestures">Gestures</string>
+    <string name="extra_editor_swipe_up">Swipe up</string>
+    <string name="extra_editor_long_press">Long press</string>
+    <string name="extra_editor_fling_left">Fling left</string>
+    <string name="extra_editor_fling_right">Fling right</string>
+    <string name="extra_editor_fling_down">Fling down</string>
+
+    <string name="extra_editor_mode_none">None</string>
+    <string name="extra_editor_mode_key">Key</string>
+    <string name="extra_editor_mode_macro">Macro</string>
+    <string name="extra_editor_mode_command">Command</string>
+    <string name="extra_editor_mode_blank">Spacer</string>
+
+    <string name="extra_editor_value_key">Key or text</string>
+    <string name="extra_editor_value_macro">Key sequence, for example CTRL c</string>
+    <string name="extra_editor_value_command">Shell command, run in a new session</string>
+    <string name="extra_editor_value_hold">Key to activate while held, for example CTRL</string>
+    <string name="extra_editor_label">Label (optional)</string>
+    <string name="extra_editor_blank_help">A spacer leaves an empty gap in the row.</string>
+    <string name="extra_editor_none_help">Nothing happens for this gesture.</string>
+    <string name="extra_editor_palette_help">Tap a key below to use it; in a macro it is appended.</string>
+
+    <string name="extra_editor_text_color">Text color</string>
+    <string name="extra_editor_background_color">Background color</string>
+    <string name="extra_editor_color_hex">Hex color (optional)</string>
+    <string name="extra_editor_color_default">Theme default</string>
+    <string name="extra_editor_hint_title">Corner label</string>
+    <string name="extra_editor_hint_auto">Auto</string>
+    <string name="extra_editor_hint_custom">Custom text</string>
+    <string name="extra_editor_hint_off">Off</string>
+    <string name="extra_editor_hint">Corner label text</string>
+    <string name="extra_editor_hint_required">Enter the label text, or choose Auto or Off</string>
+    <string name="extra_editor_custom_inset">Custom spacing around the key</string>
+    <string name="extra_editor_inset_value">Spacing: %1$s dp</string>
+</resources>

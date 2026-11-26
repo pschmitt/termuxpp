@@ -338,11 +338,20 @@ paths and key sequences. Text dialogs explain formats, ranges and defaults, use
 appropriate keyboards, and keep invalid input open for correction. Extra keys have
 a full-width live keyboard preview using the terminal's own extra-key renderer,
 including the configured key style, capitalization, active colors, corner radius
-and row height. Tap a preview key to edit it without sending terminal input.
-Compact row controls add, remove or reorder rows and keys; choose common keys or
-literal text; and configure labels, macros and swipe-up actions without writing
-JSON. An optional **Advanced JSON** editor preserves support for complex layouts. Existing custom key attributes are retained. Layout changes remain a draft
-until **Save**, and **Cancel** leaves the file unchanged.
+and row height. The layout editor is WYSIWYG: tap a preview key to select it
+without sending terminal input, and long-press and drag it to move it, also into
+another row. A toolbar moves, inserts, duplicates and deletes the selected key, and
+a handle beside each row inserts, duplicates, reorders, resizes or removes rows.
+Empty rows and spacers stay visible so they can be selected. An inline inspector
+edits every key attribute and updates the preview while you type: the tap action
+(key, macro, shell command or spacer, with a palette of special keys), label, text
+and background colors (swatches or hex), corner label (automatic, custom text or off) and spacing, and the swipe-up,
+long-press and left, right and down fling gestures. Undo and redo cover every
+change. An optional **Advanced JSON** editor preserves support for complex layouts,
+and key attributes the editor does not know are retained. Layout changes remain a
+draft until **Save**; **Cancel** asks before discarding them and leaves the file
+unchanged. Source: [editor](../../app/src/main/java/com/termux/app/fragments/settings/termux/ExtraKeysEditorDialog.java)
+and [key inspector](../../app/src/main/java/com/termux/app/fragments/settings/termux/ExtraKeyInspector.java).
 
 These controls edit the settings file itself, not a competing Android preference
 store. Clear a text field or select **App default** to remove an override; the layout

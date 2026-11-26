@@ -44,38 +44,159 @@ public class PropertyDialogsTest {
         return null;
     }
 
-    @Test public void visualEditorAddsRowsAndKeysWithoutSavingAndKeepsDraftState() {
-        SettingsActivity activity = activity();
-        ExtraKeysEditorDialog dialog = new ExtraKeysEditorDialog();
-        Bundle args = new Bundle();
-        args.putString("value", "[['ESC']]");
-        dialog.setArguments(args);
-        dialog.showNow(activity.getSupportFragmentManager(), "layout");
-        view(dialog.requireDialog().getWindow().getDecorView(), Button.class, "Add row").performClick();
+    private static View described(View root, String description) {
+        if (description.contentEquals(root.getContentDescription() == null ? "" : root.getContentDescription())) return root;
+        if (root instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) root;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                View found = described(group.getChildAt(i), description);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    /** The {@code index}-th visible text field whose outlined box shows {@code hint}. */
+    private static EditText field(View root, String hint, int index) {
+        java.util.List<EditText> found = new java.util.ArrayList<>();
+        collectFields(root, hint, found);
+        return found.get(index);
+    }
+
+    private static void collectFields(View root, String hint, java.util.List<EditText> found) {
+        if (root.getVisibility() != View.VISIBLE) return;
+        if (root instanceof com.google.android.material.textfield.TextInputLayout) {
+            com.google.android.material.textfield.TextInputLayout layout = (com.google.android.material.textfield.TextInputLayout) root;
+            if (layout.getHint() != null && hint.contentEquals(layout.getHint()) && layout.getEditText() != null) {
+                found.add(layout.getEditText());
+            }
+            return;
+        }
+        if (root instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) root;
+            for (int i = 0; i < group.getChildCount(); i++) collectFields(group.getChildAt(i), hint, found);
+        }
+    }
+
+    private static String draft(ExtraKeysEditorDialog dialog) {
         Bundle state = new Bundle();
         dialog.onSaveInstanceState(state);
-        assertEquals("[[\"ESC\"],[]]", state.getString("value"));
-        assertFalse(state.getBoolean("default"));
-        dev.pschmitt.termux.shared.termux.extrakeys.ExtraKeysView preview = view(dialog.requireDialog().getWindow().getDecorView(),
+        return state.getString("value");
+    }
+
+    private static ExtraKeysEditorDialog editor(SettingsActivity activity, String value) {
+        ExtraKeysEditorDialog dialog = new ExtraKeysEditorDialog();
+        Bundle args = new Bundle();
+        args.putString("value", value);
+        dialog.setArguments(args);
+        dialog.showNow(activity.getSupportFragmentManager(), "layout");
+        return dialog;
+    }
+
+    private static dev.pschmitt.termux.shared.termux.extrakeys.ExtraKeysView preview(DialogFragment dialog) {
+        return view(dialog.requireDialog().getWindow().getDecorView(),
             dev.pschmitt.termux.shared.termux.extrakeys.ExtraKeysView.class, null);
-        assertNotNull(preview);
-        assertEquals(1, preview.getChildCount());
-        assertEquals(2, preview.getRowCount());
-        preview.getChildAt(0).performClick();
-        activity.getSupportFragmentManager().executePendingTransactions();
-        DialogFragment keyDialog = (DialogFragment) activity.getSupportFragmentManager().findFragmentByTag("extra_key");
-        EditText key = view(keyDialog.requireDialog().getWindow().getDecorView(), EditText.class, null);
-        key.setText("");
-        ((AlertDialog) keyDialog.requireDialog()).getButton(AlertDialog.BUTTON_POSITIVE).performClick();
-        assertNotNull(key.getError());
-        key.setText("TAB");
-        ((AlertDialog) keyDialog.requireDialog()).getButton(AlertDialog.BUTTON_POSITIVE).performClick();
-        activity.getSupportFragmentManager().executePendingTransactions();
-        Bundle edited = new Bundle();
-        dialog.onSaveInstanceState(edited);
-        assertEquals("[[{\"key\":\"TAB\"}],[]]", edited.getString("value"));
+    }
+
+    @Test public void visualEditorAddsRowsAndKeysWithoutSavingAndKeepsDraftState() {
+        SettingsActivity activity = activity();
+        ExtraKeysEditorDialog dialog = editor(activity, "[['ESC']]");
+        View root = dialog.requireDialog().getWindow().getDecorView();
+        view(root, Button.class, "Add row").performClick();
+        assertEquals("[[\"ESC\"],[]]", draft(dialog));
+        Bundle state = new Bundle();
+        dialog.onSaveInstanceState(state);
+        assertFalse(state.getBoolean("default"));
+        // The empty row shows a placeholder key so it stays visible and tappable.
+        assertEquals(2, preview(dialog).getChildCount());
+        assertEquals(2, preview(dialog).getRowCount());
+
+        // Selecting a key opens the inline inspector; edits apply to the preview while typing.
+        preview(dialog).getChildAt(0).performClick();
+        EditText tap = field(root, "Key or text", 0);
+        assertEquals("ESC", tap.getText().toString());
+        tap.setText("");
+        assertNotNull(((com.google.android.material.textfield.TextInputLayout) tap.getParent().getParent()).getError());
+        assertEquals("[[\"ESC\"],[]]", draft(dialog));
+        tap.setText("TAB");
+        assertEquals("[[{\"key\":\"TAB\"}],[]]", draft(dialog));
+        assertEquals("↹", ((android.widget.TextView) preview(dialog).getChildAt(0)).getText().toString());
+
+        // One undo step reverts the whole edit session of that key.
+        described(root, "Undo").performClick();
+        assertEquals("[[\"ESC\"],[]]", draft(dialog));
+        described(root, "Redo").performClick();
+        assertEquals("[[{\"key\":\"TAB\"}],[]]", draft(dialog));
+
+        // The placeholder adds a key to the empty row and focuses it for typing.
+        preview(dialog).getChildAt(1).performClick();
+        assertEquals("[[{\"key\":\"TAB\"}],[{\"key\":\"\"}]]", draft(dialog));
+        field(root, "Key or text", 0).setText("F1");
+        assertEquals("[[{\"key\":\"TAB\"}],[{\"key\":\"F1\"}]]", draft(dialog));
         dialog.dismiss();
         activity.getSupportFragmentManager().executePendingTransactions();
+    }
+
+    @Test public void inspectorEditsActionsColorsAndGesturesAndKeepsUnknownAttributes() throws Exception {
+        SettingsActivity activity = activity();
+        ExtraKeysEditorDialog dialog = editor(activity, "[[{key:'LEFT',popup:'HOME',custom:1},'ESC']]");
+        View root = dialog.requireDialog().getWindow().getDecorView();
+        preview(dialog).getChildAt(0).performClick();
+        field(root, "Hex color (optional)", 1).setText("#303030");
+        view(root, Button.class, "Custom text").performClick();
+        field(root, "Corner label text", 0).setText("⇱");
+        // Swipe up is the second visible "Key or text" field after the tap action.
+        field(root, "Key or text", 1).setText("PGUP");
+        org.json.JSONObject key = new org.json.JSONArray(draft(dialog)).getJSONArray(0).getJSONObject(0);
+        assertEquals("LEFT", key.getString("key"));
+        assertEquals("#303030", key.getString("background-color"));
+        assertEquals("⇱", key.getString("hint"));
+        assertEquals("custom", key.getString("hint-mode"));
+        assertEquals("PGUP", key.getString("popup"));
+        assertEquals(1, key.getInt("custom"));
+        view(root, Button.class, "Auto").performClick();
+        key = new org.json.JSONArray(draft(dialog)).getJSONArray(0).getJSONObject(0);
+        assertEquals("auto", key.getString("hint-mode"));
+        assertFalse(key.has("hint"));
+        field(root, "Hex color (optional)", 0).setText("not a color");
+        key = new org.json.JSONArray(draft(dialog)).getJSONArray(0).getJSONObject(0);
+        assertFalse("an invalid color is not applied", key.has("text-color"));
+        field(root, "Hex color (optional)", 0).setText("");
+
+        // Switching the tap action to a command keeps the rest of the key.
+        Button command = view(root, Button.class, "Command");
+        command.performClick();
+        field(root, "Shell command, run in a new session", 0).setText("htop");
+        key = new org.json.JSONArray(draft(dialog)).getJSONArray(0).getJSONObject(0);
+        assertEquals("htop", key.getString("command"));
+        assertFalse(key.has("key"));
+        assertEquals("PGUP", key.getString("popup"));
+
+        described(root, "Move right").performClick();
+        assertEquals("ESC", new org.json.JSONArray(draft(dialog)).getJSONArray(0).getString(0));
+        described(root, "Duplicate key").performClick();
+        assertEquals(3, new org.json.JSONArray(draft(dialog)).getJSONArray(0).length());
+        described(root, "Delete key").performClick();
+        described(root, "Delete key").performClick();
+        assertEquals("[[\"ESC\"]]", draft(dialog));
+        dialog.dismiss();
+        activity.getSupportFragmentManager().executePendingTransactions();
+    }
+
+    @Test public void cancellingAChangedDraftAsksBeforeDiscarding() {
+        SettingsActivity activity = activity();
+        ExtraKeysEditorDialog dialog = editor(activity, "[['ESC']]");
+        View root = dialog.requireDialog().getWindow().getDecorView();
+        view(root, Button.class, "Add row").performClick();
+        ((AlertDialog) dialog.requireDialog()).getButton(AlertDialog.BUTTON_NEGATIVE).performClick();
+        assertTrue(dialog.requireDialog().isShowing());
+        AlertDialog confirm = (AlertDialog) org.robolectric.shadows.ShadowDialog.getLatestDialog();
+        assertNotSame(dialog.requireDialog(), confirm);
+        confirm.getButton(AlertDialog.BUTTON_POSITIVE).performClick();
+        // Alert dialog buttons deliver their click through the main looper.
+        org.robolectric.shadows.ShadowLooper.idleMainLooper();
+        activity.getSupportFragmentManager().executePendingTransactions();
+        assertNull(activity.getSupportFragmentManager().findFragmentByTag("layout"));
     }
 
     @Test public void previewDraftSurvivesActivityRecreation() {
