@@ -48,6 +48,8 @@
     <string name="extra_key_help">Choose a common key or type literal text. Enable Macro for a space-separated key sequence, for example CTRL c. An optional label changes only the displayed text. Swipe-up fields define a secondary key; leave them empty for none.</string>
     <string name="extra_key_value">Key or text</string>
     <string name="extra_macro">Macro (space-separated key sequence)</string>
+    <string name="extra_theme_default">Classic</string>
+    <string name="extra_theme_rounded">Rounded (Gboard-inspired)</string>
     <string name="extra_row_columns">Columns in this row</string>
     <string name="extra_fewer_columns">Remove the keys at the end of this row?</string>
     <string name="extra_key_hint">Corner hint (optional)</string>

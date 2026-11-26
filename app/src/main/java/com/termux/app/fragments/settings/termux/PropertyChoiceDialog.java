@@ -95,6 +95,7 @@ public class PropertyChoiceDialog extends ListPreferenceDialogFragmentCompat {
                     String previewKey = preference.getKey();
                     int previewHeight = previewKey.endsWith("-action") ? 158
                         : previewKey.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT)
+                            || previewKey.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_THEME)
                             || previewKey.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION) ? 104
                         : previewKey.startsWith("extra-keys") ? 56 : 124;
                     int height = Math.round(previewHeight * getResources().getDisplayMetrics().density);

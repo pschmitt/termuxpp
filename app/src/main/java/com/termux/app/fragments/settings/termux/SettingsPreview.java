@@ -56,6 +56,8 @@ final class SettingsPreview extends FrameLayout {
             || key.equals("terminal-margin-vertical") || key.equals("extra-keys-style")
             || key.equals("extra-keys-text-all-caps") || key.equals("extra-keys-button-active-text-color")
             || key.equals("extra-keys-button-active-background-color") || key.equals("extra-keys-button-corner-radius")
+            || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_THEME)
+            || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_ROW_BACKGROUND_COLOR)
             || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT)
             || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION)
             || key.equals("terminal-toolbar-height") || key.equals("night-mode") || key.equals(AppAccent.KEY)
@@ -105,8 +107,9 @@ final class SettingsPreview extends FrameLayout {
         Integer fg = ExtraKeysColorParser.parseColor(values.getProperty("extra-keys-button-active-text-color"));
         Integer bg = ExtraKeysColorParser.parseColor(values.getProperty("extra-keys-button-active-background-color"));
         Float radius = ExtraKeysColorParser.parseCornerRadiusDp(values.getProperty("extra-keys-button-corner-radius"));
-        keyboard.setButtonActiveColorOverrides(fg, bg);
-        keyboard.setButtonCornerRadiusDp(radius);
+        keyboard.setAppearance(values.getProperty(TermuxPropertyConstants.KEY_EXTRA_KEYS_THEME),
+            ExtraKeysColorParser.parseColor(values.getProperty(TermuxPropertyConstants.KEY_EXTRA_KEYS_ROW_BACKGROUND_COLOR)),
+            fg, bg, radius);
         keyboard.setKeyTypeface(TerminalAppearance.loadExtraKeysFont(getContext(),
             values.getProperty(TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT)));
         keyboard.setKeyAnimation(ExtraKeyAnimation.parseOrDefault(values.getProperty(TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION)));
@@ -116,7 +119,9 @@ final class SettingsPreview extends FrameLayout {
         catch (NumberFormatException e) { scale = 1; }
         if (Float.isNaN(scale) || scale < .4f || scale > 3) scale = 1;
         boolean interactive = key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION)
-            || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT);
+            || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT)
+            || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_THEME)
+            || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_ROW_BACKGROUND_COLOR);
         String sample = "[[\"ESC\",\"CTRL\",\"ALT\",\"LEFT\",\"DOWN\",\"UP\",\"RIGHT\"]]";
         try {
             String style = value("extra-keys-style", "default");

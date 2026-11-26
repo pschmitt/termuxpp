@@ -311,6 +311,13 @@ public class PropertyInputSpecTest {
         assertArrayEquals(new String[]{"system", "terminal", "monospace", "serif"}, PropertyInputSpec.choices(fontKey));
         valid(fontKey, "system", "terminal", "monospace", "serif");
         invalid(fontKey, "unknown");
+        String themeKey = TermuxPropertyConstants.KEY_EXTRA_KEYS_THEME;
+        assertArrayEquals(new String[]{"default", "rounded"}, PropertyInputSpec.choices(themeKey));
+        valid(themeKey, "default", "rounded");
+        invalid(themeKey, "unknown");
+        String rowBackgroundKey = TermuxPropertyConstants.KEY_EXTRA_KEYS_ROW_BACKGROUND_COLOR;
+        valid(rowBackgroundKey, "#123", "#201B29", "#80123456");
+        invalid(rowBackgroundKey, "blue");
         String animationKey = TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION;
         assertArrayEquals(new String[]{"key-preview", "press-in", "pop", "lift", "off"}, PropertyInputSpec.choices(animationKey));
 
@@ -318,7 +325,7 @@ public class PropertyInputSpecTest {
             if (key.equals("extra-keys-style") || key.equals(TermuxPropertyConstants.KEY_GESTURE_COMMAND_CONTEXT)
                 || key.equals(toastKey) || key.equals(engineKey) || key.equals(feedbackKey)
                 || key.equals(gesturePositionKey) || key.equals(tmuxKey) || key.equals(tmuxStyle)
-                || key.equals(pickerKey) || key.equals(fontKey) || key.equals(animationKey)) continue;
+                || key.equals(pickerKey) || key.equals(fontKey) || key.equals(animationKey) || key.equals(themeKey)) continue;
             assertEquals(key, 0, PropertyInputSpec.choices(key).length);
         }
         assertEquals(0, PropertyInputSpec.choices(null).length);

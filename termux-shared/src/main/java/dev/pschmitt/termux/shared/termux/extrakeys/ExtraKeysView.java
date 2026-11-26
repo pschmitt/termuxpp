@@ -3,6 +3,8 @@ package dev.pschmitt.termux.shared.termux.extrakeys;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.res.Configuration;
+import android.graphics.drawable.Drawable;
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Typeface;
@@ -44,6 +46,7 @@ import com.google.android.material.button.MaterialButton;
 import dev.pschmitt.termux.shared.R;
 import dev.pschmitt.termux.shared.termux.terminal.io.TerminalExtraKeys;
 import dev.pschmitt.termux.shared.theme.ThemeUtils;
+import dev.pschmitt.termux.shared.termux.settings.properties.TermuxPropertyConstants;
 
 /**
  * A {@link View} showing extra keys (such as Escape, Ctrl, Alt) not normally available on an Android soft
@@ -217,6 +220,8 @@ public final class ExtraKeysView extends GridLayout {
     protected int mLongPressRepeatDelay;
 
 
+    private final Drawable mDefaultRowBackground;
+    private boolean mRoundedTheme;
     private final Map<MaterialButton, String> mKeyHints = new HashMap<>();
     private final Paint mHintPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
@@ -258,6 +263,7 @@ public final class ExtraKeysView extends GridLayout {
 
     public ExtraKeysView(Context context, AttributeSet attrs) {
         super(context, attrs);
+        mDefaultRowBackground = getBackground();
 
         setRepetitiveKeys(ExtraKeysConstants.PRIMARY_REPETITIVE_KEYS);
         setSpecialButtons(getDefaultSpecialButtons(this));
@@ -364,6 +370,32 @@ public final class ExtraKeysView extends GridLayout {
         } else {
             mButtonCornerRadiusPx = Math.round(cornerRadiusDp * getResources().getDisplayMetrics().density);
         }
+    }
+
+    /** Apply the row appearance and explicit overrides before reloading the keys. */
+    public void setAppearance(@Nullable String theme, @Nullable Integer rowColor,
+                              @Nullable Integer activeText, @Nullable Integer activeBackground,
+                              @Nullable Float radiusDp) {
+        Context context = getContext();
+        mRoundedTheme = TermuxPropertyConstants.EXTRA_KEYS_THEME_ROUNDED.equalsIgnoreCase(theme);
+        if (mRoundedTheme) {
+            boolean dark = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
+                == Configuration.UI_MODE_NIGHT_YES;
+            mButtonTextColor = dark ? 0xFFEAE4F1 : 0xFF282334;
+            mButtonBackgroundColor = dark ? 0xFF363041 : 0xFFE8E0F0;
+            if (rowColor == null) rowColor = dark ? 0xFF201B29 : 0xFFF7F2FA;
+            if (activeText == null) activeText = dark ? 0xFF2C1E43 : 0xFF321F50;
+            if (activeBackground == null) activeBackground = dark ? 0xFFCDB5EF : 0xFFDCC4F6;
+            if (radiusDp == null) radiusDp = 12f;
+        } else {
+            mButtonTextColor = ThemeUtils.getSystemAttrColor(context, ATTR_BUTTON_TEXT_COLOR, DEFAULT_BUTTON_TEXT_COLOR);
+            mButtonBackgroundColor = ThemeUtils.getSystemAttrColor(context, ATTR_BUTTON_BACKGROUND_COLOR, DEFAULT_BUTTON_BACKGROUND_COLOR);
+        }
+        // setBackgroundColor can mutate an existing ColorDrawable, so detach the default first.
+        if (rowColor != null) setBackground(new android.graphics.drawable.ColorDrawable(rowColor));
+        else setBackground(mDefaultRowBackground);
+        setButtonActiveColorOverrides(activeText, activeBackground);
+        setButtonCornerRadiusDp(radiusDp);
     }
 
     /** Get {@link #mButtonCornerRadiusPx}. */
@@ -518,7 +550,7 @@ public final class ExtraKeysView extends GridLayout {
 
                 ExtraKeyButton hold = buttonInfo.getHold();
                 boolean hasHeldModifier = hold != null && isSpecialButton(hold);
-                boolean customColors = buttonInfo.textColor != null || buttonInfo.backgroundColor != null;
+                boolean customColors = mRoundedTheme || buttonInfo.textColor != null || buttonInfo.backgroundColor != null;
                 MaterialButton button;
                 if (isSpecialButton(buttonInfo)) {
                     button = createSpecialButton(buttonInfo.getKey(), !hasHeldModifier && !customColors);
@@ -535,11 +567,12 @@ public final class ExtraKeysView extends GridLayout {
                 button.setTextColor(mButtonTextColor);
                 button.setAllCaps(mButtonTextAllCaps && !buttonInfo.hasCustomDisplay());
                 int inset = 0;
-                if (buttonInfo.insetDp != null) {
+                if (buttonInfo.insetDp != null || mRoundedTheme) {
                     // The grid margins supply all the spacing for an inset keycap.
                     button.setInsetTop(0);
                     button.setInsetBottom(0);
-                    inset = Math.round(buttonInfo.insetDp * getResources().getDisplayMetrics().density);
+                    float insetDp = buttonInfo.insetDp != null ? buttonInfo.insetDp : 2f;
+                    inset = Math.round(insetDp * getResources().getDisplayMetrics().density);
                 }
                 button.setPadding(0, 0, 0, 0);
                 applyButtonShape(button);

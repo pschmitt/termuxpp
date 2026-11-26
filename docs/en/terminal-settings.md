@@ -194,6 +194,8 @@ are left out and logged.
 | `keyboard.volume.down.keys` | `volume-down-keys` |
 | `extra-keys.keys` | `extra-keys` |
 | `extra-keys.style` | `extra-keys-style` |
+| `extra-keys.theme` | `extra-keys-theme` |
+| `extra-keys.background-color` | `extra-keys-row-background-color` |
 | `extra-keys.font` | `extra-keys-font` |
 | `extra-keys.animation` | `extra-keys-animation` |
 | `extra-keys.all-caps` | `extra-keys-text-all-caps` |
@@ -700,7 +702,7 @@ an enlarged label above the pressed key. Off keeps the pressed-key color.
 | `extra-keys-button-corner-radius` | Corner radius in dp of the backgrounds of all extra keys (pressed, latched and popup) | `0` / theme (square) |
 
 The value is `#RGB`, `#RRGGBB` or `#AARRGGBB` (alpha first, like Android), case-insensitive. A
-value that is present but invalid is logged and ignored. The text and background colors of
+value that is present but invalid is logged and ignored.
 Inactive buttons follow the theme unless the key defines its own text or background color.
 
 Without `extra-keys-button-active-background-color` a latched `CTRL`/`ALT` only changes its text
@@ -718,6 +720,17 @@ extra-keys:
     text-color: #D8B4FE
     background-color: #3B1D6A
   corner-radius: 8
+```
+
+**Extra keys theme** selects the default toolbar appearance or **Rounded (Gboard-inspired)**,
+which gives unstyled keys rounded, spaced caps and picks a light or dark palette with the app.
+**Extra keys row background color** sets the color behind the keys. A custom background,
+corner radius, active color, or per-key color takes precedence over the theme.
+
+```yaml
+extra-keys:
+  theme: rounded
+  background-color: "#201B29"
 ```
 
 In **Extra keys → Edit layout**, open a row’s menu and choose **Columns in this row**.

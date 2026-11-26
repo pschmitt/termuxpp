@@ -323,6 +323,10 @@ public abstract class TermuxSharedProperties {
                 return (float) getTerminalToolbarHeightScaleFactorInternalPropertyValueFromValue(value);
 
             /* Float (may be null) */
+            case TermuxPropertyConstants.KEY_EXTRA_KEYS_THEME:
+                return TermuxPropertyConstants.EXTRA_KEYS_THEME_ROUNDED.equalsIgnoreCase(
+                    value == null ? "" : value.trim()) ? TermuxPropertyConstants.EXTRA_KEYS_THEME_ROUNDED
+                    : TermuxPropertyConstants.EXTRA_KEYS_THEME_DEFAULT;
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT:
                 for (String font : TermuxPropertyConstants.EXTRA_KEYS_FONTS) {
                     if (value != null && font.equalsIgnoreCase(value.trim())) return font;
@@ -381,6 +385,7 @@ public abstract class TermuxSharedProperties {
                 return getGestureCommandInternalPropertyValueFromValue(value);
 
             /* Integer (may be null) */
+            case TermuxPropertyConstants.KEY_EXTRA_KEYS_ROW_BACKGROUND_COLOR:
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_BUTTON_ACTIVE_BACKGROUND_COLOR:
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_BUTTON_ACTIVE_TEXT_COLOR:
                 return (Integer) getExtraKeysColorInternalPropertyValueFromValue(key, value);
@@ -885,6 +890,15 @@ public abstract class TermuxSharedProperties {
     @Nullable
     public Integer getExtraKeysButtonActiveBackgroundColor() {
         return (Integer) getInternalPropertyValue(TermuxPropertyConstants.KEY_EXTRA_KEYS_BUTTON_ACTIVE_BACKGROUND_COLOR, true);
+    }
+
+    public String getExtraKeysTheme() {
+        return (String) getInternalPropertyValue(TermuxPropertyConstants.KEY_EXTRA_KEYS_THEME, true);
+    }
+
+    @Nullable
+    public Integer getExtraKeysRowBackgroundColor() {
+        return (Integer) getInternalPropertyValue(TermuxPropertyConstants.KEY_EXTRA_KEYS_ROW_BACKGROUND_COLOR, true);
     }
 
     public String getExtraKeysFont() {

@@ -183,6 +183,10 @@ public final class PropertyInputSpec {
                     + number(TermuxPropertyConstants.IVALUE_TERMINAL_TOOLBAR_HEIGHT_SCALE_FACTOR_MIN) + " to "
                     + number(TermuxPropertyConstants.IVALUE_TERMINAL_TOOLBAR_HEIGHT_SCALE_FACTOR_MAX) + ", like 1.5. Default: "
                     + number(TermuxPropertyConstants.DEFAULT_IVALUE_TERMINAL_TOOLBAR_HEIGHT_SCALE_FACTOR) + ".";
+            case TermuxPropertyConstants.KEY_EXTRA_KEYS_THEME:
+                return "Choose the appearance of the keyboard row. Your key actions and custom colors carry over.";
+            case TermuxPropertyConstants.KEY_EXTRA_KEYS_ROW_BACKGROUND_COLOR:
+                return "The color behind the keyboard row. Use a hexadecimal color such as #201B29. Clear it to use the theme background.";
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT:
                 return "Choose the extra-key font. Terminal uses the font selected for terminal text.";
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION:
@@ -475,6 +479,11 @@ public final class PropertyInputSpec {
                 return toolbarHeight(value);
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION:
                 return ExtraKeyAnimation.parse(value) != null ? null : "Choose Press in, Pop, Lift, Key preview, or Off";
+            case TermuxPropertyConstants.KEY_EXTRA_KEYS_THEME:
+                for (String theme : choices(key)) {
+                    if (theme.equalsIgnoreCase(value.trim())) return null;
+                }
+                return "Choose Default or Rounded";
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT:
                 for (String font : TermuxPropertyConstants.EXTRA_KEYS_FONTS) {
                     if (font.equalsIgnoreCase(value.trim())) return null;
@@ -517,6 +526,7 @@ public final class PropertyInputSpec {
 
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_BUTTON_ACTIVE_TEXT_COLOR:
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_BUTTON_ACTIVE_BACKGROUND_COLOR:
+            case TermuxPropertyConstants.KEY_EXTRA_KEYS_ROW_BACKGROUND_COLOR:
                 return ExtraKeysColorParser.parseColor(value) != null ? null
                     : "Expected a color like #RGB, #RRGGBB or #AARRGGBB";
 
@@ -595,6 +605,8 @@ public final class PropertyInputSpec {
             return TermuxPropertyConstants.GESTURE_FEEDBACK_STYLES.clone();
         if (TermuxPropertyConstants.KEY_TERMINAL_ENGINE.equals(key))
             return new String[] {TermuxPropertyConstants.TERMINAL_ENGINE_TERMUX, TermuxPropertyConstants.TERMINAL_ENGINE_GHOSTTY};
+        if (TermuxPropertyConstants.KEY_EXTRA_KEYS_THEME.equals(key))
+            return new String[] {TermuxPropertyConstants.EXTRA_KEYS_THEME_DEFAULT, TermuxPropertyConstants.EXTRA_KEYS_THEME_ROUNDED};
         if (TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT.equals(key)) return TermuxPropertyConstants.EXTRA_KEYS_FONTS.clone();
         if (TermuxPropertyConstants.KEY_EXTRA_KEYS_STYLE.equals(key)) return EXTRA_KEYS_STYLES.clone();
         if (TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION.equals(key)) {

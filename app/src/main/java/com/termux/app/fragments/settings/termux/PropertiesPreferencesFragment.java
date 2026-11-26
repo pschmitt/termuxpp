@@ -203,6 +203,10 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
     }
 
     private String choiceLabel(String key, String value) {
+        if (TermuxPropertyConstants.KEY_EXTRA_KEYS_THEME.equals(key)) {
+            return getString(TermuxPropertyConstants.EXTRA_KEYS_THEME_ROUNDED.equals(value)
+                ? R.string.extra_theme_rounded : R.string.extra_theme_default);
+        }
         if (TermuxPropertyConstants.KEY_TERMINAL_PICKER_POSITION.equals(key)) {
             if (TermuxPropertyConstants.PICKER_POSITION_CENTER.equals(value))
                 return getString(R.string.ui_picker_position_center);

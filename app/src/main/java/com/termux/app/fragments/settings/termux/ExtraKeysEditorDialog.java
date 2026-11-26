@@ -48,7 +48,7 @@ public class ExtraKeysEditorDialog extends DialogFragment {
         ExtraKeysEditorDialog dialog = new ExtraKeysEditorDialog();
         Bundle args = new Bundle();
         args.putString("value", value);
-        for (String key : new String[]{"extra-keys-style", "extra-keys-font", "extra-keys-text-all-caps", "terminal-toolbar-height",
+        for (String key : new String[]{"extra-keys-style", "extra-keys-font", "extra-keys-theme", "extra-keys-row-background-color", "extra-keys-text-all-caps", "terminal-toolbar-height",
                 "extra-keys-button-active-text-color", "extra-keys-button-active-background-color", "extra-keys-button-corner-radius"}) {
             args.putString(key, values.getProperty(key));
         }
@@ -139,13 +139,13 @@ public class ExtraKeysEditorDialog extends DialogFragment {
         try {
             Bundle options = requireArguments();
             ExtraKeysView keyboard = new ExtraKeysView(requireContext(), null);
-            keyboard.setBackgroundColor(android.graphics.Color.BLACK);
             keyboard.setKeyTypeface(TerminalAppearance.loadExtraKeysFont(requireContext(), options.getString("extra-keys-font")));
             keyboard.setButtonTextAllCaps(!"false".equalsIgnoreCase(options.getString("extra-keys-text-all-caps")));
-            keyboard.setButtonActiveColorOverrides(
+            keyboard.setAppearance(options.getString("extra-keys-theme"),
+                ExtraKeysColorParser.parseColor(options.getString("extra-keys-row-background-color")),
                 ExtraKeysColorParser.parseColor(options.getString("extra-keys-button-active-text-color")),
-                ExtraKeysColorParser.parseColor(options.getString("extra-keys-button-active-background-color")));
-            keyboard.setButtonCornerRadiusDp(ExtraKeysColorParser.parseCornerRadiusDp(options.getString("extra-keys-button-corner-radius")));
+                ExtraKeysColorParser.parseColor(options.getString("extra-keys-button-active-background-color")),
+                ExtraKeysColorParser.parseCornerRadiusDp(options.getString("extra-keys-button-corner-radius")));
             float scale = 1;
             try { scale = Float.parseFloat(options.getString("terminal-toolbar-height", "1")); }
             catch (NumberFormatException ignored) { }

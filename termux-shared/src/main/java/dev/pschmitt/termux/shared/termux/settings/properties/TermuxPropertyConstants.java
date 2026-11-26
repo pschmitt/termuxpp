@@ -362,6 +362,11 @@ public final class TermuxPropertyConstants {
     public static final String DEFAULT_IVALUE_EXTRA_KEYS = "[['ESC','/',{key: '-', popup: '|'},'HOME','UP','END','PGUP'], ['TAB','CTRL','ALT','LEFT','DOWN','RIGHT','PGDN']]"; // Double row
 
     /** Defines the key for extra keys style */
+    public static final String KEY_EXTRA_KEYS_THEME = "extra-keys-theme";
+    public static final String EXTRA_KEYS_THEME_DEFAULT = "default";
+    public static final String EXTRA_KEYS_THEME_ROUNDED = "rounded";
+    public static final String KEY_EXTRA_KEYS_ROW_BACKGROUND_COLOR = "extra-keys-row-background-color";
+
     public static final String KEY_EXTRA_KEYS_FONT = "extra-keys-font";
     public static final String DEFAULT_EXTRA_KEYS_FONT = "system";
     public static final String[] EXTRA_KEYS_FONTS = {"system", "terminal", "monospace", "serif"};
@@ -689,6 +694,7 @@ public final class TermuxPropertyConstants {
         KEY_EXTRA_KEYS_BUTTON_CORNER_RADIUS,
         KEY_EXTRA_KEYS_ANIMATION,
         KEY_EXTRA_KEYS_FONT,
+        KEY_EXTRA_KEYS_THEME,
 
         /* TerminalGestureAction */
         KEY_EXTRA_KEYS_SWIPE_LEFT_ACTION,
@@ -740,6 +746,7 @@ public final class TermuxPropertyConstants {
 
         /* Integer */
         KEY_EXTRA_KEYS_BUTTON_ACTIVE_BACKGROUND_COLOR,
+        KEY_EXTRA_KEYS_ROW_BACKGROUND_COLOR,
         KEY_EXTRA_KEYS_BUTTON_ACTIVE_TEXT_COLOR,
         KEY_SHORTCUT_CREATE_SESSION,
         KEY_SHORTCUT_NEXT_SESSION,

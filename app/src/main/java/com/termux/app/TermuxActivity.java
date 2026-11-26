@@ -1746,10 +1746,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
             if (mExtraKeysView != null) {
                 mExtraKeysView.setButtonTextAllCaps(mProperties.shouldExtraKeysTextBeAllCaps());
-                mExtraKeysView.setButtonActiveColorOverrides(
+                mExtraKeysView.setAppearance(mProperties.getExtraKeysTheme(), mProperties.getExtraKeysRowBackgroundColor(),
                     mProperties.getExtraKeysButtonActiveTextColor(),
-                    mProperties.getExtraKeysButtonActiveBackgroundColor());
-                mExtraKeysView.setButtonCornerRadiusDp(mProperties.getExtraKeysButtonCornerRadius());
+                    mProperties.getExtraKeysButtonActiveBackgroundColor(),
+                    mProperties.getExtraKeysButtonCornerRadius());
                 mExtraKeysView.setKeyAnimation(mProperties.getExtraKeysAnimation());
                 mExtraKeysView.setKeyTypeface(TerminalAppearance.loadExtraKeysFont(
                     this, mProperties.getExtraKeysFont()));
