@@ -1179,6 +1179,14 @@ public final class ExtraKeysView extends GridLayout {
         performExtraKeyButtonHapticFeedback(view, buttonInfo, button);
     }
 
+    /**
+     * Whether a long-press menu is open. Its finger belongs to the menu until it is lifted, so
+     * containers must not recognize their own gestures (such as row swipes) from it meanwhile.
+     */
+    public boolean isKeyMenuOpen() {
+        return mKeyMenu != null;
+    }
+
     private void dismissKeyMenu() {
         if (mKeyMenu == null) return;
         mKeyMenu.dismiss();

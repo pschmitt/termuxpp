@@ -159,6 +159,11 @@ public class ExtraKeysSwipeViewPager extends ViewPager {
 
     @Override
     public boolean dispatchTouchEvent(MotionEvent event) {
+        if (event.getActionMasked() != MotionEvent.ACTION_DOWN && isKeyMenuOpen()) {
+            // A long-press menu owns the finger: sliding picks an item, it is never a row swipe.
+            mSwipeDetector.cancel();
+            return super.dispatchTouchEvent(event);
+        }
         switch (event.getActionMasked()) {
             case MotionEvent.ACTION_DOWN:
                 mSwallowTouch = false;
@@ -213,6 +218,11 @@ public class ExtraKeysSwipeViewPager extends ViewPager {
                 break;
         }
         return super.dispatchTouchEvent(event);
+    }
+
+    private boolean isKeyMenuOpen() {
+        ExtraKeysView keys = findViewById(R.id.terminal_toolbar_extra_keys);
+        return keys != null && keys.isKeyMenuOpen();
     }
 
     /** No drag of the pager from the normal row: both directions are swipes there. */

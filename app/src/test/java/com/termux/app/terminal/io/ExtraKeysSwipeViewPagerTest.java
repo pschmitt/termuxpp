@@ -210,6 +210,57 @@ public class ExtraKeysSwipeViewPagerTest {
     }
 
     @Test
+    public void anOpenKeyMenuOwnsTheFingerInsteadOfTheRowSwipe() throws Exception {
+        Context context = new ContextThemeWrapper(mPager.getContext(), R.style.Theme_TermuxApp_DayNight_NoActionBar);
+        ExtraKeysView keys = new ExtraKeysView(context, null);
+        keys.setId(R.id.terminal_toolbar_extra_keys);
+        keys.reload(new ExtraKeysInfo("[[{key:'|',menu:['~','/']},'a','b','c','d']]", "default",
+            ExtraKeysConstants.CONTROL_CHARS_ALIASES), 150);
+        List<String> pressed = new ArrayList<>();
+        keys.setExtraKeysViewClient(new ExtraKeysView.IExtraKeysView() {
+            @Override public void onExtraKeyButtonClick(View view, ExtraKeyButton key, MaterialButton button) {
+                pressed.add(key.getKey());
+            }
+
+            @Override public boolean performExtraKeyButtonHapticFeedback(View view, ExtraKeyButton key,
+                                                                          MaterialButton button) {
+                return true;
+            }
+        });
+        mPager.setAdapter(new PagerAdapter() {
+            @Override public int getCount() { return 1; }
+
+            @Override public boolean isViewFromObject(@NonNull View view, @NonNull Object item) {
+                return view == item;
+            }
+
+            @NonNull @Override public Object instantiateItem(@NonNull ViewGroup parent, int position) {
+                parent.addView(keys);
+                return keys;
+            }
+
+            @Override public void destroyItem(@NonNull ViewGroup parent, int position, @NonNull Object item) {
+                parent.removeView((View) item);
+            }
+        });
+        layout();
+
+        send(MotionEvent.ACTION_DOWN, 100, 75);
+        ShadowLooper.idleMainLooper(android.view.ViewConfiguration.getLongPressTimeout() + 50, TimeUnit.MILLISECONDS);
+        assertTrue(keys.isKeyMenuOpen());
+        // Far past the row swipe distance: it moves the highlight, not the row.
+        send(MotionEvent.ACTION_MOVE, 100 + swipe() * 0.6f, 75);
+        send(MotionEvent.ACTION_MOVE, 100 + longSwipe() + 50, 75);
+        send(MotionEvent.ACTION_MOVE, 350, 75);
+        assertTrue(keys.isKeyMenuOpen());
+        send(MotionEvent.ACTION_UP, 350, 75);
+        assertFalse(keys.isKeyMenuOpen());
+        assertEquals(0, mSwipes);
+        assertEquals(List.of("/"), pressed);
+        assertRestingAtZero();
+    }
+
+    @Test
     public void distancesScaleWithTheRow() {
         // 1000 px wide at density 1: a fifth of the row, and half of it.
         assertEquals(200f, swipe(), 0.5f);
