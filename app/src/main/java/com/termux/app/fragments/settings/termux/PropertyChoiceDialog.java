@@ -92,8 +92,9 @@ public class PropertyChoiceDialog extends ListPreferenceDialogFragmentCompat {
                 } else {
                     settingsPreview = new SettingsPreview(requireContext(), preference.getKey());
                     settingsPreview.setTag("property-visual-preview");
-                    int height = Math.round((preference.getKey().startsWith("extra-keys") ? 48 : 124)
-                        * getResources().getDisplayMetrics().density);
+                    int previewHeight = preference.getKey().endsWith("-action") ? 158
+                        : preference.getKey().startsWith("extra-keys") ? 56 : 124;
+                    int height = Math.round(previewHeight * getResources().getDisplayMetrics().density);
                     LinearLayout.LayoutParams visualLayout = new LinearLayout.LayoutParams(
                         LinearLayout.LayoutParams.MATCH_PARENT, height);
                     visualLayout.setMargins(padding, 0, padding, padding / 2);

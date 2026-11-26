@@ -3,6 +3,7 @@ package dev.pschmitt.termux.shared.termux.extrakeys;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
@@ -21,6 +22,7 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.stream.Collectors;
 
+import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -30,6 +32,7 @@ import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
 import android.widget.GridLayout;
 import android.widget.PopupWindow;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -214,6 +217,7 @@ public final class ExtraKeysView extends GridLayout {
     /** The popup window shown if {@link ExtraKeyButton#getPopup()} returns a {@code non-null} value
      * and a swipe up action is done on an extra key. */
     protected PopupWindow mPopupWindow;
+    @Nullable private PopupWindow mKeyPreview;
 
     protected ScheduledExecutorService mScheduledExecutor;
     protected Handler mHandler;
@@ -469,6 +473,7 @@ public final class ExtraKeysView extends GridLayout {
 
         stopScheduledExecutors();
         if (mPopupWindow != null) dismissPopup();
+        dismissKeyPreview();
         for (SpecialButtonState state : mSpecialButtons.values()) {
             state.buttons.clear();
             state.presentationUpdates.clear();
@@ -533,11 +538,13 @@ public final class ExtraKeysView extends GridLayout {
                                 if (mPopupWindow == null && y < 0) {
                                     stopScheduledExecutors();
                                     view.setBackgroundColor(getRestingBackgroundColor(buttonInfo));
+                                    dismissKeyPreview();
                                     showPopup(view, buttonInfo.getPopup());
                                 }
                                 if (mPopupWindow != null && y > 0) {
                                     view.setBackgroundColor(mButtonActiveBackgroundColor);
                                     dismissPopup();
+                                    if (mKeyAnimation == ExtraKeyAnimation.KEY_PREVIEW) showKeyPreview(button);
                                 }
                             }
                             return true;
@@ -635,10 +642,16 @@ public final class ExtraKeysView extends GridLayout {
 
 
     public void setKeyAnimation(@NonNull ExtraKeyAnimation animation) {
+        if (mKeyAnimation != animation) dismissKeyPreview();
         mKeyAnimation = animation;
     }
 
     private void animateKeyPress(MaterialButton button, boolean pressed) {
+        if (mKeyAnimation == ExtraKeyAnimation.KEY_PREVIEW) {
+            if (pressed) showKeyPreview(button);
+            else dismissKeyPreview();
+            return;
+        }
         button.animate().cancel();
         boolean motionEnabled = mKeyAnimation != ExtraKeyAnimation.OFF
             && (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || ValueAnimator.areAnimatorsEnabled());
@@ -656,6 +669,45 @@ public final class ExtraKeysView extends GridLayout {
                 .setInterpolator(mKeyReleaseInterpolator)
                 .start();
         }
+    }
+
+    private void showKeyPreview(MaterialButton key) {
+        dismissKeyPreview();
+        if (key.getWindowToken() == null) return;
+
+        float density = getResources().getDisplayMetrics().density;
+        int padding = Math.round(10 * density);
+        int gap = Math.round(3 * density);
+        TextView label = new TextView(getContext());
+        label.setText(key.getText());
+        label.setTextColor(mButtonActiveTextColor);
+        label.setTextSize(24);
+        label.setGravity(Gravity.CENTER);
+        label.setPadding(padding, 0, padding, 0);
+        label.setMinWidth(Math.max(key.getWidth(), Math.round(48 * density)));
+        label.setMinHeight(Math.round(50 * density));
+        label.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(mButtonActiveBackgroundColor);
+        background.setCornerRadius(12 * density);
+        label.setBackground(background);
+        label.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+
+        int width = Math.min(label.getMeasuredWidth(), getResources().getDisplayMetrics().widthPixels);
+        int height = label.getMeasuredHeight();
+        mKeyPreview = new PopupWindow(label, width, height, false);
+        mKeyPreview.setTouchable(false);
+        mKeyPreview.setInputMethodMode(PopupWindow.INPUT_METHOD_NOT_NEEDED);
+        mKeyPreview.setAnimationStyle(0);
+        mKeyPreview.setElevation(5 * density);
+        mKeyPreview.showAsDropDown(key, (key.getWidth() - width) / 2,
+            -key.getHeight() - height - gap, Gravity.LEFT);
+    }
+
+    private void dismissKeyPreview() {
+        if (mKeyPreview == null) return;
+        mKeyPreview.dismiss();
+        mKeyPreview = null;
     }
 
     private boolean isActiveModifier(ExtraKeyButton key) {
@@ -682,6 +734,7 @@ public final class ExtraKeysView extends GridLayout {
         performExtraKeyButtonHapticFeedback(view, hold, button);
         if (isSpecialButton(hold)) {
             mSpecialButtons.get(SpecialButton.valueOf(hold.getKey())).toggleLatch();
+            if (mKeyPreview != null) showKeyPreview(button);
         } else {
             onExtraKeyButtonClick(view, hold, button);
         }
@@ -732,6 +785,7 @@ public final class ExtraKeysView extends GridLayout {
     protected void onDetachedFromWindow() {
         stopScheduledExecutors();
         if (mPopupWindow != null) dismissPopup();
+        dismissKeyPreview();
         super.onDetachedFromWindow();
     }
 

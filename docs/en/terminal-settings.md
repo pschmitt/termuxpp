@@ -253,9 +253,10 @@ directory order. A custom `motd.sh` can override the welcome message.
 
 The cursor shape and blink rate, terminal margins, feedback position, and extra-key
 style, appearance and toolbar height settings show a preview while you edit.
-Accent color and night mode show a sample interface; gesture actions show an
-illustration without running the action. The bell setting has a **Try bell** button. Changes take effect after you save; cancelling leaves the
-existing setting unchanged.
+Accent color and night mode show a sample interface. Action pickers for terminal
+taps, swipes, and volume buttons show a miniature terminal that previews the
+selected action. Tap the preview to replay it. The bell setting has a **Try bell**
+button. Changes take effect after you save.
 
 ## tmux sidebar layout
 
@@ -671,7 +672,8 @@ Run `termux-reload-settings` after editing the file. Stock Termux reads
 
 Choose **Extra keys animation** in **Settings → Properties → Gestures** and
 tap a preview key to try it. In YAML, set `extra-keys.animation` to
-`press-in` (default), `pop`, `lift`, or `off`. Off keeps the pressed-key color.
+`press-in` (default), `pop`, `lift`, `key-preview`, or `off`. Key preview shows
+an enlarged label above the pressed key. Off keeps the pressed-key color.
 
 | Key | Applies to | Theme default |
 | --- | --- | --- |

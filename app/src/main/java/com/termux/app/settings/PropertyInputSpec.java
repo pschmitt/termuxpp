@@ -184,7 +184,7 @@ public final class PropertyInputSpec {
                     + number(TermuxPropertyConstants.IVALUE_TERMINAL_TOOLBAR_HEIGHT_SCALE_FACTOR_MAX) + ", like 1.5. Default: "
                     + number(TermuxPropertyConstants.DEFAULT_IVALUE_TERMINAL_TOOLBAR_HEIGHT_SCALE_FACTOR) + ".";
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION:
-                return "Choose how extra keys move when pressed. Tap a preview key to try it. Press in is the default.";
+                return "Choose the visual effect for a pressed extra key. Tap a preview key to try it. Press in is the default.";
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_BUTTON_CORNER_RADIUS:
                 return "How round the corners of the extra keys buttons are, in dp. Format: a decimal number from 0 to "
                     + number(ExtraKeysColorParser.MAX_CORNER_RADIUS_DP) + ", like 8 or 6.5, without a sign or a unit."
@@ -472,7 +472,7 @@ public final class PropertyInputSpec {
             case TermuxPropertyConstants.KEY_TERMINAL_TOOLBAR_HEIGHT_SCALE_FACTOR:
                 return toolbarHeight(value);
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION:
-                return ExtraKeyAnimation.parse(value) != null ? null : "Choose Press in, Pop, Lift, or Off";
+                return ExtraKeyAnimation.parse(value) != null ? null : "Choose Press in, Pop, Lift, Key preview, or Off";
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_BUTTON_CORNER_RADIUS:
                 return ExtraKeysColorParser.parseCornerRadiusDp(value) != null ? null
                     : "Expected a number from 0 to " + number(ExtraKeysColorParser.MAX_CORNER_RADIUS_DP)

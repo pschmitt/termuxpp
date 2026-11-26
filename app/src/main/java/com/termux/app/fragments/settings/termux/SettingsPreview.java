@@ -9,6 +9,8 @@ import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.os.Build;
 import android.os.SystemClock;
+import android.text.TextUtils;
+import android.view.animation.DecelerateInterpolator;
 import android.view.View;
 import android.view.Gravity;
 import android.view.ContextThemeWrapper;
@@ -37,13 +39,15 @@ import dev.pschmitt.termux.shared.theme.ThemeUtils;
 import dev.pschmitt.termux.shared.termux.settings.properties.TermuxPropertyConstants;
 import dev.pschmitt.termux.shared.termux.settings.properties.TerminalGestureAction;
 
-/** Small, non-interactive samples for properties whose effect is visual. */
+/** Interactive samples for visual settings and gesture actions. */
 final class SettingsPreview extends FrameLayout {
     private final Properties values;
     private final String key;
     private final float density;
-    private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final android.text.TextPaint paint = new android.text.TextPaint(Paint.ANTI_ALIAS_FLAG);
     private ExtraKeysView keyboard;
+    private ValueAnimator actionAnimator;
+    private float actionProgress = 1;
 
     static boolean supports(String key) {
         return key.equals("terminal-cursor-style") || key.equals("terminal-cursor-blink-rate")
@@ -70,6 +74,7 @@ final class SettingsPreview extends FrameLayout {
         setBackgroundColor(Color.rgb(12, 14, 21));
         setContentDescription(context.getString(R.string.settings_visual_preview));
         setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
+        if (key.endsWith("-action")) setOnClickListener(view -> replayAction());
     }
 
     void setValue(String value) {
@@ -77,6 +82,7 @@ final class SettingsPreview extends FrameLayout {
         if (value == null || value.isEmpty()) values.remove(key);
         else values.setProperty(key, value);
         if (isKeyboardPreview()) renderKeys();
+        if (key.endsWith("-action")) replayAction();
         invalidate();
     }
 
@@ -265,82 +271,110 @@ final class SettingsPreview extends FrameLayout {
         return TermuxPropertyConstants.defaultMultiFingerSwipeAction(key).getValue();
     }
 
+    private void replayAction() {
+        setContentDescription(actionTitle(TerminalGestureAction.parse(value(key, defaultAction()))) + ". "
+            + getContext().getString(R.string.gesture_feedback_preview_replay));
+        if (actionAnimator != null) actionAnimator.cancel();
+        if (Build.VERSION.SDK_INT >= 26 && !ValueAnimator.areAnimatorsEnabled()) {
+            actionProgress = 1;
+            invalidate();
+            return;
+        }
+        actionAnimator = ValueAnimator.ofFloat(0, 1);
+        actionAnimator.setDuration(240);
+        actionAnimator.setInterpolator(new DecelerateInterpolator());
+        actionAnimator.addUpdateListener(animation -> {
+            actionProgress = (float) animation.getAnimatedValue();
+            invalidate();
+        });
+        actionAnimator.start();
+    }
+
+    @Override protected void onDetachedFromWindow() {
+        if (actionAnimator != null) actionAnimator.cancel();
+        actionProgress = 1;
+        super.onDetachedFromWindow();
+    }
+
     private void drawAction(Canvas canvas) {
         String action = value(key, defaultAction());
-        float w = getWidth(), h = getHeight();
-        paint.setColor(Color.rgb(45, 44, 62));
-        canvas.drawRoundRect(dp(12), dp(12), w - dp(12), h - dp(12), dp(10), dp(10), paint);
-        paint.setColor(Color.rgb(200, 180, 245));
-        paint.setTypeface(Typeface.DEFAULT_BOLD);
-        paint.setTextSize(dp(14));
         TerminalGestureAction parsed = TerminalGestureAction.parse(action);
-        String title = parsed == null ? getContext().getString(R.string.settings_preview_modifier) : parsed.getLabel();
-        canvas.drawText(title, dp(24), dp(39), paint);
-        paint.setColor(Color.rgb(220, 220, 230));
-        paint.setTypeface(Typeface.DEFAULT);
-        paint.setTextSize(dp(12));
-        int description;
-        switch (action) {
-            case "show-keyboard": case "toggle-keyboard": description = R.string.settings_action_keyboard; break;
-            case "toggle-text-input": description = R.string.settings_action_text_input; break;
-            case "next-session": case "previous-session": description = R.string.settings_action_switch_session; break;
-            case "new-session": description = R.string.settings_action_new_session; break;
-            case "open-sidebar": case "open-left-sidebar": description = R.string.settings_action_sidebar; break;
-            case "open-right-sidebar": description = R.string.settings_action_right_sidebar; break;
-            case "open-session-switcher": description = R.string.settings_action_picker; break;
-            case "open-tmux-switcher": description = R.string.settings_action_tmux_picker; break;
-            case "open-menu": description = R.string.settings_action_menu; break;
-            case "font-size-up": case "font-size-down": description = R.string.settings_action_font; break;
-            case "run-command": description = R.string.settings_action_command; break;
-            case "send-keys": description = R.string.settings_action_keys; break;
-            case "modifier": description = R.string.settings_action_modifier; break;
-            default: description = R.string.settings_action_none;
-        }
-        String text = getContext().getString(description);
-        drawActionIcon(canvas, action, w - dp(90), dp(42));
-        paint.setColor(Color.rgb(220, 220, 230));
-        paint.setTypeface(Typeface.DEFAULT);
-        paint.setTextSize(dp(12));
-        float maxWidth = Math.max(0, w - dp(125));
-        android.text.TextPaint textPaint = new android.text.TextPaint(paint);
-        @SuppressWarnings("deprecation")
-        android.text.StaticLayout layout = new android.text.StaticLayout(text, textPaint,
-            Math.max(1, (int) maxWidth), android.text.Layout.Alignment.ALIGN_NORMAL, 1f, 0f, false);
+        if (parsed != null) action = parsed.getValue();
+        String title = actionTitle(parsed);
+        float left = dp(12), right = getWidth() - left, top = dp(45), bottom = getHeight() - dp(10);
+        int foreground = ContextCompat.getColor(getContext(), R.color.ui_on_surface);
+        int surface = MaterialColors.getColor(getContext(), R.attr.termuxUiShelf, Color.rgb(42, 35, 58));
+        int accent = MaterialColors.getColor(getContext(), R.attr.termuxUiPrimary, Color.rgb(216, 180, 254));
+
+        previewText(canvas, title, left, dp(27), right - left, 14, Color.rgb(230, 220, 247), Typeface.DEFAULT_BOLD);
+        paint.setColor(Color.rgb(23, 22, 32));
+        canvas.drawRoundRect(left, top, right, bottom, dp(9), dp(9), paint);
         canvas.save();
-        canvas.translate(dp(24), dp(53));
-        layout.draw(canvas);
+        canvas.clipRect(left, top, right, bottom);
+        float lineX = left + dp(10);
+        boolean fontUp = action.equals("font-size-up");
+        boolean fontDown = action.equals("font-size-down");
+        float fontSize = fontUp ? 13 + 3 * actionProgress : fontDown ? 13 - 3 * actionProgress : 12;
+        String prompt = action.equals("run-command") ? "~ ❯ ./script" : action.equals("send-keys") ? "~ ❯ ↑"
+            : action.equals("next-session") || action.equals("previous-session") ? "~/projects ❯ ▌" : "~ ❯ ▌";
+        if (action.equals("modifier")) prompt += "   Ctrl";
+        previewText(canvas, prompt, lineX, top + dp(23), right - lineX, fontSize, Color.rgb(193, 183, 212), Typeface.MONOSPACE);
+        if (action.equals("next-session") || action.equals("previous-session") || action.equals("new-session")) {
+            previewText(canvas, action.equals("new-session") ? "New terminal" : "Session 2", lineX, top + dp(49),
+                right - lineX, 11, accent, Typeface.DEFAULT_BOLD);
+        } else if (action.equals("open-left-sidebar") || action.equals("open-right-sidebar")) {
+            boolean end = action.equals("open-right-sidebar");
+            float panelWidth = (right - left) * .51f;
+            float slide = panelWidth * (1 - actionProgress);
+            float x = end ? right - panelWidth + slide : left - slide;
+            drawActionPanel(canvas, x, top, x + panelWidth, bottom, surface, foreground, accent,
+                getContext().getString(end ? R.string.ui_tmux_switcher_title : R.string.ui_drawer_title),
+                end ? "0  shell" : "1  local", end ? "1  editor" : "2  remote");
+        } else if (action.equals("open-tmux-switcher") || action.equals("open-session-switcher") || action.equals("open-menu")) {
+            boolean tmux = action.equals("open-tmux-switcher");
+            boolean menu = action.equals("open-menu");
+            float inset = (right - left) * .16f;
+            float y = top + dp(8 + 20 * (1 - actionProgress));
+            if (menu) y += dp(12);
+            drawActionPanel(canvas, left + inset, y, right - inset, bottom,
+                surface, foreground, accent, tmux ? getContext().getString(R.string.ui_tmux_switcher_title)
+                    : menu ? getContext().getString(R.string.ui_menu_title) : getContext().getString(R.string.ui_drawer_title),
+                tmux ? "0  shell" : menu ? "Copy text" : "1  local", tmux ? "1  editor" : menu ? "Share transcript" : "2  remote");
+        } else if (action.equals("show-keyboard") || action.equals("toggle-keyboard") || action.equals("toggle-text-input")) {
+            float y = bottom - dp(54 * actionProgress);
+            paint.setColor(surface);
+            canvas.drawRoundRect(left, y, right, bottom + dp(8), dp(8), dp(8), paint);
+            String keys = action.equals("toggle-text-input") ? "Enter text…" : "Q  W  E  R  T  Y  U  I  O";
+            previewText(canvas, keys, lineX, y + dp(24), right - lineX, 11, foreground, Typeface.MONOSPACE);
+            if (!action.equals("toggle-text-input"))
+                previewText(canvas, "  A  S  D  F  G  H  J  K", lineX, y + dp(43), right - lineX, 11, accent, Typeface.MONOSPACE);
+        }
         canvas.restore();
     }
 
-    private void drawActionIcon(Canvas canvas, String action, float x, float y) {
-        paint.setStyle(Paint.Style.STROKE);
-        paint.setStrokeWidth(dp(2));
-        paint.setColor(Color.rgb(200, 180, 245));
-        canvas.drawRoundRect(x, y, x + dp(62), y + dp(48), dp(5), dp(5), paint);
-        paint.setStyle(Paint.Style.FILL);
-        if (action.contains("keyboard") || action.equals("send-keys")) {
-            for (int row = 0; row < 3; row++) for (int col = 0; col < 5; col++)
-                canvas.drawRoundRect(x + dp(6 + col * 10), y + dp(8 + row * 10),
-                    x + dp(13 + col * 10), y + dp(14 + row * 10), dp(1), dp(1), paint);
-        } else if (action.equals("open-right-sidebar")) {
-            canvas.drawRect(x + dp(40), y, x + dp(62), y + dp(48), paint);
-        } else if (action.equals("open-sidebar") || action.equals("open-left-sidebar")) {
-            canvas.drawRect(x, y, x + dp(22), y + dp(48), paint);
-        } else if (action.equals("open-menu") || action.equals("open-session-switcher")
-            || action.equals("open-tmux-switcher")) {
-            for (int row = 0; row < 3; row++) canvas.drawRoundRect(x + dp(9), y + dp(9 + row * 11),
-                x + dp(53), y + dp(14 + row * 11), dp(2), dp(2), paint);
-        } else {
-            paint.setTypeface(Typeface.DEFAULT_BOLD);
-            paint.setTextSize(dp(22));
-            String glyph = action.equals("new-session") ? "+" : action.equals("previous-session") ? "‹"
-                : action.equals("next-session") ? "›" : action.equals("font-size-up") ? "A+"
-                : action.equals("font-size-down") ? "A−" : action.equals("none") ? "—"
-                : action.equals("modifier") ? "Ctrl" : action.equals("toggle-text-input") ? "I"
-                : action.equals("run-command") ? ">_" : "·";
-            paint.setTextSize(dp(glyph.length() > 2 ? 13 : 22));
-            canvas.drawText(glyph, x + (dp(62) - paint.measureText(glyph)) / 2, y + dp(32), paint);
-        }
+    private String actionTitle(TerminalGestureAction action) {
+        return action == null ? getContext().getString(R.string.settings_preview_modifier) : action.getLabel();
+    }
+
+    private void drawActionPanel(Canvas canvas, float left, float top, float right, float bottom,
+                                 int surface, int foreground, int accent, String title, String first, String second) {
+        paint.setColor(surface);
+        canvas.drawRoundRect(left, top, right, bottom, dp(7), dp(7), paint);
+        float textWidth = right - left - dp(18);
+        previewText(canvas, title, left + dp(9), top + dp(18), textWidth, 11, foreground, Typeface.DEFAULT_BOLD);
+        paint.setColor(ColorUtils.setAlphaComponent(accent, 52));
+        canvas.drawRoundRect(left + dp(6), top + dp(24), right - dp(6), top + dp(44), dp(6), dp(6), paint);
+        previewText(canvas, first, left + dp(9), top + dp(38), textWidth, 10, foreground, Typeface.MONOSPACE);
+        previewText(canvas, second, left + dp(9), top + dp(59), textWidth, 10, foreground, Typeface.MONOSPACE);
+    }
+
+    private void previewText(Canvas canvas, String text, float x, float baseline, float width,
+                             float sp, int color, Typeface typeface) {
+        paint.setColor(color);
+        paint.setTextSize(dp(sp));
+        paint.setTypeface(typeface);
+        canvas.drawText(TextUtils.ellipsize(text, paint, Math.max(0, width), TextUtils.TruncateAt.END).toString(),
+            x, baseline, paint);
     }
 
     private void drawToast(Canvas canvas, float w, float h) {
