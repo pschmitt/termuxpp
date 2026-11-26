@@ -83,6 +83,22 @@ public final class PropertyInputSpec {
                     + " you press Enter, which happens with some keyboards, for example on Samsung devices.");
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_TEXT_ALL_CAPS:
                 return bool(key, "Show the text of the extra keys buttons in capital letters.");
+            case TermuxPropertyConstants.KEY_SIDEBAR_LEFT_SESSIONS:
+                return bool(key, "Show terminal sessions in the left sidebar.");
+            case TermuxPropertyConstants.KEY_SIDEBAR_LEFT_TMUX_WINDOWS:
+                return bool(key, "Show tmux windows in the left sidebar.");
+            case TermuxPropertyConstants.KEY_SIDEBAR_LEFT_NEW_SESSION:
+                return bool(key, "Show the New session button in the left sidebar.");
+            case TermuxPropertyConstants.KEY_SIDEBAR_LEFT_KEYBOARD:
+                return bool(key, "Show the Keyboard button in the left sidebar.");
+            case TermuxPropertyConstants.KEY_SIDEBAR_RIGHT_SESSIONS:
+                return bool(key, "Show terminal sessions in the right sidebar.");
+            case TermuxPropertyConstants.KEY_SIDEBAR_RIGHT_TMUX_WINDOWS:
+                return bool(key, "Show tmux windows in the right sidebar.");
+            case TermuxPropertyConstants.KEY_SIDEBAR_RIGHT_NEW_SESSION:
+                return bool(key, "Show the New session button in the right sidebar.");
+            case TermuxPropertyConstants.KEY_SIDEBAR_RIGHT_KEYBOARD:
+                return bool(key, "Show the Keyboard button in the right sidebar.");
             case TermuxPropertyConstants.KEY_TMUX_RIGHT_SIDEBAR:
                 return bool(key, "Enable the right sidebar for tmux windows in the current terminal session.");
             case TermuxPropertyConstants.KEY_HIDE_SOFT_KEYBOARD_ON_SIDEBAR:

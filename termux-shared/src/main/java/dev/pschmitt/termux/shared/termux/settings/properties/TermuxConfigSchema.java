@@ -62,6 +62,15 @@ public final class TermuxConfigSchema {
         add("tmux.sidebar.style", "terminal-tmux-sidebar-style");
         add("tmux.sidebar.right", "tmux-right-sidebar");
 
+        add("sidebar.left.show-sessions", "sidebar-left-show-sessions");
+        add("sidebar.left.show-tmux-windows", "sidebar-left-show-tmux-windows");
+        add("sidebar.left.show-new-session", "sidebar-left-show-new-session");
+        add("sidebar.left.show-keyboard-button", "sidebar-left-show-keyboard-button");
+        add("sidebar.right.show-sessions", "sidebar-right-show-sessions");
+        add("sidebar.right.show-tmux-windows", "sidebar-right-show-tmux-windows");
+        add("sidebar.right.show-new-session", "sidebar-right-show-new-session");
+        add("sidebar.right.show-keyboard-button", "sidebar-right-show-keyboard-button");
+
         add("keyboard.back-key", "back-key");
         add("keyboard.hide-on-startup", "hide-soft-keyboard-on-startup");
         add("keyboard.hide-on-sidebar", "hide-soft-keyboard-on-sidebar");

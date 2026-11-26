@@ -64,7 +64,7 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
         });
         screen.addPreference(help);
         Map<Integer, PreferenceCategory> categories = new LinkedHashMap<>();
-        for (int title : new int[]{R.string.properties_appearance, R.string.properties_keyboard,
+        for (int title : new int[]{R.string.properties_appearance, R.string.properties_sidebars, R.string.properties_keyboard,
                 R.string.properties_gestures, R.string.properties_advanced}) {
             PreferenceCategory category = new PreferenceCategory(requireContext());
             category.setTitle(title);
@@ -177,8 +177,9 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
         if (key.contains("keyboard") || key.startsWith("shortcut.") || key.equals("back-key")
             || key.equals("volume-keys") || key.equals("ctrl-space-workaround")
             || key.equals("enforce-char-based-input")) return R.string.properties_keyboard;
-        if (key.startsWith("terminal-") || key.equals(TermuxPropertyConstants.KEY_TMUX_RIGHT_SIDEBAR)
-            || key.equals("fullscreen") || key.equals("use-fullscreen-workaround")
+        if (key.startsWith("sidebar-") || key.startsWith("terminal-tmux-sidebar-")
+            || key.equals(TermuxPropertyConstants.KEY_TMUX_RIGHT_SIDEBAR)) return R.string.properties_sidebars;
+        if (key.startsWith("terminal-") || key.equals("fullscreen") || key.equals("use-fullscreen-workaround")
             || key.equals("night-mode") || key.equals("bell-character")) return R.string.properties_appearance;
         return R.string.properties_advanced;
     }

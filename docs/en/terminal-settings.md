@@ -168,6 +168,14 @@ are left out and logged.
 | `tmux.sidebar.layout` | `terminal-tmux-sidebar-layout` |
 | `tmux.sidebar.style` | `terminal-tmux-sidebar-style` |
 | `tmux.sidebar.right` | `tmux-right-sidebar` |
+| `sidebar.left.show-sessions` | `sidebar-left-show-sessions` |
+| `sidebar.left.show-tmux-windows` | `sidebar-left-show-tmux-windows` |
+| `sidebar.left.show-new-session` | `sidebar-left-show-new-session` |
+| `sidebar.left.show-keyboard-button` | `sidebar-left-show-keyboard-button` |
+| `sidebar.right.show-sessions` | `sidebar-right-show-sessions` |
+| `sidebar.right.show-tmux-windows` | `sidebar-right-show-tmux-windows` |
+| `sidebar.right.show-new-session` | `sidebar-right-show-new-session` |
+| `sidebar.right.show-keyboard-button` | `sidebar-right-show-keyboard-button` |
 | `keyboard.back-key` | `back-key` |
 | `keyboard.hide-on-startup` | `hide-soft-keyboard-on-startup` |
 | `keyboard.hide-on-sidebar` | `hide-soft-keyboard-on-sidebar` |
@@ -250,8 +258,9 @@ existing setting unchanged.
 
 ## tmux sidebar layout
 
-Open **Settings → Properties → Appearance → Terminal tmux sidebar layout**
-or set `terminal-tmux-sidebar-layout` in `config.yaml`.
+Open **Settings → Properties → Sidebars → Terminal tmux sidebar layout**
+or set `tmux.sidebar.layout` in `config.yaml`. The layout applies when a sidebar
+shows both terminal sessions and tmux windows.
 
 - `nested` (default) shows tmux windows below their terminal. Hold the terminal
   row to collapse or expand the windows, or to open the window picker.
@@ -267,9 +276,15 @@ tmux window, including when you switch with a keyboard shortcut.
 subtle outline and accent dot or a filled rounded accent pill. Set
 `tmux.sidebar.style: rounded` (default) or `subtle`.
 
-Enable **Tmux right sidebar** to swipe in from the right edge and browse the
-current terminal session's tmux windows. Set `tmux.sidebar.right` to `true`
-in YAML. The setting is off by default.
+Under **Sidebars**, choose whether each drawer shows terminal sessions,
+tmux windows, the **New session** button, and the **Keyboard** button.
+A drawer with tmux windows on and terminal sessions off shows windows
+for the current terminal session.
+
+The left drawer defaults to all four items on. The right drawer defaults
+to tmux windows only and opens with a right-edge swipe after you enable
+**Tmux right sidebar** (`tmux.sidebar.right` in YAML).
+
 Both the layout and style dialogs show a preview before you save.
 
 The session picker and the tmux window picker use the same rows as the

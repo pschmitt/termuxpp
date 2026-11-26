@@ -391,6 +391,15 @@ public final class TermuxPropertyConstants {
     public static final String TMUX_SIDEBAR_NESTED = "nested";
     public static final String TMUX_SIDEBAR_DRILL_DOWN = "drill-down";
     public static final String TMUX_SIDEBAR_MODES = "modes";
+    public static final String KEY_SIDEBAR_LEFT_SESSIONS = "sidebar-left-show-sessions";
+    public static final String KEY_SIDEBAR_LEFT_TMUX_WINDOWS = "sidebar-left-show-tmux-windows";
+    public static final String KEY_SIDEBAR_LEFT_NEW_SESSION = "sidebar-left-show-new-session";
+    public static final String KEY_SIDEBAR_LEFT_KEYBOARD = "sidebar-left-show-keyboard-button";
+    public static final String KEY_SIDEBAR_RIGHT_SESSIONS = "sidebar-right-show-sessions";
+    public static final String KEY_SIDEBAR_RIGHT_TMUX_WINDOWS = "sidebar-right-show-tmux-windows";
+    public static final String KEY_SIDEBAR_RIGHT_NEW_SESSION = "sidebar-right-show-new-session";
+    public static final String KEY_SIDEBAR_RIGHT_KEYBOARD = "sidebar-right-show-keyboard-button";
+
     public static final String KEY_TMUX_RIGHT_SIDEBAR = "tmux-right-sidebar";
 
     public static final String KEY_TERMINAL_TMUX_SIDEBAR_STYLE = "terminal-tmux-sidebar-style";
@@ -686,6 +695,14 @@ public final class TermuxPropertyConstants {
         KEY_TERMINAL_TMUX_SIDEBAR_LAYOUT,
         KEY_TERMINAL_TMUX_SIDEBAR_STYLE,
         KEY_TMUX_RIGHT_SIDEBAR,
+        KEY_SIDEBAR_LEFT_SESSIONS,
+        KEY_SIDEBAR_LEFT_TMUX_WINDOWS,
+        KEY_SIDEBAR_LEFT_NEW_SESSION,
+        KEY_SIDEBAR_LEFT_KEYBOARD,
+        KEY_SIDEBAR_RIGHT_SESSIONS,
+        KEY_SIDEBAR_RIGHT_TMUX_WINDOWS,
+        KEY_SIDEBAR_RIGHT_NEW_SESSION,
+        KEY_SIDEBAR_RIGHT_KEYBOARD,
         KEY_TERMINAL_PICKER_POSITION,
 
         /* gesture command configuration */
@@ -742,6 +759,9 @@ public final class TermuxPropertyConstants {
      * default: false
      */
     public static final Set<String> TERMUX_DEFAULT_FALSE_BOOLEAN_BEHAVIOUR_PROPERTIES_LIST = new HashSet<>(Arrays.asList(
+        KEY_SIDEBAR_RIGHT_SESSIONS,
+        KEY_SIDEBAR_RIGHT_NEW_SESSION,
+        KEY_SIDEBAR_RIGHT_KEYBOARD,
         KEY_WAKE_LOCK_WIFI,
         KEY_TMUX_RIGHT_SIDEBAR,
         KEY_DISABLE_FILE_SHARE_RECEIVER,
@@ -764,6 +784,11 @@ public final class TermuxPropertyConstants {
      * default: true
      */
     public static final Set<String> TERMUX_DEFAULT_TRUE_BOOLEAN_BEHAVIOUR_PROPERTIES_LIST = new HashSet<>(Arrays.asList(
+        KEY_SIDEBAR_LEFT_SESSIONS,
+        KEY_SIDEBAR_LEFT_TMUX_WINDOWS,
+        KEY_SIDEBAR_LEFT_NEW_SESSION,
+        KEY_SIDEBAR_LEFT_KEYBOARD,
+        KEY_SIDEBAR_RIGHT_TMUX_WINDOWS,
         KEY_GESTURE_ANIMATIONS,
         KEY_HIDE_SOFT_KEYBOARD_ON_SIDEBAR,
         KEY_EXTRA_KEYS_TEXT_ALL_CAPS,

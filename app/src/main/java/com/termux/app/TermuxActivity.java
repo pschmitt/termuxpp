@@ -27,10 +27,8 @@ import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.EditText;
-import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -175,7 +173,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     /**
      * The termux sessions list controller.
      */
-    TermuxSessionsListViewController mTermuxSessionListViewController;
+    private Sidebar leftSidebar;
+    private Sidebar rightSidebar;
 
     /**
      * The {@link TermuxActivity} broadcast receiver for various things like terminal style configuration changes.
@@ -226,10 +225,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private AlertDialog sessionSwitcher;
     private AlertDialog tmuxSwitcher;
     private final Set<String> collapsedTmuxSessions = new HashSet<>();
-    @Nullable private TerminalSession tmuxSidebarSession;
-    private boolean tmuxSidebarMode;
     private boolean restoreKeyboardAfterSidebar;
-    private String lastTmuxSidebarLayout;
     private String appAccent;
     private static boolean pendingPropertiesReload;
 
@@ -286,12 +282,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         setTermuxTerminalViewAndClients();
 
         setTerminalToolbarView(savedInstanceState);
-
-        setSettingsButtonView();
-
-        setNewSessionButtonView();
-
-        setToggleKeyboardView();
 
         registerForContextMenu(mTerminalView);
         mTerminalView.setContextMenuPresenter(view -> showTerminalContextSheet());
@@ -407,7 +397,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     public void onDestroy() {
         if (tmuxSwitcher != null) tmuxSwitcher.dismiss();
         if (mContextSheetDialog != null) mContextSheetDialog.dismiss();
-        if (mTermuxSessionListViewController != null) mTermuxSessionListViewController.dismissDialogs();
+        leftSidebar.dismissDialogs();
+        rightSidebar.dismissDialogs();
         super.onDestroy();
 
         Logger.logDebug(LOG_TAG, "onDestroy");
@@ -563,17 +554,15 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     private void setTermuxSessionsListView() {
-        ListView termuxSessionsListView = findViewById(R.id.terminal_sessions_list);
-        mTermuxSessionListViewController = new TermuxSessionsListViewController(this, mTermuxService.getTermuxSessions());
-        termuxSessionsListView.setAdapter(mTermuxSessionListViewController);
-        termuxSessionsListView.setOnItemClickListener(mTermuxSessionListViewController);
-        termuxSessionsListView.setOnItemLongClickListener(mTermuxSessionListViewController);
-        if (termuxSessionsListView instanceof SessionsListView)
-            ((SessionsListView) termuxSessionsListView).setReorderListener(mTermuxSessionListViewController);
-        updateTmuxSidebar();
+        leftSidebar.bindSessions();
+        rightSidebar.bindSessions();
+        updateSidebars();
     }
 
-
+    public void checkSidebarSession(int position, boolean scroll) {
+        leftSidebar.checkSession(position, scroll);
+        rightSidebar.checkSession(position, scroll);
+    }
 
     private void setTerminalToolbarView(Bundle savedInstanceState) {
         mTermuxTerminalExtraKeys = new TermuxTerminalExtraKeys(this, mTerminalView,
@@ -682,55 +671,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
 
 
-    private void setSettingsButtonView() {
-        ImageButton settingsButton = findViewById(R.id.settings_button);
-        settingsButton.setOnClickListener(v -> {
-            ActivityUtils.startActivity(this, new Intent(this, SettingsActivity.class));
-        });
-    }
-
-    private void setNewSessionButtonView() {
-        View newSessionButton = findViewById(R.id.new_session_button);
-        newSessionButton.setOnClickListener(v -> mTermuxTerminalSessionActivityClient.addNewSession(false, null));
-        newSessionButton.setOnLongClickListener(v -> {
-            TextInputDialogUtils.textInput(TermuxActivity.this, R.string.title_create_named_session, null,
-                R.string.action_create_named_session_confirm, text -> mTermuxTerminalSessionActivityClient.addNewSession(false, text),
-                R.string.action_new_session_failsafe, text -> mTermuxTerminalSessionActivityClient.addNewSession(true, text),
-                -1, null, null);
-            return true;
-        });
-    }
-
-    private void setToggleKeyboardView() {
-        findViewById(R.id.toggle_keyboard_button).setOnClickListener(v -> {
-            restoreKeyboardAfterSidebar = false;
-            mTermuxTerminalViewClient.onToggleSoftKeyboardRequest();
-            getDrawer().closeDrawers();
-        });
-
-        findViewById(R.id.toggle_keyboard_button).setOnLongClickListener(v -> {
-            toggleTerminalToolbar();
-            return true;
-        });
-    }
-
-
-
-
-
     @Override
     public void onBackPressed() {
         if (getDrawer().isDrawerVisible(Gravity.END)) {
-            getDrawer().closeDrawer(Gravity.END);
-            return;
-        }
-        if (getDrawer().isDrawerOpen(Gravity.START)) {
-            if (tmuxSidebarSession != null) {
-                tmuxSidebarSession = null;
-                updateTmuxSidebar();
-                return;
-            }
-            getDrawer().closeDrawers();
+            rightSidebar.back();
+        } else if (getDrawer().isDrawerVisible(Gravity.START)) {
+            leftSidebar.back();
         } else {
             finishActivityIfNotFinishing();
         }
@@ -1187,58 +1133,16 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_LAYOUT, true);
     }
 
-    private void updateTmuxSidebar() {
-        updateRightTmuxSidebar();
-        if (mTermuxService == null) return;
-        String layout = tmuxSidebarLayout();
-        if (!layout.equals(lastTmuxSidebarLayout)) {
-            lastTmuxSidebarLayout = layout;
-            tmuxSidebarSession = null;
-            tmuxSidebarMode = false;
-        }
-
-        List<TerminalSession> attachments = new ArrayList<>();
-        for (int i = 0; i < mTermuxService.getTermuxSessionsSize(); i++) {
-            TerminalSession terminal = mTermuxService.getTermuxSession(i).getTerminalSession();
-            if (terminal != null && mTermuxService.getTmuxWindows(terminal).length() > 0)
-                attachments.add(terminal);
-        }
-        if (!attachments.contains(tmuxSidebarSession)) tmuxSidebarSession = null;
-        if (attachments.isEmpty()) tmuxSidebarMode = false;
-
-        boolean modes = layout.equals(TermuxPropertyConstants.TMUX_SIDEBAR_MODES) && !attachments.isEmpty();
-        boolean showWindows = tmuxSidebarSession != null || tmuxSidebarMode;
-        TextView navigation = findViewById(R.id.tmux_sidebar_navigation);
-        navigation.setVisibility(modes || tmuxSidebarSession != null ? View.VISIBLE : View.GONE);
-        navigation.setText(tmuxSidebarSession != null ? R.string.ui_tmux_sidebar_back
-            : tmuxSidebarMode ? R.string.ui_tmux_sidebar_sessions : R.string.ui_tmux_switcher_title);
-        navigation.setOnClickListener(view -> {
-            if (tmuxSidebarSession != null) tmuxSidebarSession = null;
-            else tmuxSidebarMode = !tmuxSidebarMode;
-            updateTmuxSidebar();
-        });
-
-        findViewById(R.id.terminal_sessions_list).setVisibility(showWindows ? View.GONE : View.VISIBLE);
-        View panel = findViewById(R.id.tmux_sidebar_panel);
-        panel.setVisibility(showWindows ? View.VISIBLE : View.GONE);
-        LinearLayout groups = findViewById(R.id.tmux_sidebar_groups);
-        groups.removeAllViews();
-        if (!showWindows) return;
-        for (TerminalSession terminal : attachments) {
-            if (tmuxSidebarSession != null && terminal != tmuxSidebarSession) continue;
-            String title = terminal.mSessionName;
-            if (TextUtils.isEmpty(title)) title = terminal.getTitle();
-            if (TextUtils.isEmpty(title)) title = getString(R.string.ui_session_unnamed,
-                mTermuxService.getIndexOfSession(terminal) + 1);
-            addTmuxHeading(groups, title, null);
-            addTmuxWindows(groups, terminal, mTermuxService.getTmuxWindows(terminal), true, null);
-        }
+    public void updateSidebars() {
+        leftSidebar.update();
+        rightSidebar.update();
     }
 
-    public void bindTmuxWindows(LinearLayout container, @Nullable TerminalSession session) {
+    public void bindTmuxWindows(LinearLayout container, @Nullable TerminalSession session, boolean right) {
+        Sidebar sidebar = right ? rightSidebar : leftSidebar;
         container.removeAllViews();
         String layout = tmuxSidebarLayout();
-        JSONArray windows = session == null || mTermuxService == null
+        JSONArray windows = !sidebar.showTmuxWindows() || session == null || mTermuxService == null
             ? new JSONArray() : mTermuxService.getTmuxWindows(session);
         boolean visible = windows.length() > 0 && !layout.equals(TermuxPropertyConstants.TMUX_SIDEBAR_MODES);
         container.setVisibility(visible ? View.VISIBLE : View.GONE);
@@ -1246,8 +1150,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         if (layout.equals(TermuxPropertyConstants.TMUX_SIDEBAR_DRILL_DOWN)) {
             addTmuxHeading(container, getString(R.string.ui_tmux_sidebar_drill), view -> {
-                tmuxSidebarSession = session;
-                updateTmuxSidebar();
+                sidebar.drilledSession = session;
+                sidebar.update();
             });
             return;
         }
@@ -1257,15 +1161,16 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         if (!collapsed) addTmuxWindows(container, session, windows, true, null);
     }
 
-    public int tmuxWindowVisibilityAction(TerminalSession session) {
-        if (mTermuxService == null || mTermuxService.getTmuxWindows(session).length() == 0
+    public int tmuxWindowVisibilityAction(TerminalSession session, boolean right) {
+        Sidebar sidebar = right ? rightSidebar : leftSidebar;
+        if (!sidebar.showTmuxWindows() || mTermuxService == null || mTermuxService.getTmuxWindows(session).length() == 0
             || !TermuxPropertyConstants.TMUX_SIDEBAR_NESTED.equals(tmuxSidebarLayout())) return 0;
         return collapsedTmuxSessions.contains(session.mHandle)
             ? R.string.ui_tmux_sidebar_expand : R.string.ui_tmux_sidebar_collapse;
     }
 
-    public void toggleTmuxWindows(TerminalSession session) {
-        if (tmuxWindowVisibilityAction(session) == 0) return;
+    public void toggleTmuxWindows(TerminalSession session, boolean right) {
+        if (tmuxWindowVisibilityAction(session, right) == 0) return;
         if (!collapsedTmuxSessions.remove(session.mHandle)) collapsedTmuxSessions.add(session.mHandle);
         termuxSessionListNotifyUpdated();
     }
@@ -1436,40 +1341,205 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         getDrawer().closeDrawers();
     }
 
-    public void updateRightTmuxSidebar() {
+    private final class Sidebar {
+        final View panel;
+        final SessionsListView sessions;
+        final boolean right;
+        @Nullable TermuxSessionsListViewController adapter;
+        @Nullable TerminalSession drilledSession;
+        boolean tmuxMode;
+        String lastLayout;
+
+        Sidebar(View panel, boolean right) {
+            this.panel = panel;
+            this.right = right;
+            sessions = panel.findViewById(R.id.terminal_sessions_list);
+            panel.setBackgroundResource(right ? R.drawable.ui_tmux_right_shelf : R.drawable.ui_session_shelf);
+            panel.findViewById(R.id.settings_button).setOnClickListener(v ->
+                ActivityUtils.startActivity(TermuxActivity.this, new Intent(TermuxActivity.this, SettingsActivity.class)));
+
+            View create = panel.findViewById(R.id.new_session_button);
+            create.setOnClickListener(v -> mTermuxTerminalSessionActivityClient.addNewSession(false, null));
+            create.setOnLongClickListener(v -> {
+                TextInputDialogUtils.textInput(TermuxActivity.this, R.string.title_create_named_session, null,
+                    R.string.action_create_named_session_confirm, text -> mTermuxTerminalSessionActivityClient.addNewSession(false, text),
+                    R.string.action_new_session_failsafe, text -> mTermuxTerminalSessionActivityClient.addNewSession(true, text),
+                    -1, null, null);
+                return true;
+            });
+            View keyboard = panel.findViewById(R.id.toggle_keyboard_button);
+            keyboard.setOnClickListener(v -> {
+                restoreKeyboardAfterSidebar = false;
+                mTermuxTerminalViewClient.onToggleSoftKeyboardRequest();
+                getDrawer().closeDrawers();
+            });
+            keyboard.setOnLongClickListener(v -> {
+                toggleTerminalToolbar();
+                return true;
+            });
+        }
+
+        void bindSessions() {
+            adapter = new TermuxSessionsListViewController(TermuxActivity.this,
+                mTermuxService.getTermuxSessions(), sessions, right);
+            sessions.setAdapter(adapter);
+            sessions.setOnItemClickListener(adapter);
+            sessions.setOnItemLongClickListener(adapter);
+            sessions.setReorderListener(adapter);
+        }
+
+        void dismissDialogs() {
+            if (adapter != null) adapter.dismissDialogs();
+        }
+
+        void checkSession(int position, boolean scroll) {
+            sessions.setItemChecked(position, true);
+            if (!scroll) return;
+            // Allow the list to lay out newly added sessions before scrolling.
+            sessions.postDelayed(() -> {
+                if (sessions.getCheckedItemPosition() == position) sessions.smoothScrollToPosition(position);
+            }, 1000);
+        }
+
+        void back() {
+            if (drilledSession != null || tmuxMode) {
+                drilledSession = null;
+                tmuxMode = false;
+                update();
+            } else {
+                getDrawer().closeDrawer(panel);
+            }
+        }
+
+        boolean showTmuxWindows() {
+            return sidebarSetting(right ? TermuxPropertyConstants.KEY_SIDEBAR_RIGHT_TMUX_WINDOWS
+                : TermuxPropertyConstants.KEY_SIDEBAR_LEFT_TMUX_WINDOWS);
+        }
+
+        void update() {
+            boolean showSessions = sidebarSetting(right ? TermuxPropertyConstants.KEY_SIDEBAR_RIGHT_SESSIONS
+                : TermuxPropertyConstants.KEY_SIDEBAR_LEFT_SESSIONS);
+            boolean showTmux = showTmuxWindows();
+            boolean showCreate = sidebarSetting(right ? TermuxPropertyConstants.KEY_SIDEBAR_RIGHT_NEW_SESSION
+                : TermuxPropertyConstants.KEY_SIDEBAR_LEFT_NEW_SESSION);
+            boolean showKeyboard = sidebarSetting(right ? TermuxPropertyConstants.KEY_SIDEBAR_RIGHT_KEYBOARD
+                : TermuxPropertyConstants.KEY_SIDEBAR_LEFT_KEYBOARD);
+            View keyboard = panel.findViewById(R.id.toggle_keyboard_button);
+            keyboard.setVisibility(showKeyboard ? View.VISIBLE : View.GONE);
+            LinearLayout.LayoutParams keyboardParams = (LinearLayout.LayoutParams) keyboard.getLayoutParams();
+            int keyboardMargin = showCreate ? sidebarDp(8) : 0;
+            if (keyboardParams.getMarginStart() != keyboardMargin) {
+                keyboardParams.setMarginStart(keyboardMargin);
+                keyboard.setLayoutParams(keyboardParams);
+            }
+            panel.findViewById(R.id.new_session_button).setVisibility(showCreate ? View.VISIBLE : View.GONE);
+            panel.findViewById(R.id.sidebar_actions).setVisibility(showCreate || showKeyboard ? View.VISIBLE : View.GONE);
+
+            int title = showTmux && !showSessions ? R.string.ui_tmux_switcher_title : R.string.ui_drawer_title;
+            ((TextView) panel.findViewById(R.id.sidebar_title)).setText(title);
+            getDrawer().setDrawerTitle(right ? Gravity.END : Gravity.START, getString(title));
+            String layout = tmuxSidebarLayout();
+            if (!layout.equals(lastLayout) || !showTmux || !showSessions) {
+                lastLayout = layout;
+                drilledSession = null;
+                tmuxMode = false;
+            }
+
+            List<TerminalSession> attachments = new ArrayList<>();
+            if (showSessions && showTmux && mTermuxService != null) {
+                for (int i = 0; i < mTermuxService.getTermuxSessionsSize(); i++) {
+                    TerminalSession terminal = mTermuxService.getTermuxSession(i).getTerminalSession();
+                    if (terminal != null && mTermuxService.getTmuxWindows(terminal).length() > 0)
+                        attachments.add(terminal);
+                }
+            }
+            if (!attachments.contains(drilledSession)) drilledSession = null;
+            if (attachments.isEmpty()) tmuxMode = false;
+
+            boolean modes = layout.equals(TermuxPropertyConstants.TMUX_SIDEBAR_MODES) && !attachments.isEmpty();
+            boolean currentWindowsOnly = showTmux && !showSessions;
+            boolean showWindows = currentWindowsOnly || drilledSession != null || tmuxMode;
+            TextView navigation = panel.findViewById(R.id.tmux_sidebar_navigation);
+            navigation.setVisibility(modes || drilledSession != null ? View.VISIBLE : View.GONE);
+            navigation.setText(drilledSession != null ? R.string.ui_tmux_sidebar_back
+                : tmuxMode ? R.string.ui_tmux_sidebar_sessions : R.string.ui_tmux_switcher_title);
+            navigation.setOnClickListener(view -> {
+                if (drilledSession != null) drilledSession = null;
+                else tmuxMode = !tmuxMode;
+                update();
+            });
+
+            sessions.setVisibility(showSessions && !showWindows ? View.VISIBLE : View.GONE);
+            View windowPanel = panel.findViewById(R.id.tmux_sidebar_panel);
+            View empty = panel.findViewById(R.id.tmux_sidebar_empty);
+            LinearLayout rows = panel.findViewById(R.id.tmux_sidebar_groups);
+            rows.removeAllViews();
+            windowPanel.setVisibility(showWindows ? View.VISIBLE : View.GONE);
+            empty.setVisibility(View.GONE);
+            panel.findViewById(R.id.sidebar_spacer).setVisibility(showSessions || showWindows ? View.GONE : View.VISIBLE);
+            if (!showWindows || mTermuxService == null) return;
+
+            if (currentWindowsOnly) {
+                TerminalSession session = getCurrentSession();
+                JSONArray windows = session == null ? new JSONArray() : mTermuxService.getTmuxWindows(session);
+                if (windows.length() > 0) {
+                    addTmuxWindows(rows, session, windows, false, null);
+                } else {
+                    windowPanel.setVisibility(View.GONE);
+                    empty.setVisibility(View.VISIBLE);
+                }
+                return;
+            }
+
+            for (TerminalSession terminal : attachments) {
+                if (drilledSession != null && terminal != drilledSession) continue;
+                String label = terminal.mSessionName;
+                if (TextUtils.isEmpty(label)) label = terminal.getTitle();
+                if (TextUtils.isEmpty(label)) label = getString(R.string.ui_session_unnamed,
+                    mTermuxService.getIndexOfSession(terminal) + 1);
+                addTmuxHeading(rows, label, null);
+                addTmuxWindows(rows, terminal, mTermuxService.getTmuxWindows(terminal), true, null);
+            }
+        }
+    }
+
+    private boolean sidebarSetting(String key) {
+        return (boolean) mProperties.getInternalPropertyValue(key, true);
+    }
+
+    public void setSidebarCopyMode(boolean copyMode) {
         DrawerLayout drawer = getDrawer();
-        boolean enabled = (boolean) mProperties.getInternalPropertyValue(
-            TermuxPropertyConstants.KEY_TMUX_RIGHT_SIDEBAR, true);
+        int lockMode = copyMode ? DrawerLayout.LOCK_MODE_LOCKED_CLOSED : DrawerLayout.LOCK_MODE_UNLOCKED;
+        drawer.setDrawerLockMode(lockMode, Gravity.START);
+        updateRightSidebarLock();
+    }
+
+    private void updateRightSidebarLock() {
+        DrawerLayout drawer = getDrawer();
         boolean copyMode = drawer.getDrawerLockMode(Gravity.START) == DrawerLayout.LOCK_MODE_LOCKED_CLOSED;
+        boolean enabled = sidebarSetting(TermuxPropertyConstants.KEY_TMUX_RIGHT_SIDEBAR);
         int lockMode = enabled && !copyMode ? DrawerLayout.LOCK_MODE_UNLOCKED : DrawerLayout.LOCK_MODE_LOCKED_CLOSED;
         if (drawer.getDrawerLockMode(Gravity.END) != lockMode) drawer.setDrawerLockMode(lockMode, Gravity.END);
-        if (!enabled) return;
-
-        TerminalSession session = getCurrentSession();
-        JSONArray windows = session == null || mTermuxService == null
-            ? new JSONArray() : mTermuxService.getTmuxWindows(session);
-        LinearLayout rows = findViewById(R.id.right_tmux_windows);
-        rows.removeAllViews();
-        findViewById(R.id.right_tmux_empty).setVisibility(windows.length() == 0 ? View.VISIBLE : View.GONE);
-        if (windows.length() > 0) addTmuxWindows(rows, session, windows, false, null);
     }
 
     private void configureSessionShelf() {
         DrawerLayout drawer = getDrawer();
         drawer.setScrimColor(ContextCompat.getColor(this, R.color.ui_session_shelf_scrim));
-        drawer.setDrawerTitle(Gravity.END, getString(R.string.ui_tmux_switcher_title));
-        updateRightTmuxSidebar();
-        View sessions = findViewById(R.id.terminal_sessions_list);
+        leftSidebar = new Sidebar(findViewById(R.id.left_drawer), false);
+        rightSidebar = new Sidebar(findViewById(R.id.right_tmux_drawer), true);
+        updateRightSidebarLock();
+        updateSidebars();
         float revealOffset = 12f * getResources().getDisplayMetrics().density;
         drawer.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
             @Override
             public void onDrawerSlide(@NonNull View panel, float offset) {
-                if (panel.getId() != R.id.left_drawer) return;
+                Sidebar sidebar = panel == rightSidebar.panel ? rightSidebar : leftSidebar;
                 boolean animated = Build.VERSION.SDK_INT < Build.VERSION_CODES.O
                     || ValueAnimator.areAnimatorsEnabled();
                 float direction = panel.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL ? 1f : -1f;
+                if (sidebar.right) direction = -direction;
                 float remaining = 1f - offset;
-                sessions.setTranslationX(animated ? direction * revealOffset * remaining * remaining : 0f);
+                sidebar.sessions.setTranslationX(animated ? direction * revealOffset * remaining * remaining : 0f);
             }
 
             @Override
@@ -1535,8 +1605,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
 
     public void termuxSessionListNotifyUpdated() {
-        if (mTermuxSessionListViewController != null) mTermuxSessionListViewController.notifyDataSetChanged();
-        updateTmuxSidebar();
+        updateRightSidebarLock();
+        updateSidebars();
+        if (leftSidebar.adapter != null) leftSidebar.adapter.notifyDataSetChanged();
+        if (rightSidebar.adapter != null) rightSidebar.adapter.notifyDataSetChanged();
     }
 
     public boolean isVisible() {

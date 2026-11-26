@@ -9,7 +9,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.ListView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -30,11 +29,16 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
     implements AdapterView.OnItemClickListener, AdapterView.OnItemLongClickListener, SessionsListView.ReorderListener {
 
     final TermuxActivity mActivity;
+    private final SessionsListView list;
+    private final boolean rightSidebar;
     @Nullable private android.app.Dialog mActionsDialog;
 
-    public TermuxSessionsListViewController(TermuxActivity activity, List<TermuxSession> sessionList) {
+    public TermuxSessionsListViewController(TermuxActivity activity, List<TermuxSession> sessionList,
+                                            SessionsListView list, boolean rightSidebar) {
         super(activity.getApplicationContext(), R.layout.item_terminal_sessions_list, sessionList);
         this.mActivity = activity;
+        this.list = list;
+        this.rightSidebar = rightSidebar;
     }
 
     @SuppressLint("SetTextI18n")
@@ -55,7 +59,7 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
 
         TerminalSession sessionAtRow = getItem(position).getTerminalSession();
         LinearLayout tmux = sessionRowView.findViewById(R.id.session_tmux_windows);
-        mActivity.bindTmuxWindows(tmux, sessionAtRow);
+        mActivity.bindTmuxWindows(tmux, sessionAtRow, rightSidebar);
         bindSessionSummary(mActivity, sessionRowView, sessionAtRow, position + 1);
         return sessionRowView;
     }
@@ -128,31 +132,16 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
      */
     private void bindNumberGestures(@NonNull View row, @NonNull View numberView) {
         numberView.setOnClickListener(v -> {
-            ListView list = getListView();
-            if (list == null) return;
             int position = list.getPositionForView(row);
             if (position >= 0) list.performItemClick(row, position, getItemId(position));
         });
         numberView.setOnLongClickListener(v -> {
-            SessionsListView list = getSessionsListView();
-            if (list == null) return false;
             int position = list.getPositionForView(row);
             // With a single session there is nothing to reorder: the hold opens the actions like the rest of the row.
             if (position >= 0 && list.beginDrag(position)) return true;
             if (position >= 0) showActions(position);
             return position >= 0;
         });
-    }
-
-    @Nullable
-    private ListView getListView() {
-        return mActivity.findViewById(R.id.terminal_sessions_list);
-    }
-
-    @Nullable
-    private SessionsListView getSessionsListView() {
-        ListView list = getListView();
-        return list instanceof SessionsListView ? (SessionsListView) list : null;
     }
 
     @Override
@@ -187,12 +176,11 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
     public boolean moveSession(int from, int to) {
         TermuxService service = mActivity.getTermuxService();
         if (service == null || !service.moveTermuxSession(from, to)) return false;
-        notifyDataSetChanged();
+        mActivity.termuxSessionListNotifyUpdated();
         // The list keeps its chosen row by position, not by session, so point it at the current session again.
-        ListView list = getListView();
         TerminalSession current = mActivity.getCurrentSession();
         int currentIndex = current == null ? -1 : service.getIndexOfSession(current);
-        if (list != null && currentIndex >= 0) list.setItemChecked(currentIndex, true);
+        if (currentIndex >= 0) mActivity.checkSidebarSession(currentIndex, false);
         return true;
     }
 
@@ -210,7 +198,7 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
         boolean hasTmuxWindows = service != null && service.getTmuxWindows(session).length() > 0;
         SessionActionsMenu.State state = new SessionActionsMenu.State(session.mSessionName, session.getTitle(),
             position + 1, getCount(), session.isRunning(), hasTmuxWindows,
-            mActivity.tmuxWindowVisibilityAction(session));
+            mActivity.tmuxWindowVisibilityAction(session, rightSidebar));
         try {
             mActionsDialog = SessionActionsMenu.populateSheet(new TermuxContextMenuSheet(mActivity),
                 mActivity.getResources(), state).show(chosenId -> {
@@ -239,10 +227,7 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
         SessionReorder.Move move = SessionActionsMenu.moveFor(actionId);
         if (move != null) {
             int target = SessionReorder.targetFor(move, index, service.getTermuxSessionsSize());
-            if (moveSession(index, target)) {
-                ListView list = getListView();
-                if (list != null) list.smoothScrollToPosition(target);
-            }
+            if (moveSession(index, target)) list.smoothScrollToPosition(target);
             return;
         }
 
@@ -251,7 +236,7 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
                 mActivity.showTmuxSwitcher(session);
                 break;
             case SessionActionsMenu.TOGGLE_TMUX_WINDOWS:
-                mActivity.toggleTmuxWindows(session);
+                mActivity.toggleTmuxWindows(session, rightSidebar);
                 break;
             case SessionActionsMenu.RENAME:
                 mActivity.getTermuxTerminalSessionClient().renameSession(session);
