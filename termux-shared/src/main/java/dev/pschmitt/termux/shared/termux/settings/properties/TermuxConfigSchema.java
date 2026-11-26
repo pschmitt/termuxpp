@@ -63,6 +63,7 @@ public final class TermuxConfigSchema {
 
         add("keyboard.back-key", "back-key");
         add("keyboard.hide-on-startup", "hide-soft-keyboard-on-startup");
+        add("keyboard.hide-on-sidebar", "hide-soft-keyboard-on-sidebar");
         add("keyboard.toggle-behaviour", "soft-keyboard-toggle-behaviour");
         add("keyboard.char-based-input", "enforce-char-based-input");
         add("keyboard.ctrl-space-workaround", "ctrl-space-workaround");

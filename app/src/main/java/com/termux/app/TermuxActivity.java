@@ -78,6 +78,7 @@ import dev.pschmitt.termux.shared.termux.settings.properties.TermuxAppSharedProp
 import dev.pschmitt.termux.shared.termux.settings.properties.TermuxPropertyConstants;
 import dev.pschmitt.termux.shared.termux.theme.TermuxThemeUtils;
 import dev.pschmitt.termux.shared.theme.NightMode;
+import dev.pschmitt.termux.shared.view.KeyboardUtils;
 import dev.pschmitt.termux.shared.view.ViewUtils;
 import com.termux.terminal.TerminalSession;
 import com.termux.terminal.TerminalSessionClient;
@@ -90,6 +91,8 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.graphics.ColorUtils;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.viewpager.widget.ViewPager;
 
@@ -225,6 +228,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     private final Set<String> collapsedTmuxSessions = new HashSet<>();
     @Nullable private TerminalSession tmuxSidebarSession;
     private boolean tmuxSidebarMode;
+    private boolean restoreKeyboardAfterSidebar;
     private String lastTmuxSidebarLayout;
     private String appAccent;
     private static boolean pendingPropertiesReload;
@@ -699,6 +703,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private void setToggleKeyboardView() {
         findViewById(R.id.toggle_keyboard_button).setOnClickListener(v -> {
+            restoreKeyboardAfterSidebar = false;
             mTermuxTerminalViewClient.onToggleSoftKeyboardRequest();
             getDrawer().closeDrawers();
         });
@@ -1439,6 +1444,31 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 float direction = panel.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL ? 1f : -1f;
                 float remaining = 1f - offset;
                 sessions.setTranslationX(animated ? direction * revealOffset * remaining * remaining : 0f);
+            }
+
+            @Override
+            public void onDrawerOpened(@NonNull View panel) {
+                if (!(boolean) mProperties.getInternalPropertyValue(
+                    TermuxPropertyConstants.KEY_HIDE_SOFT_KEYBOARD_ON_SIDEBAR, true)) return;
+
+                WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(drawer);
+                restoreKeyboardAfterSidebar = insets != null && insets.isVisible(WindowInsetsCompat.Type.ime());
+                if (restoreKeyboardAfterSidebar) KeyboardUtils.hideSoftKeyboard(TermuxActivity.this, drawer);
+            }
+
+            @Override
+            public void onDrawerClosed(@NonNull View panel) {
+                if (!restoreKeyboardAfterSidebar) return;
+                restoreKeyboardAfterSidebar = false;
+                if (!mIsVisible || !hasWindowFocus() || isFinishing()
+                    || KeyboardUtils.areDisableSoftKeyboardFlagsSet(TermuxActivity.this)) return;
+
+                View input = getCurrentFocus();
+                if (input == null || !input.onCheckIsTextEditor()) {
+                    input = mTerminalView;
+                    if (!input.requestFocus()) return;
+                }
+                KeyboardUtils.showSoftKeyboard(TermuxActivity.this, input);
             }
         });
     }

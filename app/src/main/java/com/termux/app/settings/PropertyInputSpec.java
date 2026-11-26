@@ -83,6 +83,9 @@ public final class PropertyInputSpec {
                     + " you press Enter, which happens with some keyboards, for example on Samsung devices.");
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_TEXT_ALL_CAPS:
                 return bool(key, "Show the text of the extra keys buttons in capital letters.");
+            case TermuxPropertyConstants.KEY_HIDE_SOFT_KEYBOARD_ON_SIDEBAR:
+                return bool(key, "Hide the soft keyboard when the session sidebar opens and restore it when the"
+                    + " sidebar closes if it was visible before.");
             case TermuxPropertyConstants.KEY_HIDE_SOFT_KEYBOARD_ON_STARTUP:
                 return bool(key, "Do not show the soft keyboard when the app starts.");
             case TermuxPropertyConstants.KEY_NIX_SESSION:

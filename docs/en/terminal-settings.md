@@ -169,6 +169,7 @@ are left out and logged.
 | `tmux.sidebar.style` | `terminal-tmux-sidebar-style` |
 | `keyboard.back-key` | `back-key` |
 | `keyboard.hide-on-startup` | `hide-soft-keyboard-on-startup` |
+| `keyboard.hide-on-sidebar` | `hide-soft-keyboard-on-sidebar` |
 | `keyboard.toggle-behaviour` | `soft-keyboard-toggle-behaviour` |
 | `keyboard.char-based-input` | `enforce-char-based-input` |
 | `keyboard.ctrl-space-workaround` | `ctrl-space-workaround` |

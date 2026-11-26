@@ -142,6 +142,8 @@ public final class TermuxPropertyConstants {
 
 
     /** Defines the key for whether to hide soft keyboard when termux app is started */
+    public static final String KEY_HIDE_SOFT_KEYBOARD_ON_SIDEBAR = "hide-soft-keyboard-on-sidebar";
+
     public static final String KEY_HIDE_SOFT_KEYBOARD_ON_STARTUP =  "hide-soft-keyboard-on-startup"; // Default: "hide-soft-keyboard-on-startup"
 
 
@@ -643,6 +645,7 @@ public final class TermuxPropertyConstants {
         KEY_ENFORCE_CHAR_BASED_INPUT,
         KEY_EXTRA_KEYS_TEXT_ALL_CAPS,
         KEY_HIDE_SOFT_KEYBOARD_ON_STARTUP,
+        KEY_HIDE_SOFT_KEYBOARD_ON_SIDEBAR,
         KEY_NIX_SESSION,
         KEY_RUN_TERMUX_AM_SOCKET_SERVER,
         KEY_TERMINAL_ONCLICK_URL_OPEN,
@@ -758,6 +761,7 @@ public final class TermuxPropertyConstants {
      */
     public static final Set<String> TERMUX_DEFAULT_TRUE_BOOLEAN_BEHAVIOUR_PROPERTIES_LIST = new HashSet<>(Arrays.asList(
         KEY_GESTURE_ANIMATIONS,
+        KEY_HIDE_SOFT_KEYBOARD_ON_SIDEBAR,
         KEY_EXTRA_KEYS_TEXT_ALL_CAPS,
         KEY_NIX_SESSION,
         KEY_RUN_TERMUX_AM_SOCKET_SERVER

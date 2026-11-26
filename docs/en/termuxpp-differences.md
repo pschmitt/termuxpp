@@ -451,6 +451,10 @@ sidebar entry and choose **Open window picker**. The sidebar refreshes as the
 active window, names, and window list change. Upstream Termux's sidebar lists Android terminal
 sessions. [Upstream sidebar source](https://github.com/termux/termux-app/blob/master/app/src/main/java/com/termux/app/TermuxSessionsListViewController.java).
 
+TermuxPP hides the soft keyboard when the session sidebar opens and tries to
+restore it on close if it was visible before. Set `keyboard.hide-on-sidebar`
+to `false` to turn this off. [Upstream activity source](https://github.com/termux/termux-app/blob/master/app/src/main/java/com/termux/app/TermuxActivity.java).
+
 Each window row shows an icon for the program in the window's active pane,
 like a tmux status bar that maps `pane_current_command` to Nerd Font
 glyphs. TermuxPP shows real logos instead (Claude, Codex, Gemini, Neovim,
