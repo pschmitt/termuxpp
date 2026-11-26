@@ -473,6 +473,42 @@ public final class ExtraKeysView extends GridLayout {
         }
     }
 
+    /**
+     * Colors of the Rounded theme, in the order key text, key, function-key text, function key
+     * (Esc and the arrows, like Gboard's shift and enter), row, active text and active key.
+     *
+     * With Material You (Android 14+), these are the system tokens Gboard's default theme uses, read
+     * from a Pixel: surface_container behind surface_bright keys with on_surface labels, and
+     * secondary_container function keys with on_secondary_container labels. Pressed, latched and
+     * chosen menu items use primary, like Gboard's highlight. Earlier versions use Gboard's static
+     * dark palette or a matching light one.
+     */
+    @NonNull
+    static int[] roundedPalette(@NonNull Context context, boolean dark) {
+        if (Build.VERSION.SDK_INT >= 34) {
+            return dark ? new int[]{
+                context.getColor(android.R.color.system_on_surface_dark),
+                context.getColor(android.R.color.system_surface_bright_dark),
+                context.getColor(android.R.color.system_on_secondary_container_dark),
+                context.getColor(android.R.color.system_secondary_container_dark),
+                context.getColor(android.R.color.system_surface_container_dark),
+                context.getColor(android.R.color.system_on_primary_dark),
+                context.getColor(android.R.color.system_primary_dark),
+            } : new int[]{
+                context.getColor(android.R.color.system_on_surface_light),
+                context.getColor(android.R.color.system_surface_bright_light),
+                context.getColor(android.R.color.system_on_secondary_container_light),
+                context.getColor(android.R.color.system_secondary_container_light),
+                context.getColor(android.R.color.system_surface_container_light),
+                context.getColor(android.R.color.system_on_primary_light),
+                context.getColor(android.R.color.system_primary_light),
+            };
+        }
+        return dark
+            ? new int[]{0xFFE3E3E3, 0xFF37393B, 0xFFC4C7C5, 0xFF444746, 0xFF1E1F20, 0xFF062E6F, 0xFFA8C7FA}
+            : new int[]{0xFF1F1F1F, 0xFFFFFFFF, 0xFF444746, 0xFFD3E3FD, 0xFFF0F4F9, 0xFFFFFFFF, 0xFF0B57D0};
+    }
+
     /** Apply the row appearance and explicit overrides before reloading the keys. */
     public void setAppearance(@Nullable String theme, @Nullable Integer rowColor,
                               @Nullable Integer activeText, @Nullable Integer activeBackground,
@@ -482,15 +518,14 @@ public final class ExtraKeysView extends GridLayout {
         if (mRoundedTheme) {
             boolean dark = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
                 == Configuration.UI_MODE_NIGHT_YES;
-            // Dark colors measured from Gboard's dark theme: letter keys, function keys
-            // (Esc and the arrows here, like Gboard's shift and enter) and the keyboard background.
-            mButtonTextColor = dark ? 0xFFE6E4F0 : 0xFF222629;
-            mButtonBackgroundColor = dark ? 0xFF2B2B34 : 0xFFE0E3E7;
-            mRoundedNavigationTextColor = dark ? 0xFFBCBED5 : 0xFF25394A;
-            mRoundedNavigationBackgroundColor = dark ? 0xFF383A4D : 0xFFCBD7E2;
-            if (rowColor == null) rowColor = dark ? 0xFF191920 : 0xFFF2F4F7;
-            if (activeText == null) activeText = dark ? 0xFFF2F0FA : 0xFF222629;
-            if (activeBackground == null) activeBackground = dark ? 0xFF4A4D63 : 0xFFCED3D8;
+            int[] palette = roundedPalette(context, dark);
+            mButtonTextColor = palette[0];
+            mButtonBackgroundColor = palette[1];
+            mRoundedNavigationTextColor = palette[2];
+            mRoundedNavigationBackgroundColor = palette[3];
+            if (rowColor == null) rowColor = palette[4];
+            if (activeText == null) activeText = palette[5];
+            if (activeBackground == null) activeBackground = palette[6];
             if (radiusDp == null) radiusDp = 7f;
         } else {
             mButtonTextColor = ThemeUtils.getSystemAttrColor(context, ATTR_BUTTON_TEXT_COLOR, DEFAULT_BUTTON_TEXT_COLOR);
@@ -1132,7 +1167,8 @@ public final class ExtraKeysView extends GridLayout {
         dismissKeyPreview();
         if (mPopupWindow != null) dismissPopup();
         dismissKeyMenu();
-        int panel = mRoundedTheme ? mRoundedNavigationBackgroundColor : getRestingBackgroundColor(buttonInfo);
+        // Like Gboard: the menu is a raised key-colored panel with an accent highlight.
+        int panel = mRoundedTheme ? mButtonBackgroundColor : getRestingBackgroundColor(buttonInfo);
         if (Color.alpha(panel) < 0xF0) panel = 0xF0303134;
         mKeyMenu = new ExtraKeyMenu(view, buttonInfo.getMenu(), mPressRawX, mPressRawY, panel,
             mButtonTextColor, mButtonActiveTextColor, mButtonActiveBackgroundColor,

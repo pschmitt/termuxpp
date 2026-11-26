@@ -725,14 +725,17 @@ extra-keys:
 
 **Extra keys theme** selects the default toolbar appearance or **Rounded (Gboard-inspired)**,
 which gives unstyled keys rounded, spaced caps and picks a light or dark palette with the app.
-Escape and the four arrow keys use a subdued tint by default.
+On Android 14 and later its colors come from the system's Material You palette, the tokens Gboard's
+default theme uses: keys in `surface_bright` on `surface_container`, and Escape and the four arrow
+keys in `secondary_container` like Gboard's function keys. Pressed and latched keys and the chosen
+long-press menu item use the `primary` accent. Earlier versions use Gboard's static palette.
 **Extra keys row background color** sets the color behind the keys. A custom background,
 corner radius, active color, or per-key color takes precedence over the theme.
 
 ```yaml
 extra-keys:
   theme: rounded
-  background-color: "#191920"
+  background-color: "#191920" # optional; the theme follows the system palette
 ```
 
 In **Extra keys → Edit layout**, open a row’s menu and choose **Columns in this row**.
