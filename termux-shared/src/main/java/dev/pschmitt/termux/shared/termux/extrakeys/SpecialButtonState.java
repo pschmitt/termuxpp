@@ -57,6 +57,7 @@ public class SpecialButtonState {
 
     /** The time of the tap that latched the button, to detect a double tap on it. */
     private long mLastTapTime = NO_TAP;
+    private long mLastAlternateTapTime = NO_TAP;
 
     /**
      * Handle a tap (a click that is not a long press) on the button.
@@ -72,6 +73,7 @@ public class SpecialButtonState {
      * @param doubleTapTimeoutMs The most milliseconds between the two taps of a double tap.
      */
     public void onTap(long now, long doubleTapTimeoutMs) {
+        mLastAlternateTapTime = NO_TAP;
         if (!isActive) {
             setIsActive(true);
             mLastTapTime = now;
@@ -87,13 +89,32 @@ public class SpecialButtonState {
 
     /** Toggle a one-shot modifier selected by holding another key. */
     void toggleLatch() {
+        mLastAlternateTapTime = NO_TAP;
         setIsLocked(false);
         mLastTapTime = NO_TAP;
         setIsActive(!isActive);
     }
 
+    /** Consume a tap on a shared key when its alternate modifier owns the tap. */
+    boolean onAlternateTap(long now, long doubleTapTimeoutMs) {
+        if (isActive) {
+            boolean wasLocked = isLocked;
+            toggleLatch();
+            if (!wasLocked) mLastAlternateTapTime = now;
+            return true;
+        }
+
+        boolean doubleTap = mLastAlternateTapTime != NO_TAP && now - mLastAlternateTapTime <= doubleTapTimeoutMs;
+        mLastAlternateTapTime = NO_TAP;
+        if (!doubleTap) return false;
+        setIsLocked(true);
+        setIsActive(true);
+        return true;
+    }
+
     /** Handle a long press on the button: lock it if it is not active, otherwise deactivate and unlock it. */
     public void onLongPress() {
+        mLastAlternateTapTime = NO_TAP;
         setIsLocked(!isActive);
         setIsActive(!isActive);
         mLastTapTime = NO_TAP;
@@ -105,6 +126,7 @@ public class SpecialButtonState {
      * @param autoSetInActive Deactivate the button if it is only latched. A locked one stays active.
      */
     public boolean read(boolean autoSetInActive) {
+        if (autoSetInActive) mLastAlternateTapTime = NO_TAP;
         if (!isCreated || !isActive)
             return false;
         if (autoSetInActive && !isLocked)

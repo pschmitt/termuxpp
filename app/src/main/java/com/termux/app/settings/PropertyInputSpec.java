@@ -7,6 +7,7 @@ import androidx.annotation.Nullable;
 
 import dev.pschmitt.termux.shared.settings.properties.SharedProperties;
 import dev.pschmitt.termux.shared.termux.TermuxConstants;
+import dev.pschmitt.termux.shared.termux.extrakeys.ExtraKeyAnimation;
 import dev.pschmitt.termux.shared.termux.extrakeys.ExtraKeysColorParser;
 import dev.pschmitt.termux.shared.termux.extrakeys.ExtraKeysConstants;
 import dev.pschmitt.termux.shared.termux.extrakeys.ExtraKeysInfo;
@@ -182,6 +183,8 @@ public final class PropertyInputSpec {
                     + number(TermuxPropertyConstants.IVALUE_TERMINAL_TOOLBAR_HEIGHT_SCALE_FACTOR_MIN) + " to "
                     + number(TermuxPropertyConstants.IVALUE_TERMINAL_TOOLBAR_HEIGHT_SCALE_FACTOR_MAX) + ", like 1.5. Default: "
                     + number(TermuxPropertyConstants.DEFAULT_IVALUE_TERMINAL_TOOLBAR_HEIGHT_SCALE_FACTOR) + ".";
+            case TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION:
+                return "Choose how extra keys move when pressed. Tap a preview key to try it. Press in is the default.";
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_BUTTON_CORNER_RADIUS:
                 return "How round the corners of the extra keys buttons are, in dp. Format: a decimal number from 0 to "
                     + number(ExtraKeysColorParser.MAX_CORNER_RADIUS_DP) + ", like 8 or 6.5, without a sign or a unit."
@@ -468,6 +471,8 @@ public final class PropertyInputSpec {
 
             case TermuxPropertyConstants.KEY_TERMINAL_TOOLBAR_HEIGHT_SCALE_FACTOR:
                 return toolbarHeight(value);
+            case TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION:
+                return ExtraKeyAnimation.parse(value) != null ? null : "Choose Press in, Pop, Lift, or Off";
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_BUTTON_CORNER_RADIUS:
                 return ExtraKeysColorParser.parseCornerRadiusDp(value) != null ? null
                     : "Expected a number from 0 to " + number(ExtraKeysColorParser.MAX_CORNER_RADIUS_DP)
@@ -584,6 +589,12 @@ public final class PropertyInputSpec {
         if (TermuxPropertyConstants.KEY_TERMINAL_ENGINE.equals(key))
             return new String[] {TermuxPropertyConstants.TERMINAL_ENGINE_TERMUX, TermuxPropertyConstants.TERMINAL_ENGINE_GHOSTTY};
         if (TermuxPropertyConstants.KEY_EXTRA_KEYS_STYLE.equals(key)) return EXTRA_KEYS_STYLES.clone();
+        if (TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION.equals(key)) {
+            ExtraKeyAnimation[] effects = ExtraKeyAnimation.values();
+            String[] choices = new String[effects.length];
+            for (int i = 0; i < effects.length; i++) choices[i] = effects[i].value;
+            return choices;
+        }
         if (TermuxPropertyConstants.KEY_GESTURE_COMMAND_CONTEXT.equals(key)) return new String[] {"session", "nix", "outer"};
         if (TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_POSITION.equals(key)
             || TermuxPropertyConstants.KEY_TERMINAL_TOAST_POSITION.equals(key))

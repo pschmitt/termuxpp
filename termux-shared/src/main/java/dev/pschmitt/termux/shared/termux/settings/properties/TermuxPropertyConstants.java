@@ -362,6 +362,8 @@ public final class TermuxPropertyConstants {
     public static final String DEFAULT_IVALUE_EXTRA_KEYS = "[['ESC','/',{key: '-', popup: '|'},'HOME','UP','END','PGUP'], ['TAB','CTRL','ALT','LEFT','DOWN','RIGHT','PGDN']]"; // Double row
 
     /** Defines the key for extra keys style */
+    public static final String KEY_EXTRA_KEYS_ANIMATION = "extra-keys-animation";
+
     public static final String KEY_EXTRA_KEYS_STYLE =  "extra-keys-style"; // Default: "extra-keys-style"
     public static final String DEFAULT_IVALUE_EXTRA_KEYS_STYLE = "default";
 
@@ -681,6 +683,7 @@ public final class TermuxPropertyConstants {
 
         /* Float (may be null) */
         KEY_EXTRA_KEYS_BUTTON_CORNER_RADIUS,
+        KEY_EXTRA_KEYS_ANIMATION,
 
         /* TerminalGestureAction */
         KEY_EXTRA_KEYS_SWIPE_LEFT_ACTION,

@@ -10,6 +10,7 @@ import dev.pschmitt.termux.shared.data.DataUtils;
 import dev.pschmitt.termux.shared.settings.properties.SharedProperties;
 import dev.pschmitt.termux.shared.settings.properties.SharedPropertiesParser;
 import dev.pschmitt.termux.shared.termux.TermuxConstants;
+import dev.pschmitt.termux.shared.termux.extrakeys.ExtraKeyAnimation;
 import dev.pschmitt.termux.shared.termux.extrakeys.ExtraKeysColorParser;
 import dev.pschmitt.termux.shared.termux.extrakeys.TerminalKeySequence;
 
@@ -322,6 +323,8 @@ public abstract class TermuxSharedProperties {
                 return (float) getTerminalToolbarHeightScaleFactorInternalPropertyValueFromValue(value);
 
             /* Float (may be null) */
+            case TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION:
+                return ExtraKeyAnimation.parseOrDefault(value);
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_BUTTON_CORNER_RADIUS:
                 return (Float) getExtraKeysCornerRadiusInternalPropertyValueFromValue(key, value);
 
@@ -877,6 +880,10 @@ public abstract class TermuxSharedProperties {
     @Nullable
     public Integer getExtraKeysButtonActiveBackgroundColor() {
         return (Integer) getInternalPropertyValue(TermuxPropertyConstants.KEY_EXTRA_KEYS_BUTTON_ACTIVE_BACKGROUND_COLOR, true);
+    }
+
+    public ExtraKeyAnimation getExtraKeysAnimation() {
+        return (ExtraKeyAnimation) getInternalPropertyValue(TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION, true);
     }
 
     /** The corner radius in dp of the extra keys button backgrounds, or {@code null} to use the theme shape. */

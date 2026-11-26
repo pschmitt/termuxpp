@@ -194,6 +194,7 @@ are left out and logged.
 | `keyboard.volume.down.keys` | `volume-down-keys` |
 | `extra-keys.keys` | `extra-keys` |
 | `extra-keys.style` | `extra-keys-style` |
+| `extra-keys.animation` | `extra-keys-animation` |
 | `extra-keys.all-caps` | `extra-keys-text-all-caps` |
 | `extra-keys.corner-radius` | `extra-keys-button-corner-radius` |
 | `extra-keys.active.text-color` | `extra-keys-button-active-text-color` |
@@ -466,7 +467,9 @@ can be used as a popup button in the same way as a regular key.
 In the extra-keys editor, **Long-press key** assigns an alternate key to a hold.
 For example, `{key: CTRL, hold: SHIFT}` keeps Ctrl on tap, locks Ctrl on
 double-tap, and arms Shift for the next key on hold. The key label changes to
-Shift while it is armed. A `popup` entry still handles the swipe up separately.
+Shift while it is armed. Tap the displayed Shift once to return to Ctrl, or
+double-tap it to lock Shift. A tap releases locked Shift. A `popup` entry
+still handles the swipe up separately.
 
 The keys are written exactly like the `macro` of an extra keys button in `extra-keys`, so what works
 there works here:
@@ -665,6 +668,10 @@ Run `termux-reload-settings` after editing the file. Stock Termux reads
 `termux.properties` and does not understand `config.yaml`.
 
 ## Extra-key appearance
+
+Choose **Extra keys animation** in **Settings → Properties → Gestures** and
+tap a preview key to try it. In YAML, set `extra-keys.animation` to
+`press-in` (default), `pop`, `lift`, or `off`. Off keeps the pressed-key color.
 
 | Key | Applies to | Theme default |
 | --- | --- | --- |

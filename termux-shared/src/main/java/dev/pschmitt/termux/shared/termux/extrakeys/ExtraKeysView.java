@@ -1,5 +1,6 @@
 package dev.pschmitt.termux.shared.termux.extrakeys;
 
+import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Build;
@@ -26,6 +27,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.GridLayout;
 import android.widget.PopupWindow;
 
@@ -217,6 +219,8 @@ public final class ExtraKeysView extends GridLayout {
     protected Handler mHandler;
     protected Runnable mLongPressRunnable;
     protected int mLongPressCount;
+    private ExtraKeyAnimation mKeyAnimation = ExtraKeyAnimation.DEFAULT;
+    private final DecelerateInterpolator mKeyReleaseInterpolator = new DecelerateInterpolator();
 
 
     public ExtraKeysView(Context context, AttributeSet attrs) {
@@ -506,12 +510,15 @@ public final class ExtraKeysView extends GridLayout {
 
                 button.setOnClickListener(view -> {
                     performExtraKeyButtonHapticFeedback(view, buttonInfo, button);
+                    if (hasHeldModifier && mSpecialButtons.get(SpecialButton.valueOf(hold.getKey()))
+                        .onAlternateTap(SystemClock.uptimeMillis(), ViewConfiguration.getDoubleTapTimeout())) return;
                     onAnyExtraKeyButtonClick(view, buttonInfo, button);
                 });
 
                 button.setOnTouchListener((view, event) -> {
                     switch (event.getAction()) {
                         case MotionEvent.ACTION_DOWN:
+                            animateKeyPress(button, true);
                             view.setBackgroundColor(mButtonActiveBackgroundColor);
                             // Start long press scheduled executors which will be stopped in next MotionEvent
                             startScheduledExecutors(view, buttonInfo, button);
@@ -520,13 +527,15 @@ public final class ExtraKeysView extends GridLayout {
                         case MotionEvent.ACTION_MOVE:
                             if (hold != null && mLongPressCount > 0) return true;
                             if (buttonInfo.getPopup() != null) {
-                                // Show popup on swipe up
-                                if (mPopupWindow == null && event.getY() < 0) {
+                                // Measure the swipe against the key's resting bounds.
+                                float y = button.getPivotY() + (event.getY() - button.getPivotY()) * button.getScaleY()
+                                    + button.getTranslationY();
+                                if (mPopupWindow == null && y < 0) {
                                     stopScheduledExecutors();
                                     view.setBackgroundColor(getRestingBackgroundColor(buttonInfo));
                                     showPopup(view, buttonInfo.getPopup());
                                 }
-                                if (mPopupWindow != null && event.getY() > 0) {
+                                if (mPopupWindow != null && y > 0) {
                                     view.setBackgroundColor(mButtonActiveBackgroundColor);
                                     dismissPopup();
                                 }
@@ -534,12 +543,14 @@ public final class ExtraKeysView extends GridLayout {
                             return true;
 
                         case MotionEvent.ACTION_CANCEL:
+                            animateKeyPress(button, false);
                             view.setBackgroundColor(getRestingBackgroundColor(buttonInfo));
                             stopScheduledExecutors();
                             if (mPopupWindow != null) dismissPopup();
                             return true;
 
                         case MotionEvent.ACTION_UP:
+                            animateKeyPress(button, false);
                             view.setBackgroundColor(getRestingBackgroundColor(buttonInfo));
                             stopScheduledExecutors();
                             // If ACTION_UP up was not from a repetitive key or was with a key with a popup button
@@ -622,6 +633,30 @@ public final class ExtraKeysView extends GridLayout {
         }
     }
 
+
+    public void setKeyAnimation(@NonNull ExtraKeyAnimation animation) {
+        mKeyAnimation = animation;
+    }
+
+    private void animateKeyPress(MaterialButton button, boolean pressed) {
+        button.animate().cancel();
+        boolean motionEnabled = mKeyAnimation != ExtraKeyAnimation.OFF
+            && (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || ValueAnimator.areAnimatorsEnabled());
+        if (!motionEnabled) {
+            button.setScaleX(1);
+            button.setScaleY(1);
+            button.setTranslationY(0);
+        } else if (pressed) {
+            button.setScaleX(mKeyAnimation.pressedScale);
+            button.setScaleY(mKeyAnimation.pressedScale);
+            button.setTranslationY(mKeyAnimation.pressedOffsetDp * getResources().getDisplayMetrics().density);
+        } else {
+            button.animate().scaleX(1).scaleY(1).translationY(0)
+                .setDuration(mKeyAnimation.releaseDurationMs)
+                .setInterpolator(mKeyReleaseInterpolator)
+                .start();
+        }
+    }
 
     private boolean isActiveModifier(ExtraKeyButton key) {
         return isSpecialButton(key) && mSpecialButtons.get(SpecialButton.valueOf(key.getKey())).isActive;

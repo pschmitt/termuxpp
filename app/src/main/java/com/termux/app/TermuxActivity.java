@@ -1739,6 +1739,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                     mProperties.getExtraKeysButtonActiveTextColor(),
                     mProperties.getExtraKeysButtonActiveBackgroundColor());
                 mExtraKeysView.setButtonCornerRadiusDp(mProperties.getExtraKeysButtonCornerRadius());
+                mExtraKeysView.setKeyAnimation(mProperties.getExtraKeysAnimation());
                 mExtraKeysView.reload(mTermuxTerminalExtraKeys.getExtraKeysInfo(), mTerminalToolbarDefaultHeight);
             }
 

@@ -207,6 +207,34 @@ public class SpecialButtonStateTest {
     }
 
     @Test
+    public void tapCancelsAlternateAndDoubleTapLocksIt() {
+        alt.toggleLatch();
+        assertTrue(alt.onAlternateTap(1000, TIMEOUT));
+        assertFalse(alt.read(false));
+
+        assertTrue(alt.onAlternateTap(1100, TIMEOUT));
+        assertTrue(alt.isLocked);
+        assertTrue(alt.read(true));
+        assertTrue(alt.read(true));
+
+        assertTrue(alt.onAlternateTap(1200, TIMEOUT));
+        assertFalse(alt.read(false));
+        assertFalse(alt.onAlternateTap(1250, TIMEOUT));
+    }
+
+    @Test
+    public void alternateDoesNotTakeALaterPrimaryTap() {
+        alt.toggleLatch();
+        assertTrue(alt.onAlternateTap(1000, TIMEOUT));
+        assertFalse(alt.onAlternateTap(1000 + TIMEOUT + 1, TIMEOUT));
+
+        alt.toggleLatch();
+        assertTrue(alt.onAlternateTap(2000, TIMEOUT));
+        assertFalse(alt.read(true));
+        assertFalse(alt.onAlternateTap(2100, TIMEOUT));
+    }
+
+    @Test
     public void readIsFalseForAButtonThatIsNotCreated() {
         SpecialButtonState notCreated = new SpecialButtonState(null);
         notCreated.setIsActive(true);

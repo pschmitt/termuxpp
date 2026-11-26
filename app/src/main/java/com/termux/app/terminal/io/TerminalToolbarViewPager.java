@@ -50,6 +50,7 @@ public class TerminalToolbarViewPager {
                     mActivity.getProperties().getExtraKeysButtonActiveTextColor(),
                     mActivity.getProperties().getExtraKeysButtonActiveBackgroundColor());
                 extraKeysView.setButtonCornerRadiusDp(mActivity.getProperties().getExtraKeysButtonCornerRadius());
+                extraKeysView.setKeyAnimation(mActivity.getProperties().getExtraKeysAnimation());
                 mActivity.setExtraKeysView(extraKeysView);
                 extraKeysView.reload(mActivity.getTermuxTerminalExtraKeys().getExtraKeysInfo(),
                     mActivity.getTerminalToolbarDefaultHeight());
