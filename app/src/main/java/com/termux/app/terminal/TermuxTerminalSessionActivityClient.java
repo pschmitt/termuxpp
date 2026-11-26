@@ -202,6 +202,15 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
     public void onPasteTextFromClipboard(@Nullable TerminalSession session) {
         if (!mActivity.isVisible()) return;
 
+        // An image (a copied screenshot) is delivered to the session's program instead of text.
+        String[] imageType = new String[1];
+        android.net.Uri image = TerminalImagePaste.clipboardImage(mActivity, imageType);
+        TerminalSession target = session != null ? session : mActivity.getCurrentSession();
+        if (image != null && target != null) {
+            TerminalImagePaste.paste(mActivity, target, image, imageType[0], null);
+            return;
+        }
+
         String text = ShareUtils.getTextStringFromClipboardIfSet(mActivity, true);
         if (text != null)
             mActivity.getTerminalView().mEmulator.paste(text);

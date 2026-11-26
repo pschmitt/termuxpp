@@ -208,6 +208,7 @@
         packages.aarch64-linux = [
           "nixpp"
           "termuxpp-api"
+          "termuxpp-clipboard"
           "termuxpp-ip"
           "termuxpp-rish"
           "termuxpp-storage"

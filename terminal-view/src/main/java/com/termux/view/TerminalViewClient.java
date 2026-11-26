@@ -37,6 +37,27 @@ public interface TerminalViewClient {
      *
      * The default is {@code 1}.
      */
+    /**
+     * Whether keyboards may commit images into the terminal, such as a screenshot from the keyboard's
+     * clipboard, a GIF or a sticker. The terminal then offers {@link TerminalView#IMAGE_MIME_TYPES}.
+     */
+    default boolean acceptsImageInput() {
+        return false;
+    }
+
+    /**
+     * An image a keyboard committed into the terminal.
+     *
+     * @param release Releases the temporary read permission of the image; run it once the image
+     *                was read, also when that fails.
+     * @return Whether the image was accepted. If not, the permission is released for the client.
+     */
+    default boolean onImageInput(@androidx.annotation.NonNull android.net.Uri uri,
+                                 @androidx.annotation.NonNull String mimeType,
+                                 @androidx.annotation.NonNull Runnable release) {
+        return false;
+    }
+
     default int getMaxTapActionCount() {
         return 1;
     }

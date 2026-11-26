@@ -573,6 +573,19 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
         return mActivity.getTerminalToolbarViewPager() == null || mActivity.isTerminalViewSelected() || mActivity.getTerminalView().hasFocus();
     }
 
+    @Override
+    public boolean acceptsImageInput() {
+        return true;
+    }
+
+    @Override
+    public boolean onImageInput(@NonNull android.net.Uri uri, @NonNull String mimeType, @NonNull Runnable release) {
+        TerminalSession session = mActivity.getCurrentSession();
+        if (session == null) return false;
+        TerminalImagePaste.paste(mActivity, session, uri, mimeType, release);
+        return true;
+    }
+
 
 
     @Override

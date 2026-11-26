@@ -14,6 +14,8 @@ in
   nixpp = pkgs.callPackage ./. { };
   termuxpp-rish = pkgs.callPackage ./rish.nix { };
   termuxpp-ip = pkgs.callPackage ./ip.nix { };
+  # wl-copy/wl-paste on the Android clipboard and the image paste helper.
+  termuxpp-clipboard = pkgs.callPackage ./clipboard.nix { };
   # Requests storage access through the guest's termux-am, which addresses the
   # TermuxPP app identity (the outer environment's `am` does not).
   termuxpp-storage = pkgs.callPackage ./storage.nix { inherit (termuxpp-api) termux-am; };

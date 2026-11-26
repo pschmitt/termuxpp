@@ -9,6 +9,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Typeface;
 import android.os.Build;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
@@ -32,6 +33,7 @@ import android.view.autofill.AutofillValue;
 import android.view.inputmethod.BaseInputConnection;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
+import android.view.inputmethod.InputContentInfo;
 import android.widget.Scroller;
 
 import androidx.annotation.NonNull;
@@ -354,6 +356,33 @@ public final class TerminalView extends View {
         return true;
     }
 
+    /** The image types offered to keyboards when the client {@link TerminalViewClient#acceptsImageInput()}. */
+    public static final String[] IMAGE_MIME_TYPES = {"image/png", "image/jpeg", "image/gif", "image/webp"};
+
+    @RequiresApi(Build.VERSION_CODES.N_MR1)
+    private boolean commitImage(@NonNull InputContentInfo info, int flags) {
+        String mimeType = null;
+        android.content.ClipDescription description = info.getDescription();
+        for (String type : IMAGE_MIME_TYPES) {
+            if (description.hasMimeType(type)) {
+                mimeType = type;
+                break;
+            }
+        }
+        if (mimeType == null) return false;
+        if ((flags & InputConnection.INPUT_CONTENT_GRANT_READ_URI_PERMISSION) != 0) {
+            try {
+                info.requestPermission();
+            } catch (Exception e) {
+                mClient.logStackTraceWithMessage(LOG_TAG, "Could not get access to the committed image", e);
+                return false;
+            }
+        }
+        if (mClient.onImageInput(info.getContentUri(), mimeType, info::releasePermission)) return true;
+        info.releasePermission();
+        return false;
+    }
+
     @Override
     public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
         // Ensure that inputType is only set if TerminalView is selected view with the keyboard and
@@ -388,8 +417,18 @@ public final class TerminalView extends View {
         // Note that IME_ACTION_NONE cannot be used as that makes it impossible to input newlines using the on-screen
         // keyboard on Android TV (see https://github.com/termux/termux-app/issues/221).
         outAttrs.imeOptions = EditorInfo.IME_FLAG_NO_FULLSCREEN;
+        // Lets keyboards offer images (a copied screenshot, GIFs, stickers) like in messaging apps.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1 && mClient.isTerminalViewSelected()
+            && mClient.acceptsImageInput())
+            outAttrs.contentMimeTypes = IMAGE_MIME_TYPES;
 
         return new BaseInputConnection(this, true) {
+
+            @Override
+            public boolean commitContent(@NonNull InputContentInfo info, int flags, @Nullable Bundle opts) {
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N_MR1) return false;
+                return commitImage(info, flags);
+            }
 
             @Override
             public boolean finishComposingText() {
