@@ -738,15 +738,15 @@ New slots appear as **+** in the editor and stay blank in the terminal until ass
 In YAML, each list under `extra-keys.keys` is a row, and each entry is one column.
 An empty string reserves a blank slot.
 
-**Fling left key** and **Fling right key** assign a key to a quick horizontal movement
-that starts on that keycap. The direction follows the finger. A configured direction takes
+**Fling left key**, **Fling right key**, and **Fling down key** assign a key to a quick movement
+that starts on that keycap. The direction follows the finger. A configured horizontal fling takes
 priority over the row swipe when the gesture starts there. Tap, hold, and swipe up keep
 their respective bindings.
 
 ```yaml
 extra-keys:
   keys:
-    - [{key: LEFT, fling-left: HOME}, {key: RIGHT, fling-right: END}]
+    - [{key: LEFT, fling-left: HOME}, {key: DOWN, fling-down: PGDN}, {key: RIGHT, fling-right: END}]
 ```
 
 A key object can set `inset` from 0 to 8 dp to leave space on each side of its keycap.

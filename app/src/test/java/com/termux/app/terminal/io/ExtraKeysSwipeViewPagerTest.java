@@ -153,11 +153,11 @@ public class ExtraKeysSwipeViewPagerTest {
     }
 
     @Test
-    public void keyFlingReservesOnlyItsPhysicalDirection() throws Exception {
+    public void keyFlingsFollowTheFingerAndReserveOnlyTheirBoundDirections() throws Exception {
         Context context = new ContextThemeWrapper(mPager.getContext(), R.style.Theme_TermuxApp_DayNight_NoActionBar);
         ExtraKeysView keys = new ExtraKeysView(context, null);
         keys.setId(R.id.terminal_toolbar_extra_keys);
-        keys.reload(new ExtraKeysInfo("[[{key:'RIGHT','fling-right':'END'}]]", "default",
+        keys.reload(new ExtraKeysInfo("[[{key:'RIGHT','fling-right':'END','fling-down':'PGDN'}]]", "default",
             ExtraKeysConstants.CONTROL_CHARS_ALIASES), 150);
         List<String> pressed = new ArrayList<>();
         keys.setExtraKeysViewClient(new ExtraKeysView.IExtraKeysView() {
@@ -196,9 +196,17 @@ public class ExtraKeysSwipeViewPagerTest {
         assertEquals(0, mSwipes);
         assertEquals(List.of("END"), pressed);
 
+        send(MotionEvent.ACTION_DOWN, 400, 75);
+        ShadowLooper.idleMainLooper(20, TimeUnit.MILLISECONDS);
+        send(MotionEvent.ACTION_MOVE, 403, 140);
+        ShadowLooper.idleMainLooper(20, TimeUnit.MILLISECONDS);
+        send(MotionEvent.ACTION_UP, 406, 205);
+        assertEquals(0, mSwipes);
+        assertEquals(List.of("END", "PGDN"), pressed);
+
         drag(600, 350);
         assertEquals(List.of("right"), mEvents);
-        assertEquals(List.of("END"), pressed);
+        assertEquals(List.of("END", "PGDN"), pressed);
     }
 
     @Test

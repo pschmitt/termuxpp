@@ -291,8 +291,9 @@ public final class ExtraKeysView extends GridLayout {
         @Nullable ExtraKeyButton candidate(MotionEvent event) {
             float dx = event.getRawX() - downX;
             float dy = event.getRawY() - downY;
-            return Math.abs(dx) >= minDistance && Math.abs(dx) > 1.5f * Math.abs(dy)
-                ? key.getFling(dx > 0) : null;
+            if (Math.abs(dx) >= minDistance && Math.abs(dx) > 1.5f * Math.abs(dy))
+                return key.getFling(dx > 0);
+            return dy >= minDistance && dy > 1.5f * Math.abs(dx) ? key.getDownFling() : null;
         }
 
         boolean move(MotionEvent event) {
@@ -306,12 +307,15 @@ public final class ExtraKeysView extends GridLayout {
             if (velocity == null) return null;
             velocity.addMovement(event);
             velocity.computeCurrentVelocity(1000);
-            float vx = velocity.getXVelocity();
             float dx = event.getRawX() - downX;
+            float dy = event.getRawY() - downY;
+            boolean vertical = Math.abs(dy) > Math.abs(dx);
+            float speed = vertical ? velocity.getYVelocity() : velocity.getXVelocity();
+            float distance = vertical ? dy : dx;
             ExtraKeyButton alternate = candidate(event);
             dragged |= alternate != null;
             finish();
-            return alternate != null && dx * vx > 0 && Math.abs(vx) >= minVelocity ? alternate : null;
+            return alternate != null && distance * speed > 0 && Math.abs(speed) >= minVelocity ? alternate : null;
         }
 
         void cancel() {
@@ -678,12 +682,13 @@ public final class ExtraKeysView extends GridLayout {
                     onAnyExtraKeyButtonClick(view, buttonInfo, button);
                 });
 
-                KeyFling fling = buttonInfo.getFling(false) != null || buttonInfo.getFling(true) != null
-                    ? new KeyFling(buttonInfo) : null;
+                boolean horizontalFling = buttonInfo.getFling(false) != null || buttonInfo.getFling(true) != null;
+                KeyFling fling = horizontalFling || buttonInfo.getDownFling() != null ? new KeyFling(buttonInfo) : null;
                 if (fling != null) {
-                    mFlingKeys.put(button, buttonInfo);
+                    if (horizontalFling) mFlingKeys.put(button, buttonInfo);
                     registerAlternateModifier(buttonInfo.getFling(false));
                     registerAlternateModifier(buttonInfo.getFling(true));
+                    registerAlternateModifier(buttonInfo.getDownFling());
                 }
                 button.setOnTouchListener((view, event) -> {
                     switch (event.getActionMasked()) {

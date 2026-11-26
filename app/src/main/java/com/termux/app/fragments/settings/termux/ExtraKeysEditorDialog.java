@@ -336,6 +336,7 @@ public class ExtraKeysEditorDialog extends DialogFragment {
         private EditText popupLabel;
         private EditText flingLeft;
         private EditText flingRight;
+        private EditText flingDown;
         private CheckBox macro;
         private CheckBox popupMacro;
         private int row;
@@ -353,7 +354,8 @@ public class ExtraKeysEditorDialog extends DialogFragment {
             input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
             input.setText(value);
             if (title == R.string.extra_key_value || title == R.string.extra_popup || title == R.string.extra_hold
-                || title == R.string.extra_fling_left || title == R.string.extra_fling_right) {
+                || title == R.string.extra_fling_left || title == R.string.extra_fling_right
+                || title == R.string.extra_fling_down) {
                 input.setThreshold(0);
                 input.setAdapter(new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line,
                     new String[]{"ESC", "TAB", "CTRL", "ALT", "SHIFT", "FN", "ENTER", "BKSP", "DEL", "UP", "DOWN", "LEFT", "RIGHT", "HOME", "END", "PGUP", "PGDN", "KEYBOARD", "DRAWER", "F1", "F2", "F3", "F4", "/", "-", "|"}));
@@ -399,9 +401,11 @@ public class ExtraKeysEditorDialog extends DialogFragment {
             popupLabel = input(form, R.string.extra_popup_label, popupObject.optString("display"));
             flingLeft = input(form, R.string.extra_fling_left, alternateLabel("fling-left"));
             flingRight = input(form, R.string.extra_fling_right, alternateLabel("fling-right"));
+            flingDown = input(form, R.string.extra_fling_down, alternateLabel("fling-down"));
             if (state != null) {
                 flingLeft.setText(state.getString("flingLeft", alternateLabel("fling-left")));
                 flingRight.setText(state.getString("flingRight", alternateLabel("fling-right")));
+                flingDown.setText(state.getString("flingDown", alternateLabel("fling-down")));
                 key.setText(state.getString("key"));
                 label.setText(state.getString("label"));
                 textColor.setText(state.getString("textColor", original.optString("text-color")));
@@ -479,6 +483,7 @@ public class ExtraKeysEditorDialog extends DialogFragment {
                     }
                     storeAlternate(edited, "fling-left", flingLeft);
                     storeAlternate(edited, "fling-right", flingRight);
+                    storeAlternate(edited, "fling-down", flingDown);
                     ExtraKeysEditorDialog parent = (ExtraKeysEditorDialog) getTargetFragment();
                     if (parent == null) return;
                     parent.layout.putKey(row, index, edited);
@@ -526,6 +531,7 @@ public class ExtraKeysEditorDialog extends DialogFragment {
             out.putString("popupLabel", popupLabel.getText().toString());
             out.putString("flingLeft", flingLeft.getText().toString());
             out.putString("flingRight", flingRight.getText().toString());
+            out.putString("flingDown", flingDown.getText().toString());
             out.putBoolean("macro", macro.isChecked());
             out.putBoolean("popupMacro", popupMacro.isChecked());
         }

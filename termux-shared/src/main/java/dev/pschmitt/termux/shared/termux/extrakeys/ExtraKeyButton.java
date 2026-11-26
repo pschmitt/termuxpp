@@ -65,6 +65,7 @@ public class ExtraKeyButton {
     @Nullable private final ExtraKeyButton hold;
     @Nullable private final ExtraKeyButton flingLeft;
     @Nullable private final ExtraKeyButton flingRight;
+    @Nullable private final ExtraKeyButton flingDown;
 
 
     /**
@@ -97,15 +98,17 @@ public class ExtraKeyButton {
     public ExtraKeyButton(@NonNull JSONObject config, @Nullable ExtraKeyButton popup,
                           @NonNull ExtraKeysConstants.ExtraKeyDisplayMap extraKeyDisplayMap,
                           @NonNull ExtraKeysConstants.ExtraKeyDisplayMap extraKeyAliasMap) throws JSONException {
-        this(config, popup, null, null, extraKeyDisplayMap, extraKeyAliasMap);
+        this(config, popup, null, null, null, extraKeyDisplayMap, extraKeyAliasMap);
     }
 
     ExtraKeyButton(JSONObject config, @Nullable ExtraKeyButton popup,
                    @Nullable ExtraKeyButton flingLeft, @Nullable ExtraKeyButton flingRight,
+                   @Nullable ExtraKeyButton flingDown,
                    ExtraKeysConstants.ExtraKeyDisplayMap extraKeyDisplayMap,
                    ExtraKeysConstants.ExtraKeyDisplayMap extraKeyAliasMap) throws JSONException {
         this.flingLeft = flingLeft;
         this.flingRight = flingRight;
+        this.flingDown = flingDown;
         String keyFromConfig = getStringFromJson(config, KEY_KEY_NAME);
         String macroFromConfig = getStringFromJson(config, KEY_MACRO);
         String commandFromConfig = getStringFromJson(config, KEY_COMMAND);
@@ -217,6 +220,11 @@ public class ExtraKeyButton {
     @Nullable
     public ExtraKeyButton getFling(boolean right) {
         return right ? flingRight : flingLeft;
+    }
+
+    @Nullable
+    public ExtraKeyButton getDownFling() {
+        return flingDown;
     }
 
     /** The optional key to activate on a long press. */

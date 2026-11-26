@@ -162,6 +162,7 @@ public class ExtraKeysInfo {
                     readAlternate(jobject, ExtraKeyButton.KEY_POPUP, extraKeyDisplayMap, extraKeyAliasMap),
                     readAlternate(jobject, "fling-left", extraKeyDisplayMap, extraKeyAliasMap),
                     readAlternate(jobject, "fling-right", extraKeyDisplayMap, extraKeyAliasMap),
+                    readAlternate(jobject, "fling-down", extraKeyDisplayMap, extraKeyAliasMap),
                     extraKeyDisplayMap, extraKeyAliasMap);
             }
         }

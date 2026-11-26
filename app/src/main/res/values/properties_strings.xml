@@ -52,6 +52,7 @@
     <string name="extra_theme_rounded">Rounded (Gboard-inspired)</string>
     <string name="extra_fling_left">Fling left key (optional)</string>
     <string name="extra_fling_right">Fling right key (optional)</string>
+    <string name="extra_fling_down">Fling down key (optional)</string>
     <string name="extra_row_columns">Columns in this row</string>
     <string name="extra_fewer_columns">Remove the keys at the end of this row?</string>
     <string name="extra_key_hint">Corner hint (optional)</string>
