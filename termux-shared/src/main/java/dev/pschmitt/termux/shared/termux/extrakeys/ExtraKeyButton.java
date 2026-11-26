@@ -61,7 +61,7 @@ public class ExtraKeyButton {
     @Nullable final Integer textColor;
     @Nullable final Integer backgroundColor;
     @Nullable final String hint;
-    final float insetDp;
+    @Nullable final Float insetDp;
     @Nullable private final ExtraKeyButton hold;
 
 
@@ -129,8 +129,10 @@ public class ExtraKeyButton {
         textColor = readColor(config, "text-color");
         backgroundColor = readColor(config, "background-color");
         hint = getStringFromJson(config, "hint");
-        insetDp = config.has("inset") ? (float) config.getDouble("inset") : 0;
-        if (!(insetDp >= 0 && insetDp <= 8)) throw new JSONException("Extra key inset must be from 0 to 8 dp");
+        insetDp = config.has("inset") ? (float) config.getDouble("inset") : null;
+        if (insetDp != null && !(insetDp >= 0 && insetDp <= 8)) {
+            throw new JSONException("Extra key inset must be from 0 to 8 dp");
+        }
         if (customDisplay) {
             this.display = displayFromConfig;
         } else if (commandFromConfig != null) {

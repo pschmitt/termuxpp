@@ -534,6 +534,13 @@ public final class ExtraKeysView extends GridLayout {
                 if (mKeyTypeface != null) button.setTypeface(mKeyTypeface);
                 button.setTextColor(mButtonTextColor);
                 button.setAllCaps(mButtonTextAllCaps && !buttonInfo.hasCustomDisplay());
+                int inset = 0;
+                if (buttonInfo.insetDp != null) {
+                    // The grid margins supply all the spacing for an inset keycap.
+                    button.setInsetTop(0);
+                    button.setInsetBottom(0);
+                    inset = Math.round(buttonInfo.insetDp * getResources().getDisplayMetrics().density);
+                }
                 button.setPadding(0, 0, 0, 0);
                 applyButtonShape(button);
                 if (customColors) updateKeyColors(buttonInfo, button, isActiveModifier(buttonInfo));
@@ -623,7 +630,6 @@ public final class ExtraKeysView extends GridLayout {
                 } else {
                     param.height = 0;
                 }
-                int inset = Math.round(buttonInfo.insetDp * getResources().getDisplayMetrics().density);
                 param.setMargins(inset, inset, inset, inset);
                 param.columnSpec = GridLayout.spec(col, GridLayout.FILL, 1.f);
                 param.rowSpec = GridLayout.spec(row, GridLayout.FILL, 1.f);
