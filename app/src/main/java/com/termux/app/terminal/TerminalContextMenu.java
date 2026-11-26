@@ -103,13 +103,11 @@ public final class TerminalContextMenu {
         return resources.getString(R.string.ui_session_unnamed, Math.max(state.sessionNumber, 1));
     }
 
-    /** The header detail line, such as {@code ~/devel · pid 4182 · 2 of 3}. */
+    /** The header detail line, such as {@code /home/nix/devel · 2 of 3}. */
     @NonNull
     static String headerDetail(@NonNull Resources resources, @NonNull State state) {
         List<String> parts = new ArrayList<>();
         if (!TextUtils.isEmpty(state.cwd)) parts.add(state.cwd);
-        if (state.sessionRunning && state.sessionPid > 0)
-            parts.add(resources.getString(R.string.ui_menu_session_pid, state.sessionPid));
         if (state.sessionCount > 1 && state.sessionNumber > 0)
             parts.add(resources.getString(R.string.ui_menu_session_position, state.sessionNumber, state.sessionCount));
         return TextUtils.join(resources.getString(R.string.ui_menu_session_detail_separator), parts);
@@ -122,7 +120,10 @@ public final class TerminalContextMenu {
      */
     public static TermuxContextMenuSheet populateSheet(@NonNull TermuxContextMenuSheet sheet,
                                                        @NonNull Resources resources, @NonNull State state) {
-        sheet.setSessionHeader(headerTitle(resources, state), headerDetail(resources, state), state.sessionRunning);
+        String pid = state.sessionRunning && state.sessionPid > 0
+            ? resources.getString(R.string.ui_menu_session_pid, state.sessionPid) : null;
+        sheet.setSessionHeader(headerTitle(resources, state), headerDetail(resources, state), pid, state.cwd,
+            state.sessionRunning, state.sessionRunning ? KILL_PROCESS : -1);
 
         // The frequent actions. Where there is a choice, the shortcut opens a sheet of its own.
         if (state.autoFillEnabled) {

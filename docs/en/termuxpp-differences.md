@@ -135,9 +135,12 @@ and [TermuxPP session list](../../app/src/main/java/com/termux/app/terminal/Term
 ## Terminal More menu
 
 Upstream uses Android's context menu for terminal actions. TermuxPP uses a
-rounded bottom sheet with a compact session header, an absolute working directory when available, a badge for stopped
-sessions, boxed Autofill / Open URL / Share shortcuts, and grouped icon-led rows. Open URL is disabled when the terminal
-contains no URLs. Autofill remains conditional on Android support. Keep screen on
+rounded bottom sheet with a compact session header, a PID beside the title, and
+an absolute working directory when available. Hold the directory to copy its full
+path or hold the session icon to open the kill confirmation. The sheet includes
+a stopped-session badge, boxed Autofill / Open URL / Share shortcuts, and grouped
+icon-led rows. Open URL is gray and disabled when the terminal contains no URLs.
+Autofill remains conditional on Android support. Keep screen on
 and Wake lock stay visible while on and move under **More** while off.
 **More** also contains Reset and Kill. Settings is the last row. Tapping Kill retains its
 confirmation, and holding it retains the immediate-kill action. Share and

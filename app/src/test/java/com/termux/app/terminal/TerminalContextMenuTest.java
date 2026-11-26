@@ -105,12 +105,38 @@ public class TerminalContextMenuTest {
         Assert.assertEquals("build", TerminalContextMenu.headerTitle(resources, session("build", true, 2, 3)));
         Assert.assertEquals("Session 1", TerminalContextMenu.headerTitle(resources, minimal()));
 
-        Assert.assertEquals("~/devel · pid 4182 · 2 of 3",
+        Assert.assertEquals("~/devel · 2 of 3",
             TerminalContextMenu.headerDetail(resources, session(null, true, 2, 3)));
-        Assert.assertEquals("~/devel · pid 4182",
+        Assert.assertEquals("~/devel",
             TerminalContextMenu.headerDetail(resources, session(null, true, 1, 1)));
         Assert.assertEquals("~/devel",
             TerminalContextMenu.headerDetail(resources, session(null, false, 1, 1)));
+    }
+
+    @Test
+    public void sessionHeaderSeparatesPidAndCopiesOnlyTheDirectory() {
+        Activity activity = activity();
+        BottomSheetDialog dialog = mainSheet(activity, session(null, true, 2, 3));
+        TextView pid = dialog.findViewById(R.id.context_header_pid);
+        TextView detail = dialog.findViewById(R.id.context_header_subtitle);
+        Assert.assertEquals("pid 4182", pid.getText().toString());
+        Assert.assertEquals("~/devel · 2 of 3", detail.getText().toString());
+        Assert.assertTrue(detail.performLongClick());
+        android.content.ClipboardManager clipboard =
+            (android.content.ClipboardManager) activity.getSystemService(Activity.CLIPBOARD_SERVICE);
+        Assert.assertEquals("~/devel", clipboard.getPrimaryClip().getItemAt(0).getText().toString());
+        Assert.assertTrue(dialog.isShowing());
+        dialog.dismiss();
+    }
+
+    @Test
+    public void holdingTheSessionIconChoosesTheConfirmationAction() {
+        Activity activity = activity();
+        List<Integer> chosen = new ArrayList<>();
+        BottomSheetDialog dialog = TerminalContextMenu.populateSheet(new TermuxContextMenuSheet(activity),
+            activity.getResources(), session(null, true, 1, 1)).show(chosen::add);
+        Assert.assertTrue(dialog.findViewById(R.id.context_header_icon).performLongClick());
+        Assert.assertEquals(Arrays.asList(TerminalContextMenu.KILL_PROCESS), chosen);
     }
 
     private static BottomSheetDialog mainSheet(Activity activity, TerminalContextMenu.State state) {
@@ -162,6 +188,8 @@ public class TerminalContextMenuTest {
             View shortcut = viewTitled(dialog, R.id.context_shortcut_title, R.id.context_shortcut, "Open URL");
             Assert.assertEquals(count != 0, shortcut.isEnabled());
             Assert.assertEquals(count != 0, shortcut.isClickable());
+            View icon = shortcut.findViewById(R.id.context_shortcut_icon);
+            Assert.assertEquals(count == 0, icon.getBackgroundTintList() != null);
             if (count == 0) {
                 shortcut.performClick();
                 Assert.assertTrue(dialog.isShowing());

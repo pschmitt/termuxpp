@@ -756,14 +756,15 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         TerminalContextMenu.State state = getContextSheetState(currentSession);
         return showContextSheet(TerminalContextMenu.populateSheet(new TermuxContextMenuSheet(this), getResources(), state),
-            state);
+            state, currentSession);
     }
 
     /**
      * Show a sheet of the terminal menu. A tile that opens a sheet of choices (Share, Autofill) shows that sheet
      * once this one is gone, and the stored selected text is only released when the last sheet closes.
      */
-    private boolean showContextSheet(@NonNull TermuxContextMenuSheet sheet, @NonNull TerminalContextMenu.State state) {
+    private boolean showContextSheet(@NonNull TermuxContextMenuSheet sheet, @NonNull TerminalContextMenu.State state,
+                                     @NonNull TerminalSession session) {
         try {
             mContextSheetDialog = sheet.show(chosenItemId -> {
                 mContextSheetDialog = null;
@@ -771,10 +772,14 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                     TermuxContextMenuSheet choices = TerminalContextMenu.populateChoiceSheet(chosenItemId,
                         new TermuxContextMenuSheet(this), getResources(), state,
                         mTerminalView.getStoredSelectedText(), getCurrentTranscript());
-                    if (choices != null && !isFinishing() && !isDestroyed() && showContextSheet(choices, state)) return;
+                    if (choices != null && !isFinishing() && !isDestroyed() && showContextSheet(choices, state, session)) return;
                 }
                 // Same order as the system menu: run the chosen action, then release the stored selected text.
-                if (chosenItemId >= 0) handleContextMenuAction(chosenItemId);
+                if (chosenItemId == TerminalContextMenu.KILL_PROCESS) {
+                    if (session.isRunning()) showKillSessionDialog(session);
+                } else if (chosenItemId >= 0) {
+                    handleContextMenuAction(chosenItemId);
+                }
                 mTerminalView.onContextMenuClosed(null);
             });
             return true;

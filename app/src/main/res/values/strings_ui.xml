@@ -99,6 +99,9 @@
     <string name="ui_menu_toggle_on">on</string>
     <string name="ui_menu_toggle_off">off</string>
     <string name="ui_menu_session_pid">pid %1$d</string>
+    <string name="ui_menu_session_icon">Session icon</string>
+    <string name="ui_menu_copy_cwd">Copy working directory</string>
+    <string name="ui_menu_cwd_copied">Working directory copied</string>
     <string name="ui_menu_session_position">%1$d of %2$d</string>
     <string name="ui_menu_session_detail_separator">" · "</string>
     <!-- Settings -->

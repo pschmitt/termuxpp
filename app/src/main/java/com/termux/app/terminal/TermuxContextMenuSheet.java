@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.res.ColorStateList;
 import android.graphics.Rect;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.transition.AutoTransition;
@@ -22,6 +23,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.ColorUtils;
 import androidx.core.view.AccessibilityDelegateCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -32,6 +34,8 @@ import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.color.MaterialColors;
 import com.google.android.material.switchmaterial.SwitchMaterial;
 import com.termux.R;
+
+import dev.pschmitt.termux.shared.interact.ShareUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -192,6 +196,9 @@ public class TermuxContextMenuSheet {
     @Nullable private Header mHeader;
     private boolean mSessionHeader;
     private boolean mSessionStopped;
+    @Nullable private String mSessionPid;
+    @Nullable private String mSessionCwd;
+    private int mSessionIconHoldAction = -1;
     /** The number of lines of the longest card preview. */
     private int mPreviewLines = 1;
 
@@ -238,8 +245,13 @@ public class TermuxContextMenuSheet {
         return this;
     }
 
-    public TermuxContextMenuSheet setSessionHeader(CharSequence title, CharSequence detail, boolean running) {
+    public TermuxContextMenuSheet setSessionHeader(CharSequence title, CharSequence detail,
+                                                   @Nullable String pid, @Nullable String cwd,
+                                                   boolean running, int iconHoldAction) {
         mSessionStopped = !running;
+        mSessionPid = pid;
+        mSessionCwd = cwd;
+        mSessionIconHoldAction = iconHoldAction;
         return setSessionHeader(title, detail);
     }
 
@@ -562,6 +574,30 @@ public class TermuxContextMenuSheet {
             TextView subtitle = view.findViewById(R.id.context_header_subtitle);
             subtitle.setTextSize(12);
             subtitle.setVisibility(TextUtils.isEmpty(header.detail) ? View.GONE : View.VISIBLE);
+            TextView pid = view.findViewById(R.id.context_header_pid);
+            pid.setText(mSessionPid);
+            pid.setVisibility(TextUtils.isEmpty(mSessionPid) ? View.GONE : View.VISIBLE);
+            if (!TextUtils.isEmpty(mSessionCwd)) {
+                subtitle.setOnLongClickListener(v -> {
+                    String toast = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+                        ? mActivity.getString(R.string.ui_menu_cwd_copied) : null;
+                    ShareUtils.copyTextToClipboard(mActivity, mSessionCwd, toast);
+                    return true;
+                });
+                ViewCompat.replaceAccessibilityAction(subtitle, AccessibilityNodeInfoCompat.AccessibilityActionCompat.ACTION_LONG_CLICK,
+                    mActivity.getString(R.string.ui_menu_copy_cwd), (v, args) -> v.performLongClick());
+            }
+            if (mSessionIconHoldAction >= 0) {
+                icon.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_YES);
+                icon.setContentDescription(mActivity.getString(R.string.ui_menu_session_icon));
+                icon.setOnLongClickListener(v -> {
+                    chosen[0] = mSessionIconHoldAction;
+                    dialog.dismiss();
+                    return true;
+                });
+                ViewCompat.replaceAccessibilityAction(icon, AccessibilityNodeInfoCompat.AccessibilityActionCompat.ACTION_LONG_CLICK,
+                    mActivity.getString(R.string.action_kill_session), (v, args) -> v.performLongClick());
+            }
         }
         if (header.actionId < 0) return;
         ImageButton action = view.findViewById(R.id.context_header_action);
@@ -765,6 +801,7 @@ public class TermuxContextMenuSheet {
                 : ContextCompat.getColor(mDialog.getContext(), R.color.ui_outline);
             icon.setImageTintList(ColorStateList.valueOf(tint));
             if (!action.enabled) {
+                icon.setBackgroundTintList(ColorStateList.valueOf(ColorUtils.setAlphaComponent(tint, 42)));
                 title.setTextColor(tint);
                 detail.setTextColor(tint);
             }
