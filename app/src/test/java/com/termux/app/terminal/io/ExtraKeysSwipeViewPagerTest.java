@@ -4,12 +4,21 @@ import android.app.Activity;
 import android.content.Context;
 import android.os.SystemClock;
 import android.provider.Settings;
+import android.view.ContextThemeWrapper;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 
 import androidx.annotation.NonNull;
 import androidx.viewpager.widget.PagerAdapter;
+
+import com.google.android.material.button.MaterialButton;
+import com.termux.R;
+
+import dev.pschmitt.termux.shared.termux.extrakeys.ExtraKeyButton;
+import dev.pschmitt.termux.shared.termux.extrakeys.ExtraKeysConstants;
+import dev.pschmitt.termux.shared.termux.extrakeys.ExtraKeysInfo;
+import dev.pschmitt.termux.shared.termux.extrakeys.ExtraKeysView;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -141,6 +150,55 @@ public class ExtraKeysSwipeViewPagerTest {
     private void assertRestingAtZero() {
         for (int i = 0; i < mPager.getChildCount(); i++)
             assertEquals(0f, mPager.getChildAt(i).getTranslationX(), 0f);
+    }
+
+    @Test
+    public void keyFlingReservesOnlyItsPhysicalDirection() throws Exception {
+        Context context = new ContextThemeWrapper(mPager.getContext(), R.style.Theme_TermuxApp_DayNight_NoActionBar);
+        ExtraKeysView keys = new ExtraKeysView(context, null);
+        keys.setId(R.id.terminal_toolbar_extra_keys);
+        keys.reload(new ExtraKeysInfo("[[{key:'RIGHT','fling-right':'END'}]]", "default",
+            ExtraKeysConstants.CONTROL_CHARS_ALIASES), 150);
+        List<String> pressed = new ArrayList<>();
+        keys.setExtraKeysViewClient(new ExtraKeysView.IExtraKeysView() {
+            @Override public void onExtraKeyButtonClick(View view, ExtraKeyButton key, MaterialButton button) {
+                pressed.add(key.getKey());
+            }
+
+            @Override public boolean performExtraKeyButtonHapticFeedback(View view, ExtraKeyButton key,
+                                                                          MaterialButton button) {
+                return true;
+            }
+        });
+        mPager.setAdapter(new PagerAdapter() {
+            @Override public int getCount() { return 1; }
+
+            @Override public boolean isViewFromObject(@NonNull View view, @NonNull Object item) {
+                return view == item;
+            }
+
+            @NonNull @Override public Object instantiateItem(@NonNull ViewGroup parent, int position) {
+                parent.addView(keys);
+                return keys;
+            }
+
+            @Override public void destroyItem(@NonNull ViewGroup parent, int position, @NonNull Object item) {
+                parent.removeView((View) item);
+            }
+        });
+        layout();
+
+        send(MotionEvent.ACTION_DOWN, 400, 75);
+        ShadowLooper.idleMainLooper(20, TimeUnit.MILLISECONDS);
+        send(MotionEvent.ACTION_MOVE, 520, 75);
+        ShadowLooper.idleMainLooper(20, TimeUnit.MILLISECONDS);
+        send(MotionEvent.ACTION_UP, 640, 75);
+        assertEquals(0, mSwipes);
+        assertEquals(List.of("END"), pressed);
+
+        drag(600, 350);
+        assertEquals(List.of("right"), mEvents);
+        assertEquals(List.of("END"), pressed);
     }
 
     @Test

@@ -334,6 +334,8 @@ public class ExtraKeysEditorDialog extends DialogFragment {
         private EditText hint;
         private EditText inset;
         private EditText popupLabel;
+        private EditText flingLeft;
+        private EditText flingRight;
         private CheckBox macro;
         private CheckBox popupMacro;
         private int row;
@@ -350,7 +352,8 @@ public class ExtraKeysEditorDialog extends DialogFragment {
             input.setId(View.generateViewId());
             input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
             input.setText(value);
-            if (title == R.string.extra_key_value || title == R.string.extra_popup || title == R.string.extra_hold) {
+            if (title == R.string.extra_key_value || title == R.string.extra_popup || title == R.string.extra_hold
+                || title == R.string.extra_fling_left || title == R.string.extra_fling_right) {
                 input.setThreshold(0);
                 input.setAdapter(new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line,
                     new String[]{"ESC", "TAB", "CTRL", "ALT", "SHIFT", "FN", "ENTER", "BKSP", "DEL", "UP", "DOWN", "LEFT", "RIGHT", "HOME", "END", "PGUP", "PGDN", "KEYBOARD", "DRAWER", "F1", "F2", "F3", "F4", "/", "-", "|"}));
@@ -394,7 +397,11 @@ public class ExtraKeysEditorDialog extends DialogFragment {
             popupMacro.setChecked(popupObject.has("macro"));
             form.addView(popupMacro);
             popupLabel = input(form, R.string.extra_popup_label, popupObject.optString("display"));
+            flingLeft = input(form, R.string.extra_fling_left, alternateLabel("fling-left"));
+            flingRight = input(form, R.string.extra_fling_right, alternateLabel("fling-right"));
             if (state != null) {
+                flingLeft.setText(state.getString("flingLeft", alternateLabel("fling-left")));
+                flingRight.setText(state.getString("flingRight", alternateLabel("fling-right")));
                 key.setText(state.getString("key"));
                 label.setText(state.getString("label"));
                 textColor.setText(state.getString("textColor", original.optString("text-color")));
@@ -470,6 +477,8 @@ public class ExtraKeysEditorDialog extends DialogFragment {
                         else p.put("display", popupLabel.getText().toString());
                         edited.put("popup", p);
                     }
+                    storeAlternate(edited, "fling-left", flingLeft);
+                    storeAlternate(edited, "fling-right", flingRight);
                     ExtraKeysEditorDialog parent = (ExtraKeysEditorDialog) getTargetFragment();
                     if (parent == null) return;
                     parent.layout.putKey(row, index, edited);
@@ -477,6 +486,19 @@ public class ExtraKeysEditorDialog extends DialogFragment {
                     dismiss();
                 } catch (JSONException e) { key.setError(getString(R.string.extra_invalid)); }
             });
+        }
+
+        private String alternateLabel(String name) {
+            JSONObject alternate = original.optJSONObject(name);
+            return alternate == null ? original.optString(name)
+                : alternate.optString("key", alternate.optString("macro", alternate.optString("command")));
+        }
+
+        private void storeAlternate(JSONObject edited, String name, EditText field) throws JSONException {
+            String value = field.getText().toString();
+            if (value.equals(alternateLabel(name))) return;
+            if (value.isEmpty()) edited.remove(name);
+            else edited.put(name, value);
         }
 
         private boolean storeColor(JSONObject edited, String name, EditText field) throws JSONException {
@@ -502,6 +524,8 @@ public class ExtraKeysEditorDialog extends DialogFragment {
             out.putString("holdLabel", holdLabel.getText().toString());
             out.putString("popup", popup.getText().toString());
             out.putString("popupLabel", popupLabel.getText().toString());
+            out.putString("flingLeft", flingLeft.getText().toString());
+            out.putString("flingRight", flingRight.getText().toString());
             out.putBoolean("macro", macro.isChecked());
             out.putBoolean("popupMacro", popupMacro.isChecked());
         }

@@ -730,13 +730,24 @@ corner radius, active color, or per-key color takes precedence over the theme.
 ```yaml
 extra-keys:
   theme: rounded
-  background-color: "#201B29"
+  background-color: "#1C1F20"
 ```
 
 In **Extra keys → Edit layout**, open a row’s menu and choose **Columns in this row**.
 New slots appear as **+** in the editor and stay blank in the terminal until assigned a key.
 In YAML, each list under `extra-keys.keys` is a row, and each entry is one column.
 An empty string reserves a blank slot.
+
+**Fling left key** and **Fling right key** assign a key to a quick horizontal movement
+that starts on that keycap. The direction follows the finger. A configured direction takes
+priority over the row swipe when the gesture starts there. Tap, hold, and swipe up keep
+their respective bindings.
+
+```yaml
+extra-keys:
+  keys:
+    - [{key: LEFT, fling-left: HOME}, {key: RIGHT, fling-right: END}]
+```
 
 A key object can set `inset` from 0 to 8 dp to leave space on each side of its keycap.
 Use `hint` for a small label in the upper-right corner. The hint is visual and does not

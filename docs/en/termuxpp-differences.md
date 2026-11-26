@@ -558,6 +558,7 @@ Command strings are redacted from property and execution logs. Sources: [gesture
 and [gesture documentation](terminal-settings.md#tap-and-swipe-actions).
 
 An extra key can define a `hold` key independently of its swipe-up `popup`.
+It can also bind left and right flings, which take priority over a row swipe starting on that key.
 A held modifier arms for one keypress and shows its label while armed.
 Tap the shared key to cancel the alternate modifier, double-tap to lock it,
 or tap locked Shift to return to the primary key.

@@ -16,7 +16,9 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.viewpager.widget.ViewPager;
 
+import com.termux.R;
 import com.termux.app.terminal.io.ExtraKeysSwipeDetector.Direction;
+import dev.pschmitt.termux.shared.termux.extrakeys.ExtraKeysView;
 import com.termux.app.terminal.io.ExtraKeysSwipeDetector.Result;
 
 /**
@@ -86,6 +88,22 @@ public class ExtraKeysSwipeViewPager extends ViewPager {
 
     private final ExtraKeysSwipeDetector mSwipeDetector;
     private Listener mListener;
+    private boolean mKeyFlingLeft;
+    private boolean mKeyFlingRight;
+    private final ExtraKeysSwipeDetector.Bindings mRowSwipes = new ExtraKeysSwipeDetector.Bindings() {
+        private boolean reserved(Direction direction) {
+            // Row swipe labels describe page movement, opposite to the finger.
+            return direction == Direction.LEFT ? mKeyFlingRight : mKeyFlingLeft;
+        }
+
+        @Override public boolean hasSwipe(Direction direction) {
+            return mListener != null && !reserved(direction) && mListener.hasSwipe(direction);
+        }
+
+        @Override public boolean hasLongSwipe(Direction direction) {
+            return mListener != null && !reserved(direction) && mListener.hasLongSwipe(direction);
+        }
+    };
 
     /** Set when the running touch is a swipe, which then owns the touch. */
     private boolean mSwallowTouch;
@@ -147,8 +165,11 @@ public class ExtraKeysSwipeViewPager extends ViewPager {
                 // Only on the settled normal row: not while the text input is selected or the
                 // pager is still scrolling or settling on its way there or back.
                 boolean eligible = mListener != null && isOnSettledNormalRow();
+                ExtraKeysView keys = eligible ? findViewById(R.id.terminal_toolbar_extra_keys) : null;
+                mKeyFlingLeft = keys != null && keys.hasFlingAt(event.getRawX(), event.getRawY(), false);
+                mKeyFlingRight = keys != null && keys.hasFlingAt(event.getRawX(), event.getRawY(), true);
                 mPagingBlocked = eligible;
-                mSwipeDetector.onDown(event.getX(), event.getY(), eligible ? mListener : null);
+                mSwipeDetector.onDown(event.getX(), event.getY(), eligible ? mRowSwipes : null);
                 break;
 
             case MotionEvent.ACTION_MOVE:

@@ -32,6 +32,7 @@ import android.view.HapticFeedbackConstants;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.VelocityTracker;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.animation.DecelerateInterpolator;
@@ -222,6 +223,7 @@ public final class ExtraKeysView extends GridLayout {
 
     private final Drawable mDefaultRowBackground;
     private boolean mRoundedTheme;
+    private final Map<MaterialButton, ExtraKeyButton> mFlingKeys = new HashMap<>();
     private final Map<MaterialButton, String> mKeyHints = new HashMap<>();
     private final Paint mHintPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 
@@ -244,6 +246,83 @@ public final class ExtraKeysView extends GridLayout {
             canvas.drawText(entry.getValue(), button.getWidth() - 7 * density,
                 3 * density - mHintPaint.ascent(), mHintPaint);
             canvas.restore();
+        }
+    }
+
+    /** Whether a touch starts on a key that owns a fling in this physical direction. */
+    public boolean hasFlingAt(float rawX, float rawY, boolean right) {
+        int[] location = new int[2];
+        for (Map.Entry<MaterialButton, ExtraKeyButton> entry : mFlingKeys.entrySet()) {
+            MaterialButton button = entry.getKey();
+            if (entry.getValue().getFling(right) == null || !button.isShown()) continue;
+            button.getLocationOnScreen(location);
+            if (rawX >= location[0] && rawX < location[0] + button.getWidth()
+                && rawY >= location[1] && rawY < location[1] + button.getHeight()) return true;
+        }
+        return false;
+    }
+
+    private final class KeyFling {
+        private final ExtraKeyButton key;
+        private final float minDistance;
+        private final float minVelocity;
+        private float downX;
+        private float downY;
+        private boolean dragged;
+        @Nullable private VelocityTracker velocity;
+
+        KeyFling(ExtraKeyButton key) {
+            this.key = key;
+            float density = getResources().getDisplayMetrics().density;
+            ViewConfiguration config = ViewConfiguration.get(getContext());
+            minDistance = Math.max(18 * density, 2 * config.getScaledTouchSlop());
+            minVelocity = Math.max(300 * density, config.getScaledMinimumFlingVelocity());
+        }
+
+        void start(MotionEvent event) {
+            finish();
+            dragged = false;
+            downX = event.getRawX();
+            downY = event.getRawY();
+            velocity = VelocityTracker.obtain();
+            velocity.addMovement(event);
+        }
+
+        @Nullable ExtraKeyButton candidate(MotionEvent event) {
+            float dx = event.getRawX() - downX;
+            float dy = event.getRawY() - downY;
+            return Math.abs(dx) >= minDistance && Math.abs(dx) > 1.5f * Math.abs(dy)
+                ? key.getFling(dx > 0) : null;
+        }
+
+        boolean move(MotionEvent event) {
+            if (velocity == null) return dragged;
+            velocity.addMovement(event);
+            dragged |= candidate(event) != null;
+            return dragged;
+        }
+
+        @Nullable ExtraKeyButton release(MotionEvent event) {
+            if (velocity == null) return null;
+            velocity.addMovement(event);
+            velocity.computeCurrentVelocity(1000);
+            float vx = velocity.getXVelocity();
+            float dx = event.getRawX() - downX;
+            ExtraKeyButton alternate = candidate(event);
+            dragged |= alternate != null;
+            finish();
+            return alternate != null && dx * vx > 0 && Math.abs(vx) >= minVelocity ? alternate : null;
+        }
+
+        void cancel() {
+            dragged = true;
+            finish();
+        }
+
+        void finish() {
+            if (velocity == null) return;
+            velocity.recycle();
+            velocity = null;
         }
     }
 
@@ -381,12 +460,12 @@ public final class ExtraKeysView extends GridLayout {
         if (mRoundedTheme) {
             boolean dark = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
                 == Configuration.UI_MODE_NIGHT_YES;
-            mButtonTextColor = dark ? 0xFFEAE4F1 : 0xFF282334;
-            mButtonBackgroundColor = dark ? 0xFF363041 : 0xFFE8E0F0;
-            if (rowColor == null) rowColor = dark ? 0xFF201B29 : 0xFFF7F2FA;
-            if (activeText == null) activeText = dark ? 0xFF2C1E43 : 0xFF321F50;
-            if (activeBackground == null) activeBackground = dark ? 0xFFCDB5EF : 0xFFDCC4F6;
-            if (radiusDp == null) radiusDp = 12f;
+            mButtonTextColor = dark ? 0xFFE3E5E5 : 0xFF222629;
+            mButtonBackgroundColor = dark ? 0xFF37393B : 0xFFE0E3E7;
+            if (rowColor == null) rowColor = dark ? 0xFF1C1F20 : 0xFFF2F4F7;
+            if (activeText == null) activeText = 0xFF142943;
+            if (activeBackground == null) activeBackground = dark ? 0xFFA3C7FD : 0xFFB9D3FA;
+            if (radiusDp == null) radiusDp = 7f;
         } else {
             mButtonTextColor = ThemeUtils.getSystemAttrColor(context, ATTR_BUTTON_TEXT_COLOR, DEFAULT_BUTTON_TEXT_COLOR);
             mButtonBackgroundColor = ThemeUtils.getSystemAttrColor(context, ATTR_BUTTON_BACKGROUND_COLOR, DEFAULT_BUTTON_BACKGROUND_COLOR);
@@ -537,6 +616,7 @@ public final class ExtraKeysView extends GridLayout {
         }
 
         mKeyHints.clear();
+        mFlingKeys.clear();
         removeAllViews();
 
         ExtraKeyButton[][] buttons = extraKeysInfo.getMatrix();
@@ -560,6 +640,7 @@ public final class ExtraKeysView extends GridLayout {
                 }
 
                 button.setText(buttonInfo.getDisplay());
+                if (mRoundedTheme) button.setLetterSpacing(0f);
                 if (buttonInfo.hint != null && !buttonInfo.hint.isEmpty()) {
                     mKeyHints.put(button, buttonInfo.hint);
                 }
@@ -597,9 +678,17 @@ public final class ExtraKeysView extends GridLayout {
                     onAnyExtraKeyButtonClick(view, buttonInfo, button);
                 });
 
+                KeyFling fling = buttonInfo.getFling(false) != null || buttonInfo.getFling(true) != null
+                    ? new KeyFling(buttonInfo) : null;
+                if (fling != null) {
+                    mFlingKeys.put(button, buttonInfo);
+                    registerAlternateModifier(buttonInfo.getFling(false));
+                    registerAlternateModifier(buttonInfo.getFling(true));
+                }
                 button.setOnTouchListener((view, event) -> {
-                    switch (event.getAction()) {
+                    switch (event.getActionMasked()) {
                         case MotionEvent.ACTION_DOWN:
+                            if (fling != null) fling.start(event);
                             animateKeyPress(button, true);
                             view.setBackgroundColor(mButtonActiveBackgroundColor);
                             // Start long press scheduled executors which will be stopped in next MotionEvent
@@ -607,6 +696,11 @@ public final class ExtraKeysView extends GridLayout {
                             return true;
 
                         case MotionEvent.ACTION_MOVE:
+                            if (fling != null && mPopupWindow == null && mLongPressCount == 0 && fling.move(event)) {
+                                stopScheduledExecutors();
+                                dismissKeyPreview();
+                                return true;
+                            }
                             if (hold != null && mLongPressCount > 0) return true;
                             if (buttonInfo.getPopup() != null) {
                                 // Measure the swipe against the key's resting bounds.
@@ -626,7 +720,15 @@ public final class ExtraKeysView extends GridLayout {
                             }
                             return true;
 
+                        case MotionEvent.ACTION_POINTER_DOWN:
+                            if (fling != null) {
+                                fling.cancel();
+                                stopScheduledExecutors();
+                            }
+                            return true;
+
                         case MotionEvent.ACTION_CANCEL:
+                            if (fling != null) fling.cancel();
                             animateKeyPress(button, false);
                             view.setBackgroundColor(getRestingBackgroundColor(buttonInfo));
                             stopScheduledExecutors();
@@ -637,6 +739,18 @@ public final class ExtraKeysView extends GridLayout {
                             animateKeyPress(button, false);
                             view.setBackgroundColor(getRestingBackgroundColor(buttonInfo));
                             stopScheduledExecutors();
+                            if (fling != null) {
+                                if (mPopupWindow == null && mLongPressCount == 0) {
+                                    ExtraKeyButton alternate = fling.release(event);
+                                    if (alternate != null) {
+                                        performExtraKeyButtonHapticFeedback(view, alternate, button);
+                                        onAnyExtraKeyButtonClick(view, alternate, button);
+                                    }
+                                    if (fling.dragged) return true;
+                                } else {
+                                    fling.finish();
+                                }
+                            }
                             // If ACTION_UP up was not from a repetitive key or was with a key with a popup button
                             if (mLongPressCount == 0 || mPopupWindow != null) {
                                 // Trigger popup button click if swipe up complete
@@ -802,6 +916,11 @@ public final class ExtraKeysView extends GridLayout {
         if (mKeyPreview == null) return;
         mKeyPreview.dismiss();
         mKeyPreview = null;
+    }
+
+    private void registerAlternateModifier(@Nullable ExtraKeyButton key) {
+        if (key != null && isSpecialButton(key))
+            mSpecialButtons.get(SpecialButton.valueOf(key.getKey())).setIsCreated(true);
     }
 
     private boolean isActiveModifier(ExtraKeyButton key) {

@@ -52,6 +52,18 @@ public class ExtraKeysLayoutTest {
         assertThrows(JSONException.class, () -> layout.putKey(0, 0, key.put("inset", 9)));
     }
 
+    @Test public void keysCanBindEachFlingWithoutReplacingSwipeUp() throws Exception {
+        ExtraKeysLayout layout = new ExtraKeysLayout(
+            "[[{key:'LEFT','fling-left':'HOME','fling-right':{key:'END',display:'End'},popup:'PGUP'}]]");
+        ExtraKeyButton key = new ExtraKeysInfo(layout.toString(), "default", ExtraKeysConstants.CONTROL_CHARS_ALIASES)
+            .getMatrix()[0][0];
+        assertEquals("HOME", key.getFling(false).getKey());
+        assertEquals("END", key.getFling(true).getKey());
+        assertEquals("End", key.getFling(true).getDisplay());
+        assertEquals("PGUP", key.getPopup().getKey());
+        assertThrows(JSONException.class, () -> new ExtraKeysLayout("[[{key:'LEFT','fling-left':3}]]"));
+    }
+
     @Test public void richKeysAndUnknownFieldsSurviveEditing() throws Exception {
         ExtraKeysLayout layout = new ExtraKeysLayout("[[{macro:'CTRL f d',display:'Exit',custom:42,popup:{key:'END',display:'End',custom:7}},'ESC']]");
         JSONObject key = layout.key(0, 0);

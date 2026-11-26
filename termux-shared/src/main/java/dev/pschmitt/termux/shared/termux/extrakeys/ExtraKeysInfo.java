@@ -4,6 +4,7 @@ import android.view.View;
 import android.widget.Button;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 import com.google.android.material.button.MaterialButton;
 import dev.pschmitt.termux.shared.termux.extrakeys.ExtraKeysConstants.EXTRA_KEY_DISPLAY_MAPS;
@@ -157,23 +158,23 @@ public class ExtraKeysInfo {
 
                 JSONObject jobject = normalizeKeyConfig(key);
 
-                ExtraKeyButton button;
-
-                if (!jobject.has(ExtraKeyButton.KEY_POPUP)) {
-                    // no popup
-                    button = new ExtraKeyButton(jobject, extraKeyDisplayMap, extraKeyAliasMap);
-                } else {
-                    // a popup
-                    JSONObject popupJobject = normalizeKeyConfig(jobject.get(ExtraKeyButton.KEY_POPUP));
-                    ExtraKeyButton popup = new ExtraKeyButton(popupJobject, extraKeyDisplayMap, extraKeyAliasMap);
-                    button = new ExtraKeyButton(jobject, popup, extraKeyDisplayMap, extraKeyAliasMap);
-                }
-
-                buttons[i][j] = button;
+                buttons[i][j] = new ExtraKeyButton(jobject,
+                    readAlternate(jobject, ExtraKeyButton.KEY_POPUP, extraKeyDisplayMap, extraKeyAliasMap),
+                    readAlternate(jobject, "fling-left", extraKeyDisplayMap, extraKeyAliasMap),
+                    readAlternate(jobject, "fling-right", extraKeyDisplayMap, extraKeyAliasMap),
+                    extraKeyDisplayMap, extraKeyAliasMap);
             }
         }
 
         return buttons;
+    }
+
+    @Nullable
+    private static ExtraKeyButton readAlternate(JSONObject config, String name,
+                                                ExtraKeysConstants.ExtraKeyDisplayMap displayMap,
+                                                ExtraKeysConstants.ExtraKeyDisplayMap aliasMap) throws JSONException {
+        return config.has(name)
+            ? new ExtraKeyButton(normalizeKeyConfig(config.get(name)), displayMap, aliasMap) : null;
     }
 
     /**
