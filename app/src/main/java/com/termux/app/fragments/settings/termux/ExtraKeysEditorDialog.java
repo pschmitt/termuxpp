@@ -163,6 +163,10 @@ public class ExtraKeysEditorDialog extends DialogFragment {
                     final int key = k;
                     View button = keyboard.getChildAt(child++);
                     // Preview keys edit the draft; they must never start terminal input or repeat timers.
+                    if (button.getVisibility() == View.INVISIBLE) {
+                        button.setVisibility(View.VISIBLE);
+                        ((TextView) button).setText("+");
+                    }
                     button.setOnTouchListener(null);
                     button.setOnLongClickListener(null);
                     button.setOnClickListener(v -> editKey(row, key));
@@ -176,9 +180,12 @@ public class ExtraKeysEditorDialog extends DialogFragment {
         PopupMenu menu = new PopupMenu(requireContext(), anchor);
         if (row > 0) menu.getMenu().add(0, 1, 0, R.string.extra_row_up);
         if (row + 1 < layout.rowCount()) menu.getMenu().add(0, 2, 1, R.string.extra_row_down);
-        menu.getMenu().add(0, 3, 2, R.string.extra_remove_row);
+        menu.getMenu().add(0, 4, 2, R.string.extra_row_columns);
+        menu.getMenu().add(0, 3, 3, R.string.extra_remove_row);
         menu.setOnMenuItemClickListener(item -> {
-            if (item.getItemId() == 3) {
+            if (item.getItemId() == 4) {
+                selectColumns(row);
+            } else if (item.getItemId() == 3) {
                 DialogUtils.builder(requireContext()).setMessage(R.string.extra_remove_row_confirm)
                     .setPositiveButton(R.string.extra_remove_row, (d, w) -> { layout.removeRow(row); changed(); })
                     .setNegativeButton(android.R.string.cancel, null).show();
@@ -189,6 +196,26 @@ public class ExtraKeysEditorDialog extends DialogFragment {
             return true;
         });
         menu.show();
+    }
+
+    private void selectColumns(int row) {
+        int previous = layout.keyCount(row);
+        String[] choices = new String[Math.max(12, previous)];
+        for (int i = 0; i < choices.length; i++) choices[i] = Integer.toString(i + 1);
+        DialogUtils.builder(requireContext()).setTitle(R.string.extra_row_columns)
+            .setSingleChoiceItems(choices, previous - 1, (dialog, item) -> {
+                dialog.dismiss();
+                int columns = item + 1;
+                if (columns == previous) return;
+                Runnable resize = () -> { layout.resizeRow(row, columns); changed(); };
+                if (columns < previous) {
+                    DialogUtils.builder(requireContext()).setMessage(R.string.extra_fewer_columns)
+                        .setPositiveButton(R.string.extra_apply, (d, w) -> resize.run())
+                        .setNegativeButton(android.R.string.cancel, null).show();
+                } else {
+                    resize.run();
+                }
+            }).setNegativeButton(android.R.string.cancel, null).show();
     }
 
     private void render() {
@@ -304,6 +331,8 @@ public class ExtraKeysEditorDialog extends DialogFragment {
         private EditText holdLabel;
         private EditText textColor;
         private EditText backgroundColor;
+        private EditText hint;
+        private EditText inset;
         private EditText popupLabel;
         private CheckBox macro;
         private CheckBox popupMacro;
@@ -351,6 +380,9 @@ public class ExtraKeysEditorDialog extends DialogFragment {
             label = input(form, R.string.extra_key_label, original.optString("display"));
             textColor = input(form, R.string.extra_key_text_color, original.optString("text-color"));
             backgroundColor = input(form, R.string.extra_key_background_color, original.optString("background-color"));
+            hint = input(form, R.string.extra_key_hint, original.optString("hint"));
+            inset = input(form, R.string.extra_key_inset, original.optString("inset"));
+            inset.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
             hold = input(form, R.string.extra_hold, original.optString("hold"));
             holdLabel = input(form, R.string.extra_hold_label, original.optString("hold-display"));
             Object popupValue = original.opt("popup");
@@ -367,6 +399,8 @@ public class ExtraKeysEditorDialog extends DialogFragment {
                 label.setText(state.getString("label"));
                 textColor.setText(state.getString("textColor", original.optString("text-color")));
                 backgroundColor.setText(state.getString("backgroundColor", original.optString("background-color")));
+                hint.setText(state.getString("hint", original.optString("hint")));
+                inset.setText(state.getString("inset", original.optString("inset")));
                 hold.setText(state.getString("hold", original.optString("hold")));
                 holdLabel.setText(state.getString("holdLabel", original.optString("hold-display")));
                 popup.setText(state.getString("popup"));
@@ -407,6 +441,20 @@ public class ExtraKeysEditorDialog extends DialogFragment {
                     else edited.put("display", label.getText().toString());
                     if (!storeColor(edited, "text-color", textColor)
                         || !storeColor(edited, "background-color", backgroundColor)) return;
+                    String hintText = hint.getText().toString().trim();
+                    if (hintText.isEmpty()) edited.remove("hint");
+                    else edited.put("hint", hintText);
+                    String insetValue = inset.getText().toString().trim();
+                    if (insetValue.isEmpty()) {
+                        edited.remove("inset");
+                    } else {
+                        Float dp = ExtraKeysColorParser.parseCornerRadiusDp(insetValue);
+                        if (dp == null || dp > 8) {
+                            inset.setError(getString(R.string.extra_key_invalid_inset));
+                            return;
+                        }
+                        edited.put("inset", dp);
+                    }
                     String holdKey = hold.getText().toString().trim();
                     if (holdKey.isEmpty()) edited.remove("hold");
                     else edited.put("hold", holdKey);
@@ -448,6 +496,8 @@ public class ExtraKeysEditorDialog extends DialogFragment {
             out.putString("backgroundColor", backgroundColor.getText().toString());
             out.putString("key", key.getText().toString());
             out.putString("label", label.getText().toString());
+            out.putString("hint", hint.getText().toString());
+            out.putString("inset", inset.getText().toString());
             out.putString("hold", hold.getText().toString());
             out.putString("holdLabel", holdLabel.getText().toString());
             out.putString("popup", popup.getText().toString());

@@ -701,7 +701,7 @@ an enlarged label above the pressed key. Off keeps the pressed-key color.
 
 The value is `#RGB`, `#RRGGBB` or `#AARRGGBB` (alpha first, like Android), case-insensitive. A
 value that is present but invalid is logged and ignored. The text and background colors of
-inactive buttons are not configurable here and keep following the theme.
+Inactive buttons follow the theme unless the key defines its own text or background color.
 
 Without `extra-keys-button-active-background-color` a latched `CTRL`/`ALT` only changes its text
 color, as before. With it, the latched key also gets that background, which stays filled until the
@@ -718,6 +718,23 @@ extra-keys:
     text-color: #D8B4FE
     background-color: #3B1D6A
   corner-radius: 8
+```
+
+In **Extra keys → Edit layout**, open a row’s menu and choose **Columns in this row**.
+New slots appear as **+** in the editor and stay blank in the terminal until assigned a key.
+In YAML, each list under `extra-keys.keys` is a row, and each entry is one column.
+An empty string reserves a blank slot.
+
+A key object can set `inset` from 0 to 8 dp to leave space on each side of its keycap.
+Use `hint` for a small label in the upper-right corner. The hint is visual and does not
+change the tap, swipe-up, or hold action.
+
+```yaml
+extra-keys:
+  corner-radius: 12
+  keys:
+    - [{key: UP, popup: PGUP, hint: PgUp, inset: 2, background-color: "#1D2A34"}]
+    - [{key: DOWN, popup: PGDN, hint: PgDn, inset: 2, background-color: "#1D2A34"}]
 ```
 
 ## URLs and hyperlinks

@@ -565,7 +565,9 @@ Upstream uses long presses to lock modifiers or repeat keys. [Upstream extra-key
 
 The extra-key toolbar has a separate font preference. Labels can be edited
 for the main, long-press, and swipe-up keys. Custom labels keep their case.
-Individual keys can override their text and background colors.
+Individual keys can override their text and background colors, add spacing around
+the keycap, and show a corner hint. The layout editor can resize each row and
+leave blank slots for unassigned keys.
 [Extra-key appearance](terminal-settings.md#extra-key-appearance).
 
 TermuxPP adds optional extra-key press and release motion. Key preview is the

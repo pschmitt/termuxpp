@@ -29,6 +29,29 @@ public class ExtraKeysLayoutTest {
         assertEquals("F1", reread.label(0, 0));
     }
 
+    @Test public void resizingAKeyRowKeepsOtherRowsAndRoundTripsEmptySlots() throws Exception {
+        ExtraKeysLayout layout = new ExtraKeysLayout("[['ESC','TAB'],['CTRL']]");
+        layout.resizeRow(0, 6);
+        layout.resizeRow(1, 2);
+        ExtraKeysLayout reread = new ExtraKeysLayout(layout.toString());
+        assertEquals(6, reread.keyCount(0));
+        assertEquals("", reread.label(0, 5));
+        assertEquals(2, reread.keyCount(1));
+        reread.resizeRow(0, 1);
+        assertEquals("ESC", reread.label(0, 0));
+        assertEquals("CTRL", reread.label(1, 0));
+    }
+
+    @Test public void keycapPresentationPreservesSwipeAndHoldActions() throws Exception {
+        ExtraKeysLayout layout = new ExtraKeysLayout("[[{key:'-',hint:'|',inset:2,hold:'_',popup:'|'}]]");
+        JSONObject key = layout.key(0, 0);
+        assertEquals("|", key.getString("hint"));
+        assertEquals(2, key.getInt("inset"));
+        assertEquals("_", key.getString("hold"));
+        assertEquals("|", key.getString("popup"));
+        assertThrows(JSONException.class, () -> layout.putKey(0, 0, key.put("inset", 9)));
+    }
+
     @Test public void richKeysAndUnknownFieldsSurviveEditing() throws Exception {
         ExtraKeysLayout layout = new ExtraKeysLayout("[[{macro:'CTRL f d',display:'Exit',custom:42,popup:{key:'END',display:'End',custom:7}},'ESC']]");
         JSONObject key = layout.key(0, 0);

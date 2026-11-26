@@ -34,6 +34,12 @@ public final class ExtraKeysLayout {
     public int rowCount() { return rows.size(); }
     public int keyCount(int row) { return rows.get(row).size(); }
     public void addRow() { rows.add(new ArrayList<>()); }
+    public void resizeRow(int row, int columns) {
+        List<Object> keys = rows.get(row);
+        if (columns < keys.size()) keys.subList(columns, keys.size()).clear();
+        while (keys.size() < columns) keys.add("");
+    }
+
     public void removeRow(int row) { rows.remove(row); }
     public void moveRow(int row, int direction) { Collections.swap(rows, row, row + direction); }
     public void removeKey(int row, int key) { rows.get(row).remove(key); }

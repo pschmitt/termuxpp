@@ -3,6 +3,8 @@ package dev.pschmitt.termux.shared.termux.extrakeys;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Paint;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
@@ -214,6 +216,31 @@ public final class ExtraKeysView extends GridLayout {
      */
     protected int mLongPressRepeatDelay;
 
+
+    private final Map<MaterialButton, String> mKeyHints = new HashMap<>();
+    private final Paint mHintPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+    @Override
+    protected void dispatchDraw(Canvas canvas) {
+        super.dispatchDraw(canvas);
+        float density = getResources().getDisplayMetrics().density;
+        mHintPaint.setTextSize(8 * getResources().getDisplayMetrics().scaledDensity);
+        mHintPaint.setTextAlign(Paint.Align.RIGHT);
+        for (Map.Entry<MaterialButton, String> entry : mKeyHints.entrySet()) {
+            MaterialButton button = entry.getKey();
+            if (button.getVisibility() != VISIBLE || button.getHeight() < 22 * density) continue;
+            mHintPaint.setTypeface(button.getTypeface());
+            mHintPaint.setColor(button.getCurrentTextColor());
+            mHintPaint.setAlpha(Math.round(mHintPaint.getAlpha() * 0.75f));
+            canvas.save();
+            canvas.translate(button.getLeft() + button.getTranslationX(), button.getTop() + button.getTranslationY());
+            canvas.scale(button.getScaleX(), button.getScaleY(), button.getPivotX(), button.getPivotY());
+            canvas.clipRect(0, 0, button.getWidth(), button.getHeight());
+            canvas.drawText(entry.getValue(), button.getWidth() - 7 * density,
+                3 * density - mHintPaint.ascent(), mHintPaint);
+            canvas.restore();
+        }
+    }
 
     /** The popup window shown if {@link ExtraKeyButton#getPopup()} returns a {@code non-null} value
      * and a swipe up action is done on an extra key. */
@@ -477,6 +504,7 @@ public final class ExtraKeysView extends GridLayout {
             state.presentationUpdates.clear();
         }
 
+        mKeyHints.clear();
         removeAllViews();
 
         ExtraKeyButton[][] buttons = extraKeysInfo.getMatrix();
@@ -500,6 +528,9 @@ public final class ExtraKeysView extends GridLayout {
                 }
 
                 button.setText(buttonInfo.getDisplay());
+                if (buttonInfo.hint != null && !buttonInfo.hint.isEmpty()) {
+                    mKeyHints.put(button, buttonInfo.hint);
+                }
                 if (mKeyTypeface != null) button.setTypeface(mKeyTypeface);
                 button.setTextColor(mButtonTextColor);
                 button.setAllCaps(mButtonTextAllCaps && !buttonInfo.hasCustomDisplay());
@@ -592,11 +623,16 @@ public final class ExtraKeysView extends GridLayout {
                 } else {
                     param.height = 0;
                 }
-                param.setMargins(0, 0, 0, 0);
+                int inset = Math.round(buttonInfo.insetDp * getResources().getDisplayMetrics().density);
+                param.setMargins(inset, inset, inset, inset);
                 param.columnSpec = GridLayout.spec(col, GridLayout.FILL, 1.f);
                 param.rowSpec = GridLayout.spec(row, GridLayout.FILL, 1.f);
                 button.setLayoutParams(param);
 
+                if (buttonInfo.getKey().isEmpty() && buttonInfo.getDisplay().isEmpty()
+                    && buttonInfo.getCommand() == null && hold == null && buttonInfo.getPopup() == null) {
+                    button.setVisibility(INVISIBLE);
+                }
                 addView(button);
             }
         }
