@@ -732,7 +732,7 @@ corner radius, active color, or per-key color takes precedence over the theme.
 ```yaml
 extra-keys:
   theme: rounded
-  background-color: "#1C1F20"
+  background-color: "#191920"
 ```
 
 In **Extra keys → Edit layout**, open a row’s menu and choose **Columns in this row**.

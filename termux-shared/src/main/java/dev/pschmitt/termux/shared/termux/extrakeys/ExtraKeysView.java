@@ -230,6 +230,8 @@ public final class ExtraKeysView extends GridLayout {
     private int mRoundedNavigationBackgroundColor;
     private final Map<MaterialButton, ExtraKeyButton> mFlingKeys = new HashMap<>();
     private final Map<MaterialButton, String> mKeyHints = new HashMap<>();
+    /** The key behind each button, for {@link #demoKeyPress(int, long)}. */
+    private final Map<MaterialButton, ExtraKeyButton> mKeyInfos = new HashMap<>();
     private final TextPaint mHintPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
 
     @Override
@@ -243,7 +245,8 @@ public final class ExtraKeysView extends GridLayout {
             if (button.getVisibility() != VISIBLE || button.getHeight() < 22 * density) continue;
             mHintPaint.setTypeface(button.getTypeface());
             mHintPaint.setColor(button.getCurrentTextColor());
-            mHintPaint.setAlpha(Math.round(mHintPaint.getAlpha() * 0.75f));
+            // Gboard's corner labels are about 70 % of the key label over the key color.
+            mHintPaint.setAlpha(Math.round(mHintPaint.getAlpha() * 0.7f));
             canvas.save();
             canvas.translate(button.getLeft() + button.getTranslationX(), button.getTop() + button.getTranslationY());
             canvas.scale(button.getScaleX(), button.getScaleY(), button.getPivotX(), button.getPivotY());
@@ -479,13 +482,15 @@ public final class ExtraKeysView extends GridLayout {
         if (mRoundedTheme) {
             boolean dark = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
                 == Configuration.UI_MODE_NIGHT_YES;
-            mButtonTextColor = dark ? 0xFFE3E5E5 : 0xFF222629;
-            mButtonBackgroundColor = dark ? 0xFF37393B : 0xFFE0E3E7;
-            mRoundedNavigationTextColor = dark ? 0xFFD5E2EC : 0xFF25394A;
-            mRoundedNavigationBackgroundColor = dark ? 0xFF3D454B : 0xFFCBD7E2;
-            if (rowColor == null) rowColor = dark ? 0xFF1C1F20 : 0xFFF2F4F7;
-            if (activeText == null) activeText = dark ? 0xFFF0F2F2 : 0xFF222629;
-            if (activeBackground == null) activeBackground = dark ? 0xFF50565A : 0xFFCED3D8;
+            // Dark colors measured from Gboard's dark theme: letter keys, function keys
+            // (Esc and the arrows here, like Gboard's shift and enter) and the keyboard background.
+            mButtonTextColor = dark ? 0xFFE6E4F0 : 0xFF222629;
+            mButtonBackgroundColor = dark ? 0xFF2B2B34 : 0xFFE0E3E7;
+            mRoundedNavigationTextColor = dark ? 0xFFBCBED5 : 0xFF25394A;
+            mRoundedNavigationBackgroundColor = dark ? 0xFF383A4D : 0xFFCBD7E2;
+            if (rowColor == null) rowColor = dark ? 0xFF191920 : 0xFFF2F4F7;
+            if (activeText == null) activeText = dark ? 0xFFF2F0FA : 0xFF222629;
+            if (activeBackground == null) activeBackground = dark ? 0xFF4A4D63 : 0xFFCED3D8;
             if (radiusDp == null) radiusDp = 7f;
         } else {
             mButtonTextColor = ThemeUtils.getSystemAttrColor(context, ATTR_BUTTON_TEXT_COLOR, DEFAULT_BUTTON_TEXT_COLOR);
@@ -640,6 +645,7 @@ public final class ExtraKeysView extends GridLayout {
         }
 
         mKeyHints.clear();
+        mKeyInfos.clear();
         mFlingKeys.clear();
         removeAllViews();
 
@@ -663,6 +669,7 @@ public final class ExtraKeysView extends GridLayout {
                     button = new MaterialButton(getContext(), null, android.R.attr.buttonBarButtonStyle);
                 }
 
+                mKeyInfos.put(button, buttonInfo);
                 button.setText(buttonInfo.getDisplay());
                 if (mRoundedTheme) button.setLetterSpacing(0f);
                 String hint = buttonInfo.getHint();
@@ -995,6 +1002,24 @@ public final class ExtraKeysView extends GridLayout {
             label.animate().scaleX(1).scaleY(1).setDuration(90)
                 .setInterpolator(mKeyReleaseInterpolator).start();
         }
+    }
+
+    /**
+     * Plays the press and release effect of the key at {@code index} without sending it, so a
+     * settings preview can show the selected effect without being touched.
+     */
+    public void demoKeyPress(int index, long holdMs) {
+        View child = getChildAt(index);
+        if (!(child instanceof MaterialButton) || child.getVisibility() != VISIBLE) return;
+        MaterialButton button = (MaterialButton) child;
+        ExtraKeyButton info = mKeyInfos.get(button);
+        if (info == null) return;
+        animateKeyPress(button, true);
+        button.setBackgroundColor(mButtonActiveBackgroundColor);
+        button.postDelayed(() -> {
+            animateKeyPress(button, false);
+            button.setBackgroundColor(getRestingBackgroundColor(info));
+        }, holdMs);
     }
 
     private void dismissKeyPreview() {

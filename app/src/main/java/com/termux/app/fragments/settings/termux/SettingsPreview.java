@@ -137,6 +137,7 @@ final class SettingsPreview extends FrameLayout {
             int height = Math.round(dp(Math.min(maxHeight, 37.5f * scale * info.getMatrix().length)));
             addView(keyboard, new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, height, Gravity.CENTER_VERTICAL));
             keyboard.reload(info, height);
+            if (key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION)) demoEffect(keyboard);
             if (interactive) return;
             // Show a latched Ctrl and a pressed arrow, without invoking terminal actions.
             for (int i = 0; i < keyboard.getChildCount(); i++) {
@@ -157,6 +158,24 @@ final class SettingsPreview extends FrameLayout {
                 }
             }
         } catch (org.json.JSONException ignored) { }
+    }
+
+    /**
+     * Presses a sample key every so often, so the selected press effect shows without a tap. A new
+     * selection replaces the keyboard, which ends the loop of the old one.
+     */
+    private void demoEffect(ExtraKeysView demo) {
+        Runnable press = new Runnable() {
+            int next;
+
+            @Override public void run() {
+                if (demo != keyboard || !demo.isAttachedToWindow()) return;
+                int count = demo.getChildCount();
+                if (count > 0) demo.demoKeyPress(Math.min(count - 1, next++ % Math.min(count, 4) + count / 3), 450);
+                demo.postDelayed(this, 1500);
+            }
+        };
+        demo.postDelayed(press, 250);
     }
 
     @Override protected void onDraw(@NonNull Canvas canvas) {
