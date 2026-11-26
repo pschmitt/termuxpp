@@ -83,6 +83,8 @@ public final class PropertyInputSpec {
                     + " you press Enter, which happens with some keyboards, for example on Samsung devices.");
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_TEXT_ALL_CAPS:
                 return bool(key, "Show the text of the extra keys buttons in capital letters.");
+            case TermuxPropertyConstants.KEY_TMUX_RIGHT_SIDEBAR:
+                return bool(key, "Enable the right sidebar for tmux windows in the current terminal session.");
             case TermuxPropertyConstants.KEY_HIDE_SOFT_KEYBOARD_ON_SIDEBAR:
                 return bool(key, "Hide the soft keyboard when the session sidebar opens and restore it when the"
                     + " sidebar closes if it was visible before.");

@@ -720,6 +720,10 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     @Override
     public void onBackPressed() {
+        if (getDrawer().isDrawerVisible(Gravity.END)) {
+            getDrawer().closeDrawer(Gravity.END);
+            return;
+        }
         if (getDrawer().isDrawerOpen(Gravity.START)) {
             if (tmuxSidebarSession != null) {
                 tmuxSidebarSession = null;
@@ -1184,6 +1188,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     private void updateTmuxSidebar() {
+        updateRightTmuxSidebar();
         if (mTermuxService == null) return;
         String layout = tmuxSidebarLayout();
         if (!layout.equals(lastTmuxSidebarLayout)) {
@@ -1431,14 +1436,35 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         getDrawer().closeDrawers();
     }
 
+    public void updateRightTmuxSidebar() {
+        DrawerLayout drawer = getDrawer();
+        boolean enabled = (boolean) mProperties.getInternalPropertyValue(
+            TermuxPropertyConstants.KEY_TMUX_RIGHT_SIDEBAR, true);
+        boolean copyMode = drawer.getDrawerLockMode(Gravity.START) == DrawerLayout.LOCK_MODE_LOCKED_CLOSED;
+        int lockMode = enabled && !copyMode ? DrawerLayout.LOCK_MODE_UNLOCKED : DrawerLayout.LOCK_MODE_LOCKED_CLOSED;
+        if (drawer.getDrawerLockMode(Gravity.END) != lockMode) drawer.setDrawerLockMode(lockMode, Gravity.END);
+        if (!enabled) return;
+
+        TerminalSession session = getCurrentSession();
+        JSONArray windows = session == null || mTermuxService == null
+            ? new JSONArray() : mTermuxService.getTmuxWindows(session);
+        LinearLayout rows = findViewById(R.id.right_tmux_windows);
+        rows.removeAllViews();
+        findViewById(R.id.right_tmux_empty).setVisibility(windows.length() == 0 ? View.VISIBLE : View.GONE);
+        if (windows.length() > 0) addTmuxWindows(rows, session, windows, false, null);
+    }
+
     private void configureSessionShelf() {
         DrawerLayout drawer = getDrawer();
         drawer.setScrimColor(ContextCompat.getColor(this, R.color.ui_session_shelf_scrim));
+        drawer.setDrawerTitle(Gravity.END, getString(R.string.ui_tmux_switcher_title));
+        updateRightTmuxSidebar();
         View sessions = findViewById(R.id.terminal_sessions_list);
         float revealOffset = 12f * getResources().getDisplayMetrics().density;
         drawer.addDrawerListener(new DrawerLayout.SimpleDrawerListener() {
             @Override
             public void onDrawerSlide(@NonNull View panel, float offset) {
+                if (panel.getId() != R.id.left_drawer) return;
                 boolean animated = Build.VERSION.SDK_INT < Build.VERSION_CODES.O
                     || ValueAnimator.areAnimatorsEnabled();
                 float direction = panel.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL ? 1f : -1f;
@@ -1452,13 +1478,16 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                     TermuxPropertyConstants.KEY_HIDE_SOFT_KEYBOARD_ON_SIDEBAR, true)) return;
 
                 WindowInsetsCompat insets = ViewCompat.getRootWindowInsets(drawer);
-                restoreKeyboardAfterSidebar = insets != null && insets.isVisible(WindowInsetsCompat.Type.ime());
-                if (restoreKeyboardAfterSidebar) KeyboardUtils.hideSoftKeyboard(TermuxActivity.this, drawer);
+                if (insets != null && insets.isVisible(WindowInsetsCompat.Type.ime())) {
+                    restoreKeyboardAfterSidebar = true;
+                    KeyboardUtils.hideSoftKeyboard(TermuxActivity.this, drawer);
+                }
             }
 
             @Override
             public void onDrawerClosed(@NonNull View panel) {
-                if (!restoreKeyboardAfterSidebar) return;
+                if (!restoreKeyboardAfterSidebar || drawer.isDrawerVisible(Gravity.START)
+                    || drawer.isDrawerVisible(Gravity.END)) return;
                 restoreKeyboardAfterSidebar = false;
                 if (!mIsVisible || !hasWindowFocus() || isFinishing()
                     || KeyboardUtils.areDisableSoftKeyboardFlagsSet(TermuxActivity.this)) return;

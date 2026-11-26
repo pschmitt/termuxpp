@@ -167,6 +167,7 @@ are left out and logged.
 | `sessions.nix.user` | `nix-user` |
 | `tmux.sidebar.layout` | `terminal-tmux-sidebar-layout` |
 | `tmux.sidebar.style` | `terminal-tmux-sidebar-style` |
+| `tmux.sidebar.right` | `tmux-right-sidebar` |
 | `keyboard.back-key` | `back-key` |
 | `keyboard.hide-on-startup` | `hide-soft-keyboard-on-startup` |
 | `keyboard.hide-on-sidebar` | `hide-soft-keyboard-on-sidebar` |
@@ -265,6 +266,10 @@ tmux window, including when you switch with a keyboard shortcut.
 **Terminal tmux sidebar style** previews the active window with either a
 subtle outline and accent dot or a filled rounded accent pill. Set
 `tmux.sidebar.style: rounded` (default) or `subtle`.
+
+Enable **Tmux right sidebar** to swipe in from the right edge and browse the
+current terminal session's tmux windows. Set `tmux.sidebar.right` to `true`
+in YAML. The setting is off by default.
 Both the layout and style dialogs show a preview before you save.
 
 The session picker and the tmux window picker use the same rows as the

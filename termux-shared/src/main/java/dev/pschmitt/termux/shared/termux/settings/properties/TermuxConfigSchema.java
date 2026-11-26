@@ -60,6 +60,7 @@ public final class TermuxConfigSchema {
 
         add("tmux.sidebar.layout", "terminal-tmux-sidebar-layout");
         add("tmux.sidebar.style", "terminal-tmux-sidebar-style");
+        add("tmux.sidebar.right", "tmux-right-sidebar");
 
         add("keyboard.back-key", "back-key");
         add("keyboard.hide-on-startup", "hide-soft-keyboard-on-startup");

@@ -177,7 +177,8 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
         if (key.contains("keyboard") || key.startsWith("shortcut.") || key.equals("back-key")
             || key.equals("volume-keys") || key.equals("ctrl-space-workaround")
             || key.equals("enforce-char-based-input")) return R.string.properties_keyboard;
-        if (key.startsWith("terminal-") || key.equals("fullscreen") || key.equals("use-fullscreen-workaround")
+        if (key.startsWith("terminal-") || key.equals(TermuxPropertyConstants.KEY_TMUX_RIGHT_SIDEBAR)
+            || key.equals("fullscreen") || key.equals("use-fullscreen-workaround")
             || key.equals("night-mode") || key.equals("bell-character")) return R.string.properties_appearance;
         return R.string.properties_advanced;
     }

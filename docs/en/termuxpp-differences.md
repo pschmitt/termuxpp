@@ -468,6 +468,9 @@ The `terminal-tmux-sidebar-layout` property selects nested windows, a
 second sidebar level, or separate session and tmux views.
 [Sidebar settings](terminal-settings.md#tmux-sidebar-layout).
 
+The optional right sidebar lists tmux windows for the current terminal session.
+Enable it with `tmux.sidebar.right` and swipe inward from the right edge.
+
 The bundled `tpp tmux` command uses the terminal's OpenSSH client.
 A shell SSH wrapper can replace its interactive SSH invocation with
 `tpp tmux attach 'exec tmux new-session -A -s main' -- -t HOST`.

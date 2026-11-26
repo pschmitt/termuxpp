@@ -583,7 +583,9 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
     @Override
     public void copyModeChanged(boolean copyMode) {
         // Disable drawer while copying.
-        mActivity.getDrawer().setDrawerLockMode(copyMode ? DrawerLayout.LOCK_MODE_LOCKED_CLOSED : DrawerLayout.LOCK_MODE_UNLOCKED);
+        mActivity.getDrawer().setDrawerLockMode(
+            copyMode ? DrawerLayout.LOCK_MODE_LOCKED_CLOSED : DrawerLayout.LOCK_MODE_UNLOCKED, Gravity.START);
+        mActivity.updateRightTmuxSidebar();
     }
 
 

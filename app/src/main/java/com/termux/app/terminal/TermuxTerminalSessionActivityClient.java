@@ -314,6 +314,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         if (session == null) return;
 
         if (mActivity.getTerminalView().attachSession(session)) {
+            mActivity.updateRightTmuxSidebar();
             // notify about switched session if not already displaying the session
             notifyOfSessionChange();
         }

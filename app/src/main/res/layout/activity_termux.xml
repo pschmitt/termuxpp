@@ -144,6 +144,51 @@
                 </LinearLayout>
             </LinearLayout>
 
+            <LinearLayout
+                android:id="@+id/right_tmux_drawer"
+                android:layout_width="@dimen/ui_drawer_width"
+                android:layout_height="match_parent"
+                android:layout_gravity="end"
+                android:background="@drawable/ui_tmux_right_shelf"
+                android:clipToOutline="true"
+                android:orientation="vertical"
+                android:visibility="invisible">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:accessibilityHeading="true"
+                    android:gravity="center_vertical"
+                    android:minHeight="64dp"
+                    android:paddingStart="28dp"
+                    android:paddingEnd="16dp"
+                    android:text="@string/ui_tmux_switcher_title"
+                    android:textAppearance="@style/TextAppearance.TermuxPP.DrawerTitle"
+                    tools:targetApi="p" />
+
+                <TextView
+                    android:id="@+id/right_tmux_empty"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="28dp"
+                    android:paddingEnd="16dp"
+                    android:text="@string/ui_tmux_sidebar_empty" />
+
+                <ScrollView
+                    android:layout_width="match_parent"
+                    android:layout_height="0dp"
+                    android:layout_weight="1">
+
+                    <LinearLayout
+                        android:id="@+id/right_tmux_windows"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:paddingStart="16dp"
+                        android:paddingEnd="16dp" />
+                </ScrollView>
+            </LinearLayout>
+
         </androidx.drawerlayout.widget.DrawerLayout>
 
         <com.termux.app.terminal.io.ExtraKeysSwipeViewPager

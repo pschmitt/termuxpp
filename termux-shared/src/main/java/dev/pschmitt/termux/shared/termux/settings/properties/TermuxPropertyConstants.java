@@ -391,6 +391,8 @@ public final class TermuxPropertyConstants {
     public static final String TMUX_SIDEBAR_NESTED = "nested";
     public static final String TMUX_SIDEBAR_DRILL_DOWN = "drill-down";
     public static final String TMUX_SIDEBAR_MODES = "modes";
+    public static final String KEY_TMUX_RIGHT_SIDEBAR = "tmux-right-sidebar";
+
     public static final String KEY_TERMINAL_TMUX_SIDEBAR_STYLE = "terminal-tmux-sidebar-style";
     public static final String TMUX_SIDEBAR_SUBTLE = "subtle";
     public static final String TMUX_SIDEBAR_ROUNDED = "rounded";
@@ -683,6 +685,7 @@ public final class TermuxPropertyConstants {
         KEY_TERMINAL_TOAST_POSITION,
         KEY_TERMINAL_TMUX_SIDEBAR_LAYOUT,
         KEY_TERMINAL_TMUX_SIDEBAR_STYLE,
+        KEY_TMUX_RIGHT_SIDEBAR,
         KEY_TERMINAL_PICKER_POSITION,
 
         /* gesture command configuration */
@@ -740,6 +743,7 @@ public final class TermuxPropertyConstants {
      */
     public static final Set<String> TERMUX_DEFAULT_FALSE_BOOLEAN_BEHAVIOUR_PROPERTIES_LIST = new HashSet<>(Arrays.asList(
         KEY_WAKE_LOCK_WIFI,
+        KEY_TMUX_RIGHT_SIDEBAR,
         KEY_DISABLE_FILE_SHARE_RECEIVER,
         KEY_DISABLE_FILE_VIEW_RECEIVER,
         KEY_DISABLE_HARDWARE_KEYBOARD_SHORTCUTS,
