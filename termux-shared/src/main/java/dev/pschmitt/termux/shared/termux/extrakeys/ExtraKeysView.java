@@ -3,6 +3,7 @@ package dev.pschmitt.termux.shared.termux.extrakeys;
 import android.animation.ValueAnimator;
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.Handler;
@@ -223,6 +224,7 @@ public final class ExtraKeysView extends GridLayout {
     protected Handler mHandler;
     protected Runnable mLongPressRunnable;
     protected int mLongPressCount;
+    @Nullable private Typeface mKeyTypeface;
     private ExtraKeyAnimation mKeyAnimation = ExtraKeyAnimation.DEFAULT;
     private final DecelerateInterpolator mKeyReleaseInterpolator = new DecelerateInterpolator();
 
@@ -501,8 +503,9 @@ public final class ExtraKeysView extends GridLayout {
                 }
 
                 button.setText(buttonInfo.getDisplay());
+                if (mKeyTypeface != null) button.setTypeface(mKeyTypeface);
                 button.setTextColor(mButtonTextColor);
-                button.setAllCaps(mButtonTextAllCaps);
+                button.setAllCaps(mButtonTextAllCaps && !buttonInfo.hasCustomDisplay());
                 button.setPadding(0, 0, 0, 0);
                 applyButtonShape(button);
                 if (hasHeldModifier) bindHeldModifier(buttonInfo, hold, button);
@@ -641,6 +644,15 @@ public final class ExtraKeysView extends GridLayout {
     }
 
 
+    public void setKeyTypeface(@Nullable Typeface typeface) {
+        mKeyTypeface = typeface;
+        if (typeface == null) return;
+        for (int i = 0; i < getChildCount(); i++) {
+            View child = getChildAt(i);
+            if (child instanceof MaterialButton) ((MaterialButton) child).setTypeface(typeface);
+        }
+    }
+
     public void setKeyAnimation(@NonNull ExtraKeyAnimation animation) {
         if (mKeyAnimation != animation) dismissKeyPreview();
         mKeyAnimation = animation;
@@ -679,7 +691,11 @@ public final class ExtraKeysView extends GridLayout {
         int padding = Math.round(10 * density);
         int gap = Math.round(3 * density);
         TextView label = new TextView(getContext());
-        label.setText(key.getText());
+        CharSequence text = key.getText();
+        if (key.getTransformationMethod() != null)
+            text = key.getTransformationMethod().getTransformation(text, key);
+        label.setText(text);
+        label.setTypeface(key.getTypeface());
         label.setTextColor(mButtonActiveTextColor);
         label.setTextSize(24);
         label.setGravity(Gravity.CENTER);
@@ -720,7 +736,9 @@ public final class ExtraKeysView extends GridLayout {
         Runnable update = () -> {
             boolean heldActive = held.isActive;
             boolean active = heldActive || isActiveModifier(primary);
-            button.setText(heldActive ? hold.getDisplay() : primary.getDisplay());
+            ExtraKeyButton shown = heldActive ? hold : primary;
+            button.setText(shown.getDisplay());
+            button.setAllCaps(mButtonTextAllCaps && !shown.hasCustomDisplay());
             button.setTextColor(active ? mButtonActiveTextColor : mButtonTextColor);
             button.setBackgroundColor(getSpecialButtonBackgroundColor(active));
         };
@@ -801,7 +819,8 @@ public final class ExtraKeysView extends GridLayout {
             button.setTextColor(mButtonTextColor);
         }
         button.setText(extraButton.getDisplay());
-        button.setAllCaps(mButtonTextAllCaps);
+        if (mKeyTypeface != null) button.setTypeface(mKeyTypeface);
+        button.setAllCaps(mButtonTextAllCaps && !extraButton.hasCustomDisplay());
         button.setPadding(0, 0, 0, 0);
         button.setMinHeight(0);
         button.setMinWidth(0);

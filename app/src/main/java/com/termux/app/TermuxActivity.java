@@ -40,6 +40,7 @@ import com.termux.R;
 import com.termux.app.api.file.FileReceiverActivity;
 import com.termux.app.settings.AppAccent;
 import com.termux.app.terminal.ProcessInfo;
+import com.termux.app.terminal.TerminalAppearance;
 import com.termux.app.terminal.ReportIssueRequest;
 import com.termux.app.terminal.TerminalContextMenu;
 import com.termux.app.terminal.TermuxActivityRootView;
@@ -964,6 +965,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         return mTermuxTerminalExtraKeys;
     }
 
+    public void applyExtraKeysFont(Typeface terminalTypeface) {
+        if (mExtraKeysView != null && "terminal".equals(mProperties.getExtraKeysFont()))
+            mExtraKeysView.setKeyTypeface(terminalTypeface);
+    }
+
     public void setExtraKeysView(ExtraKeysView extraKeysView) {
         mExtraKeysView = extraKeysView;
     }
@@ -1745,6 +1751,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                     mProperties.getExtraKeysButtonActiveBackgroundColor());
                 mExtraKeysView.setButtonCornerRadiusDp(mProperties.getExtraKeysButtonCornerRadius());
                 mExtraKeysView.setKeyAnimation(mProperties.getExtraKeysAnimation());
+                mExtraKeysView.setKeyTypeface(TerminalAppearance.loadExtraKeysFont(
+                    this, mProperties.getExtraKeysFont()));
                 mExtraKeysView.reload(mTermuxTerminalExtraKeys.getExtraKeysInfo(), mTerminalToolbarDefaultHeight);
             }
 

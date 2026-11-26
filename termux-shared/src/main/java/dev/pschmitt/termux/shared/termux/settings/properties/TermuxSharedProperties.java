@@ -323,6 +323,11 @@ public abstract class TermuxSharedProperties {
                 return (float) getTerminalToolbarHeightScaleFactorInternalPropertyValueFromValue(value);
 
             /* Float (may be null) */
+            case TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT:
+                for (String font : TermuxPropertyConstants.EXTRA_KEYS_FONTS) {
+                    if (value != null && font.equalsIgnoreCase(value.trim())) return font;
+                }
+                return TermuxPropertyConstants.DEFAULT_EXTRA_KEYS_FONT;
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION:
                 return ExtraKeyAnimation.parseOrDefault(value);
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_BUTTON_CORNER_RADIUS:
@@ -880,6 +885,10 @@ public abstract class TermuxSharedProperties {
     @Nullable
     public Integer getExtraKeysButtonActiveBackgroundColor() {
         return (Integer) getInternalPropertyValue(TermuxPropertyConstants.KEY_EXTRA_KEYS_BUTTON_ACTIVE_BACKGROUND_COLOR, true);
+    }
+
+    public String getExtraKeysFont() {
+        return (String) getInternalPropertyValue(TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT, true);
     }
 
     public ExtraKeyAnimation getExtraKeysAnimation() {

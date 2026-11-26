@@ -224,7 +224,8 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
             return getString(R.string.ui_tmux_layout_nested);
         }
         if (TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_STYLE.equals(key)
-            || TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION.equals(key)) {
+            || TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION.equals(key)
+            || TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT.equals(key)) {
             String label = value.replace('-', ' ');
             return Character.toUpperCase(label.charAt(0)) + label.substring(1);
         }

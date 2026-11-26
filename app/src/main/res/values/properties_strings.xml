@@ -48,6 +48,7 @@
     <string name="extra_key_value">Key or text</string>
     <string name="extra_macro">Macro (space-separated key sequence)</string>
     <string name="extra_key_label">Display label (optional)</string>
+    <string name="extra_hold_label">Long-press display label (optional)</string>
     <string name="extra_hold">Long-press key (optional)</string>
     <string name="extra_popup">Swipe-up key or text (optional)</string>
     <string name="extra_popup_label">Swipe-up display label (optional)</string>

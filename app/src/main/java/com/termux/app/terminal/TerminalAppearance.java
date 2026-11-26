@@ -87,6 +87,15 @@ public final class TerminalAppearance {
         return file.isFile() ? new FileInputStream(file) : null;
     }
 
+    /** Resolve the extra keys independently, or use the font selected for the terminal. */
+    public static Typeface loadExtraKeysFont(Context context, String choice) {
+        if ("terminal".equalsIgnoreCase(choice))
+            return loadFont(context, Setting.FONT.selection(context), configPaths());
+        if ("monospace".equalsIgnoreCase(choice)) return Typeface.MONOSPACE;
+        if ("serif".equalsIgnoreCase(choice)) return Typeface.SERIF;
+        return null;
+    }
+
     public static Typeface loadFont(Context context, String choice, List<String> paths) {
         if (CONFIG.equals(choice)) {
             Typeface typeface = loadConfigFont(paths, Setting.FONT.configFile);

@@ -194,6 +194,7 @@ are left out and logged.
 | `keyboard.volume.down.keys` | `volume-down-keys` |
 | `extra-keys.keys` | `extra-keys` |
 | `extra-keys.style` | `extra-keys-style` |
+| `extra-keys.font` | `extra-keys-font` |
 | `extra-keys.animation` | `extra-keys-animation` |
 | `extra-keys.all-caps` | `extra-keys-text-all-caps` |
 | `extra-keys.corner-radius` | `extra-keys-button-corner-radius` |
@@ -669,6 +670,20 @@ Run `termux-reload-settings` after editing the file. Stock Termux reads
 `termux.properties` and does not understand `config.yaml`.
 
 ## Extra-key appearance
+
+**Extra keys font** under **Settings → Properties → Gestures** sets the font used
+for the toolbar and its key previews. In YAML, set `extra-keys.font` to `system`
+(default), `terminal` (match the terminal font), `monospace`, or `serif`.
+
+In **Extra keys layout**, tap a key to edit its optional display label. Custom
+labels preserve their case. In YAML, use `display` for the main key,
+`hold-display` for a long-press key, or `popup.display` for a swipe-up key.
+
+```yaml
+extra-keys:
+  font: terminal
+  keys: [[{key: CTRL, display: Ctrl, hold: SHIFT, hold-display: "⇧"}, TAB]]
+```
 
 Choose **Extra keys animation** in **Settings → Properties → Gestures** and
 tap a preview key to try it. In YAML, set `extra-keys.animation` to

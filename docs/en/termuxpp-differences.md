@@ -563,6 +563,10 @@ Tap the shared key to cancel the alternate modifier, double-tap to lock it,
 or tap locked Shift to return to the primary key.
 Upstream uses long presses to lock modifiers or repeat keys. [Upstream extra-key view](https://github.com/termux/termux-app/blob/master/termux-shared/src/main/java/com/termux/shared/termux/extrakeys/ExtraKeysView.java).
 
+The extra-key toolbar has a separate font preference. Labels can be edited
+for the main, long-press, and swipe-up keys. Custom labels keep their case.
+[Extra-key appearance](terminal-settings.md#extra-key-appearance).
+
 TermuxPP adds optional extra-key press and release motion. Key preview is the
 default, and Press in, Pop, Lift, and Off are available in `extra-keys.animation`.
 

@@ -26,6 +26,7 @@ public class ExtraKeyButton {
     public static final String KEY_POPUP = "popup";
 
     public static final String KEY_HOLD = "hold";
+    public static final String KEY_HOLD_DISPLAY = "hold-display";
 
     /** The shell command run by the button instead of sending a key or macro. */
     public static final String KEY_COMMAND = "command";
@@ -56,6 +57,7 @@ public class ExtraKeyButton {
      */
     @Nullable
     private final ExtraKeyButton popup;
+    private final boolean customDisplay;
     @Nullable private final ExtraKeyButton hold;
 
 
@@ -119,7 +121,8 @@ public class ExtraKeyButton {
         this.command = commandFromConfig;
 
         String displayFromConfig = getStringFromJson(config, KEY_DISPLAY_NAME);
-        if (displayFromConfig != null) {
+        customDisplay = displayFromConfig != null;
+        if (customDisplay) {
             this.display = displayFromConfig;
         } else if (commandFromConfig != null) {
             this.display = "CMD";
@@ -134,7 +137,9 @@ public class ExtraKeyButton {
             Object value = config.get(KEY_HOLD);
             if (!(value instanceof String) || ((String) value).trim().isEmpty())
                 throw new JSONException("Hold must be a key name");
-            hold = new ExtraKeyButton(new JSONObject().put(KEY_KEY_NAME, value), extraKeyDisplayMap, extraKeyAliasMap);
+            JSONObject heldKey = new JSONObject().put(KEY_KEY_NAME, value);
+            if (config.has(KEY_HOLD_DISPLAY)) heldKey.put(KEY_DISPLAY_NAME, config.get(KEY_HOLD_DISPLAY));
+            hold = new ExtraKeyButton(heldKey, extraKeyDisplayMap, extraKeyAliasMap);
         } else {
             hold = null;
         }
@@ -159,6 +164,10 @@ public class ExtraKeyButton {
     }
 
     /** Get {@link #display}. */
+    public boolean hasCustomDisplay() {
+        return customDisplay;
+    }
+
     public String getDisplay() {
         return display;
     }

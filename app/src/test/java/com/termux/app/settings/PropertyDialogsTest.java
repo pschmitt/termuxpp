@@ -157,7 +157,7 @@ public class PropertyDialogsTest {
         PropertiesPreferencesFragment parent = new PropertiesPreferencesFragment();
         activity.getSupportFragmentManager().beginTransaction().replace(R.id.settings, parent).commitNow();
         for (String key : new String[]{"terminal-tmux-sidebar-layout", "terminal-tmux-sidebar-style",
-            "extra-keys-animation", "terminal-double-tap-action", "extra-keys-swipe-left-action", "volume-up-action"}) {
+            "extra-keys-animation", "extra-keys-font", "terminal-double-tap-action", "extra-keys-swipe-left-action", "volume-up-action"}) {
             androidx.preference.ListPreference choice = parent.findPreference(key);
             java.util.concurrent.atomic.AtomicReference<String> saved = new java.util.concurrent.atomic.AtomicReference<>();
             choice.setOnPreferenceChangeListener((preference, value) -> {

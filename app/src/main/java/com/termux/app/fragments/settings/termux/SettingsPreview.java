@@ -22,6 +22,7 @@ import androidx.core.content.ContextCompat;
 import androidx.core.graphics.ColorUtils;
 
 import com.termux.app.settings.PropertyInputSpec;
+import com.termux.app.terminal.TerminalAppearance;
 import com.termux.app.settings.AppAccent;
 import com.termux.app.settings.TermuxPropertiesEditor;
 import com.google.android.material.color.MaterialColors;
@@ -55,6 +56,7 @@ final class SettingsPreview extends FrameLayout {
             || key.equals("terminal-margin-vertical") || key.equals("extra-keys-style")
             || key.equals("extra-keys-text-all-caps") || key.equals("extra-keys-button-active-text-color")
             || key.equals("extra-keys-button-active-background-color") || key.equals("extra-keys-button-corner-radius")
+            || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT)
             || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION)
             || key.equals("terminal-toolbar-height") || key.equals("night-mode") || key.equals(AppAccent.KEY)
             || key.equals(TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_LAYOUT)
@@ -105,6 +107,8 @@ final class SettingsPreview extends FrameLayout {
         Float radius = ExtraKeysColorParser.parseCornerRadiusDp(values.getProperty("extra-keys-button-corner-radius"));
         keyboard.setButtonActiveColorOverrides(fg, bg);
         keyboard.setButtonCornerRadiusDp(radius);
+        keyboard.setKeyTypeface(TerminalAppearance.loadExtraKeysFont(getContext(),
+            values.getProperty(TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT)));
         keyboard.setKeyAnimation(ExtraKeyAnimation.parseOrDefault(values.getProperty(TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION)));
         keyboard.setButtonTextAllCaps(!"false".equalsIgnoreCase(value("extra-keys-text-all-caps", "true")));
         float scale;

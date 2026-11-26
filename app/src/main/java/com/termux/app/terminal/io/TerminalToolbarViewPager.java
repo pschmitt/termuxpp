@@ -11,6 +11,7 @@ import androidx.viewpager.widget.ViewPager;
 
 import com.termux.R;
 import com.termux.app.TermuxActivity;
+import com.termux.app.terminal.TerminalAppearance;
 import dev.pschmitt.termux.shared.termux.extrakeys.ExtraKeysView;
 import com.termux.terminal.TerminalSession;
 
@@ -51,6 +52,7 @@ public class TerminalToolbarViewPager {
                     mActivity.getProperties().getExtraKeysButtonActiveBackgroundColor());
                 extraKeysView.setButtonCornerRadiusDp(mActivity.getProperties().getExtraKeysButtonCornerRadius());
                 extraKeysView.setKeyAnimation(mActivity.getProperties().getExtraKeysAnimation());
+                extraKeysView.setKeyTypeface(TerminalAppearance.loadExtraKeysFont(mActivity, mActivity.getProperties().getExtraKeysFont()));
                 mActivity.setExtraKeysView(extraKeysView);
                 extraKeysView.reload(mActivity.getTermuxTerminalExtraKeys().getExtraKeysInfo(),
                     mActivity.getTerminalToolbarDefaultHeight());

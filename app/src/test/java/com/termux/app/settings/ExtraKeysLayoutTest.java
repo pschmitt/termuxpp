@@ -1,5 +1,9 @@
 package com.termux.app.settings;
 
+import dev.pschmitt.termux.shared.termux.extrakeys.ExtraKeyButton;
+import dev.pschmitt.termux.shared.termux.extrakeys.ExtraKeysConstants;
+import dev.pschmitt.termux.shared.termux.extrakeys.ExtraKeysInfo;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.Test;
@@ -57,4 +61,15 @@ public class ExtraKeysLayoutTest {
         assertEquals("ALT", key.getString("popup"));
         assertThrows(JSONException.class, () -> layout.putKey(0, 0, key.put("hold", new JSONObject())));
     }
+    @Test public void mainAndAlternateLabelsKeepTheirTextAndKeyActions() throws Exception {
+        String value = "[[{key:'CTRL',display:'Ctrl',hold:'SHIFT','hold-display':'Shift',popup:{key:'ALT',display:'Alt'}}]]";
+        ExtraKeyButton key = new ExtraKeysInfo(value, "default", ExtraKeysConstants.CONTROL_CHARS_ALIASES).getMatrix()[0][0];
+        assertEquals("CTRL", key.getKey());
+        assertEquals("Ctrl", key.getDisplay());
+        assertEquals("SHIFT", key.getHold().getKey());
+        assertEquals("Shift", key.getHold().getDisplay());
+        assertEquals("ALT", key.getPopup().getKey());
+        assertEquals("Alt", key.getPopup().getDisplay());
+    }
+
 }

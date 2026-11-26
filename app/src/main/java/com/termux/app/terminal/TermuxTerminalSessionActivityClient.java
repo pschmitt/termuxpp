@@ -532,6 +532,7 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         Typeface bold = useFiles ? TerminalAppearance.loadConfigFont(paths, "font-bold.ttf") : null;
         Typeface boldItalic = useFiles ? TerminalAppearance.loadConfigFont(paths, "font-bold-italic.ttf") : null;
         mActivity.getTerminalView().setTypeface(normal, italic, bold, boldItalic);
+        mActivity.applyExtraKeysFont(normal);
     }
 
     public void applyPaletteToSessions() {

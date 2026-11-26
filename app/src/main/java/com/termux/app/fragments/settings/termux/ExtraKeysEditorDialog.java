@@ -30,6 +30,7 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.DialogFragment;
 
 import com.termux.R;
+import com.termux.app.terminal.TerminalAppearance;
 import com.termux.app.settings.ExtraKeysLayout;
 
 import org.json.JSONException;
@@ -47,7 +48,7 @@ public class ExtraKeysEditorDialog extends DialogFragment {
         ExtraKeysEditorDialog dialog = new ExtraKeysEditorDialog();
         Bundle args = new Bundle();
         args.putString("value", value);
-        for (String key : new String[]{"extra-keys-style", "extra-keys-text-all-caps", "terminal-toolbar-height",
+        for (String key : new String[]{"extra-keys-style", "extra-keys-font", "extra-keys-text-all-caps", "terminal-toolbar-height",
                 "extra-keys-button-active-text-color", "extra-keys-button-active-background-color", "extra-keys-button-corner-radius"}) {
             args.putString(key, values.getProperty(key));
         }
@@ -139,6 +140,7 @@ public class ExtraKeysEditorDialog extends DialogFragment {
             Bundle options = requireArguments();
             ExtraKeysView keyboard = new ExtraKeysView(requireContext(), null);
             keyboard.setBackgroundColor(android.graphics.Color.BLACK);
+            keyboard.setKeyTypeface(TerminalAppearance.loadExtraKeysFont(requireContext(), options.getString("extra-keys-font")));
             keyboard.setButtonTextAllCaps(!"false".equalsIgnoreCase(options.getString("extra-keys-text-all-caps")));
             keyboard.setButtonActiveColorOverrides(
                 ExtraKeysColorParser.parseColor(options.getString("extra-keys-button-active-text-color")),
@@ -299,6 +301,7 @@ public class ExtraKeysEditorDialog extends DialogFragment {
         private EditText label;
         private AutoCompleteTextView popup;
         private AutoCompleteTextView hold;
+        private EditText holdLabel;
         private EditText popupLabel;
         private CheckBox macro;
         private CheckBox popupMacro;
@@ -345,6 +348,7 @@ public class ExtraKeysEditorDialog extends DialogFragment {
             form.addView(macro);
             label = input(form, R.string.extra_key_label, original.optString("display"));
             hold = input(form, R.string.extra_hold, original.optString("hold"));
+            holdLabel = input(form, R.string.extra_hold_label, original.optString("hold-display"));
             Object popupValue = original.opt("popup");
             JSONObject popupObject = popupValue instanceof JSONObject ? (JSONObject) popupValue : new JSONObject();
             popup = input(form, R.string.extra_popup, popupValue instanceof String ? (String) popupValue
@@ -358,6 +362,7 @@ public class ExtraKeysEditorDialog extends DialogFragment {
                 key.setText(state.getString("key"));
                 label.setText(state.getString("label"));
                 hold.setText(state.getString("hold", original.optString("hold")));
+                holdLabel.setText(state.getString("holdLabel", original.optString("hold-display")));
                 popup.setText(state.getString("popup"));
                 popupLabel.setText(state.getString("popupLabel"));
                 macro.setChecked(state.getBoolean("macro"));
@@ -397,6 +402,8 @@ public class ExtraKeysEditorDialog extends DialogFragment {
                     String holdKey = hold.getText().toString().trim();
                     if (holdKey.isEmpty()) edited.remove("hold");
                     else edited.put("hold", holdKey);
+                    if (holdKey.isEmpty() || holdLabel.getText().length() == 0) edited.remove("hold-display");
+                    else edited.put("hold-display", holdLabel.getText().toString());
                     if (popup.getText().length() == 0) edited.remove("popup");
                     else {
                         Object previous = original.opt("popup");
@@ -421,6 +428,7 @@ public class ExtraKeysEditorDialog extends DialogFragment {
             out.putString("key", key.getText().toString());
             out.putString("label", label.getText().toString());
             out.putString("hold", hold.getText().toString());
+            out.putString("holdLabel", holdLabel.getText().toString());
             out.putString("popup", popup.getText().toString());
             out.putString("popupLabel", popupLabel.getText().toString());
             out.putBoolean("macro", macro.isChecked());

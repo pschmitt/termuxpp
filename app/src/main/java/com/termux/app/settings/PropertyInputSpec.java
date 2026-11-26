@@ -183,6 +183,8 @@ public final class PropertyInputSpec {
                     + number(TermuxPropertyConstants.IVALUE_TERMINAL_TOOLBAR_HEIGHT_SCALE_FACTOR_MIN) + " to "
                     + number(TermuxPropertyConstants.IVALUE_TERMINAL_TOOLBAR_HEIGHT_SCALE_FACTOR_MAX) + ", like 1.5. Default: "
                     + number(TermuxPropertyConstants.DEFAULT_IVALUE_TERMINAL_TOOLBAR_HEIGHT_SCALE_FACTOR) + ".";
+            case TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT:
+                return "Choose the extra-key font. Terminal uses the font selected for terminal text.";
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION:
                 return "Choose the visual effect for a pressed extra key. Tap a preview key to try it. Key preview is the default.";
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_BUTTON_CORNER_RADIUS:
@@ -473,6 +475,11 @@ public final class PropertyInputSpec {
                 return toolbarHeight(value);
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION:
                 return ExtraKeyAnimation.parse(value) != null ? null : "Choose Press in, Pop, Lift, Key preview, or Off";
+            case TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT:
+                for (String font : TermuxPropertyConstants.EXTRA_KEYS_FONTS) {
+                    if (font.equalsIgnoreCase(value.trim())) return null;
+                }
+                return "Choose System, Terminal, Monospace, or Serif";
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_BUTTON_CORNER_RADIUS:
                 return ExtraKeysColorParser.parseCornerRadiusDp(value) != null ? null
                     : "Expected a number from 0 to " + number(ExtraKeysColorParser.MAX_CORNER_RADIUS_DP)
@@ -588,6 +595,7 @@ public final class PropertyInputSpec {
             return TermuxPropertyConstants.GESTURE_FEEDBACK_STYLES.clone();
         if (TermuxPropertyConstants.KEY_TERMINAL_ENGINE.equals(key))
             return new String[] {TermuxPropertyConstants.TERMINAL_ENGINE_TERMUX, TermuxPropertyConstants.TERMINAL_ENGINE_GHOSTTY};
+        if (TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT.equals(key)) return TermuxPropertyConstants.EXTRA_KEYS_FONTS.clone();
         if (TermuxPropertyConstants.KEY_EXTRA_KEYS_STYLE.equals(key)) return EXTRA_KEYS_STYLES.clone();
         if (TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION.equals(key)) {
             ExtraKeyAnimation[] effects = ExtraKeyAnimation.values();
