@@ -55,7 +55,11 @@
     <string name="extra_fling_down">Fling down key (optional)</string>
     <string name="extra_row_columns">Columns in this row</string>
     <string name="extra_fewer_columns">Remove the keys at the end of this row?</string>
-    <string name="extra_key_hint">Corner hint (optional)</string>
+    <string name="extra_key_hint">Corner label text</string>
+    <string name="extra_key_hint_mode">Corner label</string>
+    <string name="extra_key_hint_auto">Auto</string>
+    <string name="extra_key_hint_custom">Custom text</string>
+    <string name="extra_key_hint_off">Off</string>
     <string name="extra_key_inset">Key inset in dp (optional)</string>
     <string name="extra_key_invalid_inset">Enter a number from 0 to 8</string>
     <string name="extra_key_label">Display label (optional)</string>

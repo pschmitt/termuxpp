@@ -7,6 +7,8 @@ import android.content.res.Configuration;
 import android.graphics.drawable.Drawable;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.text.TextPaint;
+import android.text.TextUtils;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
@@ -225,7 +227,7 @@ public final class ExtraKeysView extends GridLayout {
     private boolean mRoundedTheme;
     private final Map<MaterialButton, ExtraKeyButton> mFlingKeys = new HashMap<>();
     private final Map<MaterialButton, String> mKeyHints = new HashMap<>();
-    private final Paint mHintPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final TextPaint mHintPaint = new TextPaint(Paint.ANTI_ALIAS_FLAG);
 
     @Override
     protected void dispatchDraw(Canvas canvas) {
@@ -243,7 +245,9 @@ public final class ExtraKeysView extends GridLayout {
             canvas.translate(button.getLeft() + button.getTranslationX(), button.getTop() + button.getTranslationY());
             canvas.scale(button.getScaleX(), button.getScaleY(), button.getPivotX(), button.getPivotY());
             canvas.clipRect(0, 0, button.getWidth(), button.getHeight());
-            canvas.drawText(entry.getValue(), button.getWidth() - 7 * density,
+            CharSequence hint = TextUtils.ellipsize(entry.getValue(), mHintPaint,
+                Math.max(0, button.getWidth() - 14 * density), TextUtils.TruncateAt.END);
+            canvas.drawText(hint.toString(), button.getWidth() - 7 * density,
                 3 * density - mHintPaint.ascent(), mHintPaint);
             canvas.restore();
         }
@@ -467,8 +471,8 @@ public final class ExtraKeysView extends GridLayout {
             mButtonTextColor = dark ? 0xFFE3E5E5 : 0xFF222629;
             mButtonBackgroundColor = dark ? 0xFF37393B : 0xFFE0E3E7;
             if (rowColor == null) rowColor = dark ? 0xFF1C1F20 : 0xFFF2F4F7;
-            if (activeText == null) activeText = 0xFF142943;
-            if (activeBackground == null) activeBackground = dark ? 0xFFA3C7FD : 0xFFB9D3FA;
+            if (activeText == null) activeText = dark ? 0xFFF0F2F2 : 0xFF222629;
+            if (activeBackground == null) activeBackground = dark ? 0xFF50565A : 0xFFCED3D8;
             if (radiusDp == null) radiusDp = 7f;
         } else {
             mButtonTextColor = ThemeUtils.getSystemAttrColor(context, ATTR_BUTTON_TEXT_COLOR, DEFAULT_BUTTON_TEXT_COLOR);
@@ -645,8 +649,9 @@ public final class ExtraKeysView extends GridLayout {
 
                 button.setText(buttonInfo.getDisplay());
                 if (mRoundedTheme) button.setLetterSpacing(0f);
-                if (buttonInfo.hint != null && !buttonInfo.hint.isEmpty()) {
-                    mKeyHints.put(button, buttonInfo.hint);
+                String hint = buttonInfo.getHint();
+                if (hint != null && !hint.isEmpty()) {
+                    mKeyHints.put(button, hint.replace('\n', ' ').replace('\r', ' '));
                 }
                 if (mKeyTypeface != null) button.setTypeface(mKeyTypeface);
                 button.setTextColor(mButtonTextColor);

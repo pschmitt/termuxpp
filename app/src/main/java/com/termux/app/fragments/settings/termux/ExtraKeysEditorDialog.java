@@ -4,7 +4,9 @@ import dev.pschmitt.termux.shared.interact.DialogUtils;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.Spinner;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.CheckBox;
@@ -331,7 +333,9 @@ public class ExtraKeysEditorDialog extends DialogFragment {
         private EditText holdLabel;
         private EditText textColor;
         private EditText backgroundColor;
+        private static final String[] HINT_MODES = {"auto", "custom", "off"};
         private EditText hint;
+        private Spinner hintMode;
         private EditText inset;
         private EditText popupLabel;
         private EditText flingLeft;
@@ -385,7 +389,29 @@ public class ExtraKeysEditorDialog extends DialogFragment {
             label = input(form, R.string.extra_key_label, original.optString("display"));
             textColor = input(form, R.string.extra_key_text_color, original.optString("text-color"));
             backgroundColor = input(form, R.string.extra_key_background_color, original.optString("background-color"));
+            TextView hintHeading = new TextView(requireContext());
+            hintHeading.setText(R.string.extra_key_hint_mode);
+            form.addView(hintHeading);
+            hintMode = new Spinner(requireContext());
+            hintMode.setContentDescription(getString(R.string.extra_key_hint_mode));
+            ArrayAdapter<String> hintModes = new ArrayAdapter<>(requireContext(), android.R.layout.simple_spinner_item,
+                new String[]{getString(R.string.extra_key_hint_auto), getString(R.string.extra_key_hint_custom),
+                    getString(R.string.extra_key_hint_off)});
+            hintModes.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            hintMode.setAdapter(hintModes);
+            form.addView(hintMode);
             hint = input(form, R.string.extra_key_hint, original.optString("hint"));
+            String savedHintMode = original.optString("hint-mode", original.has("hint") ? "custom" : "off");
+            int selectedHintMode = java.util.Arrays.asList(HINT_MODES).indexOf(savedHintMode);
+            hintMode.setSelection(Math.max(0, selectedHintMode));
+            hint.setEnabled(selectedHintMode == 1);
+            hintMode.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+                @Override public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                    hint.setEnabled(position == 1);
+                }
+
+                @Override public void onNothingSelected(AdapterView<?> parent) { }
+            });
             inset = input(form, R.string.extra_key_inset, original.optString("inset"));
             inset.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
             hold = input(form, R.string.extra_hold, original.optString("hold"));
@@ -411,6 +437,7 @@ public class ExtraKeysEditorDialog extends DialogFragment {
                 textColor.setText(state.getString("textColor", original.optString("text-color")));
                 backgroundColor.setText(state.getString("backgroundColor", original.optString("background-color")));
                 hint.setText(state.getString("hint", original.optString("hint")));
+                hintMode.setSelection(state.getInt("hintMode", hintMode.getSelectedItemPosition()));
                 inset.setText(state.getString("inset", original.optString("inset")));
                 hold.setText(state.getString("hold", original.optString("hold")));
                 holdLabel.setText(state.getString("holdLabel", original.optString("hold-display")));
@@ -452,7 +479,13 @@ public class ExtraKeysEditorDialog extends DialogFragment {
                     else edited.put("display", label.getText().toString());
                     if (!storeColor(edited, "text-color", textColor)
                         || !storeColor(edited, "background-color", backgroundColor)) return;
-                    String hintText = hint.getText().toString().trim();
+                    int selectedMode = hintMode.getSelectedItemPosition();
+                    String mode = selectedMode >= 0 ? HINT_MODES[selectedMode] : "off";
+                    String legacyMode = original.has("hint") ? "custom" : "off";
+                    if (original.has("hint-mode") || !mode.equals(legacyMode)) {
+                        edited.put("hint-mode", mode);
+                    }
+                    String hintText = hint.getText().toString();
                     if (hintText.isEmpty()) edited.remove("hint");
                     else edited.put("hint", hintText);
                     String insetValue = inset.getText().toString().trim();
@@ -524,6 +557,7 @@ public class ExtraKeysEditorDialog extends DialogFragment {
             out.putString("key", key.getText().toString());
             out.putString("label", label.getText().toString());
             out.putString("hint", hint.getText().toString());
+            out.putInt("hintMode", hintMode.getSelectedItemPosition());
             out.putString("inset", inset.getText().toString());
             out.putString("hold", hold.getText().toString());
             out.putString("holdLabel", holdLabel.getText().toString());

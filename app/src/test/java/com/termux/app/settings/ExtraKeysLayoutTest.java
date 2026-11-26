@@ -64,6 +64,24 @@ public class ExtraKeysLayoutTest {
         assertThrows(JSONException.class, () -> new ExtraKeysLayout("[[{key:'LEFT','fling-left':3}]]"));
     }
 
+    @Test public void hintModesResolveLabelsWithoutChangingAlternateActions() throws Exception {
+        ExtraKeyButton[] keys = new ExtraKeysInfo(
+            "[[{key:'UP',popup:{key:'PGUP',display:'PgUp'},'hint-mode':'auto',hint:'old'},"
+            + "{key:'DOWN','fling-down':{key:'PGDN',display:'PgDn'},'hint-mode':'auto'},"
+            + "{key:'TAB',popup:'BKSP','hint-mode':'custom',hint:'Erase'},"
+            + "{key:'LEFT','fling-left':'HOME','hint-mode':'off',hint:'Keep for later'},"
+            + "{key:'RIGHT',hint:'Legacy'},{key:'CTRL',hold:'SHIFT'}]]",
+            "default", ExtraKeysConstants.CONTROL_CHARS_ALIASES).getMatrix()[0];
+        assertEquals("PgUp", keys[0].getHint());
+        assertEquals("PgDn", keys[1].getHint());
+        assertEquals("Erase", keys[2].getHint());
+        assertEquals("BKSP", keys[2].getPopup().getKey());
+        assertNull(keys[3].getHint());
+        assertEquals("HOME", keys[3].getFling(false).getKey());
+        assertEquals("Legacy", keys[4].getHint());
+        assertNull(keys[5].getHint());
+    }
+
     @Test public void richKeysAndUnknownFieldsSurviveEditing() throws Exception {
         ExtraKeysLayout layout = new ExtraKeysLayout("[[{macro:'CTRL f d',display:'Exit',custom:42,popup:{key:'END',display:'End',custom:7}},'ESC']]");
         JSONObject key = layout.key(0, 0);

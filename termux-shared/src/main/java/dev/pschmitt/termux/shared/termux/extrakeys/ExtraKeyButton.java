@@ -60,7 +60,7 @@ public class ExtraKeyButton {
     private final boolean customDisplay;
     @Nullable final Integer textColor;
     @Nullable final Integer backgroundColor;
-    @Nullable final String hint;
+    @Nullable private final String hint;
     @Nullable final Float insetDp;
     @Nullable private final ExtraKeyButton hold;
     @Nullable private final ExtraKeyButton flingLeft;
@@ -142,7 +142,6 @@ public class ExtraKeyButton {
         customDisplay = displayFromConfig != null;
         textColor = readColor(config, "text-color");
         backgroundColor = readColor(config, "background-color");
-        hint = getStringFromJson(config, "hint");
         insetDp = config.has("inset") ? (float) config.getDouble("inset") : null;
         if (insetDp != null && !(insetDp >= 0 && insetDp <= 8)) {
             throw new JSONException("Extra key inset must be from 0 to 8 dp");
@@ -168,6 +167,30 @@ public class ExtraKeyButton {
         } else {
             hold = null;
         }
+        switch (config.optString("hint-mode")) {
+            case "off":
+                hint = null;
+                break;
+            case "auto":
+                hint = pickAutomaticHint(popup, flingDown, flingLeft, flingRight, hold);
+                break;
+            default:
+                hint = getStringFromJson(config, "hint");
+                break;
+        }
+    }
+
+    @Nullable
+    private static String pickAutomaticHint(ExtraKeyButton... alternates) {
+        for (ExtraKeyButton alternate : alternates) {
+            if (alternate != null && !alternate.getDisplay().isEmpty()) return alternate.getDisplay();
+        }
+        return null;
+    }
+
+    @Nullable
+    public String getHint() {
+        return hint;
     }
 
     @Nullable

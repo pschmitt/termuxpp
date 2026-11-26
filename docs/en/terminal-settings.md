@@ -750,8 +750,11 @@ extra-keys:
 ```
 
 A key object can set `inset` from 0 to 8 dp to leave space on each side of its keycap.
-Use `hint` for a small label in the upper-right corner. The hint is visual and does not
-change the tap, swipe-up, or hold action.
+Set **Corner label** to **Auto**, **Custom text**, or **Off** in the key editor.
+Auto uses the first available alternate label in this order: swipe up, fling down, fling left,
+fling right, then hold. Set `hint-mode` to `auto`, `custom`, or `off` in YAML,
+and set `hint` for custom text. Existing `hint` values keep their text when no mode is set.
+The label changes only the appearance of the key.
 
 ```yaml
 extra-keys:

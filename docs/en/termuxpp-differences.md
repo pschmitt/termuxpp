@@ -569,7 +569,7 @@ The extra-key toolbar has a separate font preference, appearance themes,
 and a configurable row background. Labels can be edited
 for the main, long-press, and swipe-up keys. Custom labels keep their case.
 Individual keys can override their text and background colors, add spacing around
-the keycap, and show a corner hint. The layout editor can resize each row and
+the keycap, and show an automatic or custom corner hint. The layout editor can resize each row and
 leave blank slots for unassigned keys.
 [Extra-key appearance](terminal-settings.md#extra-key-appearance).
 
