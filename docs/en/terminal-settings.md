@@ -380,7 +380,8 @@ The gesture keys are independent and active at the same time. Valid values, case
 | `previous-session` | Switch to the previous session, wrapping around. With one session, creates a new one if `sessions.create-on-single-session-switch: true`. |
 | `new-session` | Open a new terminal session and switch to it, like the **New** button. |
 | `toggle-text-input` | Switch the extra keys toolbar to its text input, or back to the extra keys. Does nothing while the toolbar is hidden. |
-| `open-sidebar` | Open the sidebar with the session list. It is not opened while it is locked closed in copy mode. |
+| `open-left-sidebar` | Open the left sidebar. The existing `open-sidebar` binding also opens this side. |
+| `open-right-sidebar` | Open the right sidebar when it is enabled. |
 | `open-session-switcher` | Open a compact picker with the current session selected, plus New session, Keyboard and Settings actions. |
 | `open-tmux-switcher` | Open the TermuxPP window picker for the current terminal’s local or remote tmux attachment. |
 | `open-menu` | Open the terminal menu, the bottom sheet that a long press on the terminal and then "More..." opens (Extract URL, Share transcript, Autofill, Reset, Kill process, Style, Settings and so on). It never touches the soft keyboard. |
@@ -461,6 +462,11 @@ extra-keys:
 
 The same `gesture-command-context` applies. A command button cannot also send a key or macro; it
 can be used as a popup button in the same way as a regular key.
+
+In the extra-keys editor, **Long-press key** assigns an alternate key to a hold.
+For example, `{key: CTRL, hold: SHIFT}` keeps Ctrl on tap, locks Ctrl on
+double-tap, and arms Shift for the next key on hold. The key label changes to
+Shift while it is armed. A `popup` entry still handles the swipe up separately.
 
 The keys are written exactly like the `macro` of an extra keys button in `extra-keys`, so what works
 there works here:
@@ -555,7 +561,7 @@ same file:
 
 The two buttons are independent. Valid values of the action keys, case-insensitive, are `modifier`
 and every action of the table above except `run-command` (`none`, `show-keyboard`, `toggle-keyboard`,
-`next-session`, `previous-session`, `open-sidebar`, `open-session-switcher`, `open-tmux-switcher`, `open-menu`, `font-size-up`, `font-size-down`,
+`next-session`, `previous-session`, `open-left-sidebar`, `open-right-sidebar`, `open-session-switcher`, `open-tmux-switcher`, `open-menu`, `font-size-up`, `font-size-down`,
 `send-keys`).
 The `*-keys` keys are written as described in "Sending keys".
 

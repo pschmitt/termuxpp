@@ -963,6 +963,14 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         mExtraKeysView = extraKeysView;
     }
 
+    public boolean openSidebar(boolean right) {
+        DrawerLayout drawer = getDrawer();
+        int side = right ? Gravity.END : Gravity.START;
+        if (drawer.getDrawerLockMode(side) == DrawerLayout.LOCK_MODE_LOCKED_CLOSED) return false;
+        drawer.openDrawer(side);
+        return true;
+    }
+
     public boolean openTerminalUi(String action, @Nullable String query) {
         if (!mIsVisible || isFinishing() || isDestroyed()) return false;
         switch (action) {
@@ -977,11 +985,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             case "session-switcher":
                 return showSessionSwitcher();
             case "sidebar":
-                DrawerLayout drawer = getDrawer();
-                if (drawer.getDrawerLockMode(Gravity.START) == DrawerLayout.LOCK_MODE_LOCKED_CLOSED)
-                    return false;
-                drawer.openDrawer(Gravity.START);
-                return true;
+                return openSidebar(false);
             default:
                 throw new IllegalArgumentException("Unknown terminal UI action: " + action);
         }

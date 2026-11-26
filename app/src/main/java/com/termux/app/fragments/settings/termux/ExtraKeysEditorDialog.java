@@ -298,6 +298,7 @@ public class ExtraKeysEditorDialog extends DialogFragment {
         private AutoCompleteTextView key;
         private EditText label;
         private AutoCompleteTextView popup;
+        private AutoCompleteTextView hold;
         private EditText popupLabel;
         private CheckBox macro;
         private CheckBox popupMacro;
@@ -315,7 +316,7 @@ public class ExtraKeysEditorDialog extends DialogFragment {
             input.setId(View.generateViewId());
             input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
             input.setText(value);
-            if (title == R.string.extra_key_value || title == R.string.extra_popup) {
+            if (title == R.string.extra_key_value || title == R.string.extra_popup || title == R.string.extra_hold) {
                 input.setThreshold(0);
                 input.setAdapter(new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line,
                     new String[]{"ESC", "TAB", "CTRL", "ALT", "SHIFT", "FN", "ENTER", "BKSP", "DEL", "UP", "DOWN", "LEFT", "RIGHT", "HOME", "END", "PGUP", "PGDN", "KEYBOARD", "DRAWER", "F1", "F2", "F3", "F4", "/", "-", "|"}));
@@ -343,6 +344,7 @@ public class ExtraKeysEditorDialog extends DialogFragment {
             macro.setChecked(original.has("macro"));
             form.addView(macro);
             label = input(form, R.string.extra_key_label, original.optString("display"));
+            hold = input(form, R.string.extra_hold, original.optString("hold"));
             Object popupValue = original.opt("popup");
             JSONObject popupObject = popupValue instanceof JSONObject ? (JSONObject) popupValue : new JSONObject();
             popup = input(form, R.string.extra_popup, popupValue instanceof String ? (String) popupValue
@@ -355,6 +357,7 @@ public class ExtraKeysEditorDialog extends DialogFragment {
             if (state != null) {
                 key.setText(state.getString("key"));
                 label.setText(state.getString("label"));
+                hold.setText(state.getString("hold", original.optString("hold")));
                 popup.setText(state.getString("popup"));
                 popupLabel.setText(state.getString("popupLabel"));
                 macro.setChecked(state.getBoolean("macro"));
@@ -391,6 +394,9 @@ public class ExtraKeysEditorDialog extends DialogFragment {
                     edited.put(macro.isChecked() ? "macro" : "key", key.getText().toString());
                     if (label.getText().length() == 0) edited.remove("display");
                     else edited.put("display", label.getText().toString());
+                    String holdKey = hold.getText().toString().trim();
+                    if (holdKey.isEmpty()) edited.remove("hold");
+                    else edited.put("hold", holdKey);
                     if (popup.getText().length() == 0) edited.remove("popup");
                     else {
                         Object previous = original.opt("popup");
@@ -414,6 +420,7 @@ public class ExtraKeysEditorDialog extends DialogFragment {
             super.onSaveInstanceState(out);
             out.putString("key", key.getText().toString());
             out.putString("label", label.getText().toString());
+            out.putString("hold", hold.getText().toString());
             out.putString("popup", popup.getText().toString());
             out.putString("popupLabel", popupLabel.getText().toString());
             out.putBoolean("macro", macro.isChecked());

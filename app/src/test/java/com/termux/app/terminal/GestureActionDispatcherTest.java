@@ -31,7 +31,7 @@ public class GestureActionDispatcherTest {
         @Override public void switchSession(boolean forward) { calls.add(forward ? "next" : "previous"); }
         @Override public void createSession() { calls.add("newSession"); }
         @Override public void toggleTextInput() { calls.add("textInput"); }
-        @Override public void openSidebar() { calls.add("sidebar"); }
+        @Override public void openSidebar(boolean right) { calls.add(right ? "right-sidebar" : "sidebar"); }
         @Override public void openSessionSwitcher() { calls.add("switcher"); }
         @Override public void openTmuxSwitcher() { calls.add("tmuxSwitcher"); }
         @Override public void openMenu() { calls.add("menu"); }
@@ -119,6 +119,12 @@ public class GestureActionDispatcherTest {
     public void openSidebarOpensTheSidebar() {
         GestureActionDispatcher.perform(TerminalGestureAction.OPEN_SIDEBAR, mTarget);
         assertEquals(List.of("sidebar"), mTarget.calls);
+    }
+
+    @Test
+    public void openRightSidebarTargetsTheOtherDrawer() {
+        GestureActionDispatcher.perform(TerminalGestureAction.OPEN_RIGHT_SIDEBAR, mTarget);
+        assertEquals(List.of("right-sidebar"), mTarget.calls);
     }
 
     @Test

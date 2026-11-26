@@ -48,7 +48,8 @@ public enum TerminalGestureAction {
     NEW_SESSION("new-session"),
 
     /** Open the sidebar (the drawer) with the list of sessions. */
-    OPEN_SIDEBAR("open-sidebar"),
+    OPEN_SIDEBAR("open-left-sidebar"),
+    OPEN_RIGHT_SIDEBAR("open-right-sidebar"),
 
     /** Open the compact session picker. */
     OPEN_SESSION_SWITCHER("open-session-switcher"),
@@ -103,6 +104,7 @@ public enum TerminalGestureAction {
     public static TerminalGestureAction parse(@Nullable String value) {
         if (value == null) return null;
         String normalized = value.trim().toLowerCase(Locale.ROOT);
+        if ("open-sidebar".equals(normalized)) return OPEN_SIDEBAR;
         for (TerminalGestureAction action : values()) {
             if (action.mValue.equals(normalized)) return action;
         }
@@ -129,7 +131,8 @@ public enum TerminalGestureAction {
             case NEXT_SESSION: return "Next session";
             case PREVIOUS_SESSION: return "Previous session";
             case NEW_SESSION: return "New session";
-            case OPEN_SIDEBAR: return "Sessions";
+            case OPEN_SIDEBAR: return "Open left sidebar";
+            case OPEN_RIGHT_SIDEBAR: return "Open right sidebar";
             case OPEN_SESSION_SWITCHER: return "Session switcher";
             case OPEN_TMUX_SWITCHER: return "Open tmux window picker";
             case OPEN_MENU: return "Menu";

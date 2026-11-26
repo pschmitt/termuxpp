@@ -4,7 +4,6 @@
     <string name="properties_summary">Configure terminal, keyboard, gestures and advanced properties</string>
     <string name="properties_help">About properties</string>
     <string name="properties_value">Value</string>
-    <string name="properties_open_session_shelf">Open Session shelf</string>
     <string name="properties_explanation">Saved to ~/.config/termuxpp/config.yaml, which is rewritten without comments when a setting changes here. A legacy termuxpp.properties or termux.properties is migrated once and renamed to .migrated. Clear a text field or select App default to reset a setting. Changes reload when returning to the terminal; some require a new session or app restart.</string>
     <string name="properties_read_error">Cannot read properties. No settings will be overwritten.</string>
     <string name="properties_save_error">Could not save properties</string>
@@ -49,6 +48,7 @@
     <string name="extra_key_value">Key or text</string>
     <string name="extra_macro">Macro (space-separated key sequence)</string>
     <string name="extra_key_label">Display label (optional)</string>
+    <string name="extra_hold">Long-press key (optional)</string>
     <string name="extra_popup">Swipe-up key or text (optional)</string>
     <string name="extra_popup_label">Swipe-up display label (optional)</string>
     <string name="extra_remove_key">Remove key</string>

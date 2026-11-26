@@ -28,7 +28,7 @@ public final class GestureActionDispatcher {
         void toggleTextInput();
 
         /** Open the sidebar, if it may be opened now. */
-        void openSidebar();
+        void openSidebar(boolean right);
 
         /** Open the compact session picker. */
         void openSessionSwitcher();
@@ -112,7 +112,11 @@ public final class GestureActionDispatcher {
                 break;
 
             case OPEN_SIDEBAR:
-                target.openSidebar();
+                target.openSidebar(false);
+                break;
+
+            case OPEN_RIGHT_SIDEBAR:
+                target.openSidebar(true);
                 break;
 
             case OPEN_SESSION_SWITCHER:

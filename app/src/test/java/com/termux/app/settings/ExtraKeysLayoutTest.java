@@ -48,4 +48,13 @@ public class ExtraKeysLayoutTest {
         assertEquals("ESC", layout.label(0, 0));
         assertThrows(JSONException.class, () -> new ExtraKeysLayout("not json"));
     }
+
+    @Test public void longPressKeyRoundTripsWithAnIndependentSwipeKey() throws Exception {
+        ExtraKeysLayout layout = new ExtraKeysLayout("[[{key:'CTRL',hold:'SHIFT',popup:'ALT'}]]");
+        JSONObject key = new ExtraKeysLayout(layout.toString()).key(0, 0);
+        assertEquals("CTRL", key.getString("key"));
+        assertEquals("SHIFT", key.getString("hold"));
+        assertEquals("ALT", key.getString("popup"));
+        assertThrows(JSONException.class, () -> layout.putKey(0, 0, key.put("hold", new JSONObject())));
+    }
 }

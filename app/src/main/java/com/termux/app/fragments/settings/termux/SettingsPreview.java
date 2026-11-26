@@ -281,7 +281,8 @@ final class SettingsPreview extends FrameLayout {
             case "toggle-text-input": description = R.string.settings_action_text_input; break;
             case "next-session": case "previous-session": description = R.string.settings_action_switch_session; break;
             case "new-session": description = R.string.settings_action_new_session; break;
-            case "open-sidebar": description = R.string.settings_action_sidebar; break;
+            case "open-sidebar": case "open-left-sidebar": description = R.string.settings_action_sidebar; break;
+            case "open-right-sidebar": description = R.string.settings_action_right_sidebar; break;
             case "open-session-switcher": description = R.string.settings_action_picker; break;
             case "open-tmux-switcher": description = R.string.settings_action_tmux_picker; break;
             case "open-menu": description = R.string.settings_action_menu; break;
@@ -317,7 +318,9 @@ final class SettingsPreview extends FrameLayout {
             for (int row = 0; row < 3; row++) for (int col = 0; col < 5; col++)
                 canvas.drawRoundRect(x + dp(6 + col * 10), y + dp(8 + row * 10),
                     x + dp(13 + col * 10), y + dp(14 + row * 10), dp(1), dp(1), paint);
-        } else if (action.equals("open-sidebar")) {
+        } else if (action.equals("open-right-sidebar")) {
+            canvas.drawRect(x + dp(40), y, x + dp(62), y + dp(48), paint);
+        } else if (action.equals("open-sidebar") || action.equals("open-left-sidebar")) {
             canvas.drawRect(x, y, x + dp(22), y + dp(48), paint);
         } else if (action.equals("open-menu") || action.equals("open-session-switcher")
             || action.equals("open-tmux-switcher")) {

@@ -7,7 +7,8 @@
     <string name="settings_action_text_input">Switch between the extra keys and text input.</string>
     <string name="settings_action_switch_session">Move to an adjacent terminal session.</string>
     <string name="settings_action_new_session">Open a new terminal session.</string>
-    <string name="settings_action_sidebar">Open the session shelf.</string>
+    <string name="settings_action_sidebar">Open the left sidebar.</string>
+    <string name="settings_action_right_sidebar">Open the right sidebar when enabled.</string>
     <string name="settings_action_picker">Open the session picker.</string>
     <string name="settings_action_tmux_picker">Open the current terminal’s tmux window picker.</string>
     <string name="settings_action_menu">Open the terminal menu.</string>

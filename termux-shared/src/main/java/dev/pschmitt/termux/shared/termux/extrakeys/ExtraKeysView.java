@@ -215,7 +215,7 @@ public final class ExtraKeysView extends GridLayout {
 
     protected ScheduledExecutorService mScheduledExecutor;
     protected Handler mHandler;
-    protected SpecialButtonsLongHoldRunnable mSpecialButtonsLongHoldRunnable;
+    protected Runnable mLongPressRunnable;
     protected int mLongPressCount;
 
 
@@ -345,6 +345,8 @@ public final class ExtraKeysView extends GridLayout {
      * color for an active (latched or locked) {@link SpecialButton}, otherwise the normal one.
      */
     public int getRestingBackgroundColor(ExtraKeyButton buttonInfo) {
+        ExtraKeyButton hold = buttonInfo.getHold();
+        if (hold != null && isActiveModifier(hold)) return getSpecialButtonBackgroundColor(true);
         if (isSpecialButton(buttonInfo)) {
             SpecialButtonState state = mSpecialButtons.get(SpecialButton.valueOf(buttonInfo.getKey()));
             if (state != null)
@@ -461,8 +463,12 @@ public final class ExtraKeysView extends GridLayout {
         if (extraKeysInfo == null)
             return;
 
-        for(SpecialButtonState state : mSpecialButtons.values())
-            state.buttons = new ArrayList<>();
+        stopScheduledExecutors();
+        if (mPopupWindow != null) dismissPopup();
+        for (SpecialButtonState state : mSpecialButtons.values()) {
+            state.buttons.clear();
+            state.presentationUpdates.clear();
+        }
 
         removeAllViews();
 
@@ -475,9 +481,11 @@ public final class ExtraKeysView extends GridLayout {
             for (int col = 0; col < buttons[row].length; col++) {
                 final ExtraKeyButton buttonInfo = buttons[row][col];
 
+                ExtraKeyButton hold = buttonInfo.getHold();
+                boolean hasHeldModifier = hold != null && isSpecialButton(hold);
                 MaterialButton button;
                 if (isSpecialButton(buttonInfo)) {
-                    button = createSpecialButton(buttonInfo.getKey(), true);
+                    button = createSpecialButton(buttonInfo.getKey(), !hasHeldModifier);
                     if (button == null) return;
                 } else {
                     button = new MaterialButton(getContext(), null, android.R.attr.buttonBarButtonStyle);
@@ -488,6 +496,13 @@ public final class ExtraKeysView extends GridLayout {
                 button.setAllCaps(mButtonTextAllCaps);
                 button.setPadding(0, 0, 0, 0);
                 applyButtonShape(button);
+                if (hasHeldModifier) bindHeldModifier(buttonInfo, hold, button);
+                if (hold != null) {
+                    button.setOnLongClickListener(view -> {
+                        performHold(view, hold, button);
+                        return true;
+                    });
+                }
 
                 button.setOnClickListener(view -> {
                     performExtraKeyButtonHapticFeedback(view, buttonInfo, button);
@@ -503,6 +518,7 @@ public final class ExtraKeysView extends GridLayout {
                             return true;
 
                         case MotionEvent.ACTION_MOVE:
+                            if (hold != null && mLongPressCount > 0) return true;
                             if (buttonInfo.getPopup() != null) {
                                 // Show popup on swipe up
                                 if (mPopupWindow == null && event.getY() < 0) {
@@ -520,6 +536,7 @@ public final class ExtraKeysView extends GridLayout {
                         case MotionEvent.ACTION_CANCEL:
                             view.setBackgroundColor(getRestingBackgroundColor(buttonInfo));
                             stopScheduledExecutors();
+                            if (mPopupWindow != null) dismissPopup();
                             return true;
 
                         case MotionEvent.ACTION_UP:
@@ -606,10 +623,42 @@ public final class ExtraKeysView extends GridLayout {
     }
 
 
+    private boolean isActiveModifier(ExtraKeyButton key) {
+        return isSpecialButton(key) && mSpecialButtons.get(SpecialButton.valueOf(key.getKey())).isActive;
+    }
+
+    private void bindHeldModifier(ExtraKeyButton primary, ExtraKeyButton hold, MaterialButton button) {
+        SpecialButtonState held = mSpecialButtons.get(SpecialButton.valueOf(hold.getKey()));
+        held.setIsCreated(true);
+        Runnable update = () -> {
+            boolean heldActive = held.isActive;
+            boolean active = heldActive || isActiveModifier(primary);
+            button.setText(heldActive ? hold.getDisplay() : primary.getDisplay());
+            button.setTextColor(active ? mButtonActiveTextColor : mButtonTextColor);
+            button.setBackgroundColor(getSpecialButtonBackgroundColor(active));
+        };
+        held.presentationUpdates.add(update);
+        if (isSpecialButton(primary) && !primary.getKey().equals(hold.getKey()))
+            mSpecialButtons.get(SpecialButton.valueOf(primary.getKey())).presentationUpdates.add(update);
+        update.run();
+    }
+
+    private void performHold(View view, ExtraKeyButton hold, MaterialButton button) {
+        performExtraKeyButtonHapticFeedback(view, hold, button);
+        if (isSpecialButton(hold)) {
+            mSpecialButtons.get(SpecialButton.valueOf(hold.getKey())).toggleLatch();
+        } else {
+            onExtraKeyButtonClick(view, hold, button);
+        }
+    }
+
     public void startScheduledExecutors(View view, ExtraKeyButton buttonInfo, MaterialButton button) {
         stopScheduledExecutors();
         mLongPressCount = 0;
-        if (mRepetitiveKeys.contains(buttonInfo.getKey())) {
+        ExtraKeyButton hold = buttonInfo.getHold();
+        if (hold != null) {
+            scheduleLongPress(() -> performHold(view, hold, button));
+        } else if (mRepetitiveKeys.contains(buttonInfo.getKey())) {
             // Auto repeat key if long pressed until ACTION_UP stops it by calling stopScheduledExecutors.
             // Currently, only one (last) repeat key can run at a time. Old ones are stopped.
             mScheduledExecutor = Executors.newSingleThreadScheduledExecutor();
@@ -618,17 +667,18 @@ public final class ExtraKeysView extends GridLayout {
                 onExtraKeyButtonClick(view, buttonInfo, button);
             }, mLongPressTimeout, mLongPressRepeatDelay, TimeUnit.MILLISECONDS);
         } else if (isSpecialButton(buttonInfo)) {
-            // Lock the key if long pressed by running mSpecialButtonsLongHoldRunnable after
-            // waiting for mLongPressTimeout milliseconds. If user does not long press, then the
-            // ACTION_UP triggered will cancel the runnable by calling stopScheduledExecutors before
-            // it has a chance to run.
             SpecialButtonState state = mSpecialButtons.get(SpecialButton.valueOf(buttonInfo.getKey()));
-            if (state == null) return;
-            if (mHandler == null)
-                mHandler = new Handler(Looper.getMainLooper());
-            mSpecialButtonsLongHoldRunnable = new SpecialButtonsLongHoldRunnable(state);
-            mHandler.postDelayed(mSpecialButtonsLongHoldRunnable, mLongPressTimeout);
+            if (state != null) scheduleLongPress(state::onLongPress);
         }
+    }
+
+    private void scheduleLongPress(Runnable action) {
+        if (mHandler == null) mHandler = new Handler(Looper.getMainLooper());
+        mLongPressRunnable = () -> {
+            mLongPressCount++;
+            action.run();
+        };
+        mHandler.postDelayed(mLongPressRunnable, mLongPressTimeout);
     }
 
     public void stopScheduledExecutors() {
@@ -637,27 +687,18 @@ public final class ExtraKeysView extends GridLayout {
             mScheduledExecutor = null;
         }
 
-        if (mSpecialButtonsLongHoldRunnable != null && mHandler != null) {
-            mHandler.removeCallbacks(mSpecialButtonsLongHoldRunnable);
-            mSpecialButtonsLongHoldRunnable = null;
+        if (mLongPressRunnable != null && mHandler != null) {
+            mHandler.removeCallbacks(mLongPressRunnable);
+            mLongPressRunnable = null;
         }
     }
 
-    public class SpecialButtonsLongHoldRunnable implements Runnable {
-        public final SpecialButtonState mState;
-
-        public SpecialButtonsLongHoldRunnable(SpecialButtonState state) {
-            mState = state;
-        }
-
-        public void run() {
-            // Toggle active and lock state
-            mState.onLongPress();
-            mLongPressCount++;
-        }
+    @Override
+    protected void onDetachedFromWindow() {
+        stopScheduledExecutors();
+        if (mPopupWindow != null) dismissPopup();
+        super.onDetachedFromWindow();
     }
-
-
 
     void showPopup(View view, ExtraKeyButton extraButton) {
         int width = view.getMeasuredWidth();

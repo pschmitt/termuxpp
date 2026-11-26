@@ -17,6 +17,7 @@ public class SpecialButtonState {
     boolean isLocked = false;
 
     List<MaterialButton> buttons = new ArrayList<>();
+    final List<Runnable> presentationUpdates = new ArrayList<>();
 
     ExtraKeysView mExtraKeysView;
 
@@ -43,6 +44,7 @@ public class SpecialButtonState {
             // Fill the background of an active (latched or locked) button if configured
             button.setBackgroundColor(mExtraKeysView.getSpecialButtonBackgroundColor(value));
         }
+        for (Runnable update : presentationUpdates) update.run();
     }
 
     /** Set {@link #isLocked}. */
@@ -81,6 +83,13 @@ public class SpecialButtonState {
             setIsLocked(false);
             mLastTapTime = NO_TAP;
         }
+    }
+
+    /** Toggle a one-shot modifier selected by holding another key. */
+    void toggleLatch() {
+        setIsLocked(false);
+        mLastTapTime = NO_TAP;
+        setIsActive(!isActive);
     }
 
     /** Handle a long press on the button: lock it if it is not active, otherwise deactivate and unlock it. */

@@ -195,6 +195,18 @@ public class SpecialButtonStateTest {
     }
 
     @Test
+    public void alternateHoldLatchesOnceAndCanBeCancelled() {
+        alt.toggleLatch();
+        assertTrue(alt.read(true));
+        assertFalse(alt.read(true));
+        assertFalse(ctrl.read(true));
+
+        alt.toggleLatch();
+        alt.toggleLatch();
+        assertFalse(alt.read(true));
+    }
+
+    @Test
     public void readIsFalseForAButtonThatIsNotCreated() {
         SpecialButtonState notCreated = new SpecialButtonState(null);
         notCreated.setIsActive(true);

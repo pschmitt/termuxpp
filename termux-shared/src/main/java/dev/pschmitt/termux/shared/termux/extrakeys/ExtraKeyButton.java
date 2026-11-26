@@ -25,6 +25,8 @@ public class ExtraKeyButton {
     /** The key name for the nested dict to define popup extra key info if using a dict to define the extra key. {popup: {key: name, ...}, ...} */
     public static final String KEY_POPUP = "popup";
 
+    public static final String KEY_HOLD = "hold";
+
     /** The shell command run by the button instead of sending a key or macro. */
     public static final String KEY_COMMAND = "command";
 
@@ -54,6 +56,7 @@ public class ExtraKeyButton {
      */
     @Nullable
     private final ExtraKeyButton popup;
+    @Nullable private final ExtraKeyButton hold;
 
 
     /**
@@ -127,6 +130,14 @@ public class ExtraKeyButton {
         }
 
         this.popup = popup;
+        if (config.has(KEY_HOLD)) {
+            Object value = config.get(KEY_HOLD);
+            if (!(value instanceof String) || ((String) value).trim().isEmpty())
+                throw new JSONException("Hold must be a key name");
+            hold = new ExtraKeyButton(new JSONObject().put(KEY_KEY_NAME, value), extraKeyDisplayMap, extraKeyAliasMap);
+        } else {
+            hold = null;
+        }
     }
 
     public String getStringFromJson(@NonNull JSONObject config, @NonNull String key) {
@@ -162,6 +173,12 @@ public class ExtraKeyButton {
     @Nullable
     public ExtraKeyButton getPopup() {
         return popup;
+    }
+
+    /** The optional key to activate on a long press. */
+    @Nullable
+    public ExtraKeyButton getHold() {
+        return hold;
     }
 
     /**

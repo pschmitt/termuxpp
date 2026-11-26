@@ -61,6 +61,8 @@ public class TerminalGestureActionTest {
         assertSame(TerminalGestureAction.NEXT_SESSION, TerminalGestureAction.parse("next-session"));
         assertSame(TerminalGestureAction.PREVIOUS_SESSION, TerminalGestureAction.parse("previous-session"));
         assertSame(TerminalGestureAction.OPEN_SIDEBAR, TerminalGestureAction.parse("open-sidebar"));
+        assertSame(TerminalGestureAction.OPEN_SIDEBAR, TerminalGestureAction.parse("open-left-sidebar"));
+        assertSame(TerminalGestureAction.OPEN_RIGHT_SIDEBAR, TerminalGestureAction.parse("open-right-sidebar"));
         assertSame(TerminalGestureAction.SEND_KEYS, TerminalGestureAction.parse("send-keys"));
         assertSame(TerminalGestureAction.SEND_KEYS, TerminalGestureAction.parse(" Send-Keys "));
     }
@@ -177,7 +179,7 @@ public class TerminalGestureActionTest {
 
     @Test
     public void validValuesListsEveryValue() {
-        assertEquals("none, show-keyboard, toggle-keyboard, toggle-text-input, next-session, previous-session, new-session, open-sidebar, open-session-switcher, open-tmux-switcher, open-menu, font-size-up, font-size-down, run-command, send-keys",
+        assertEquals("none, show-keyboard, toggle-keyboard, toggle-text-input, next-session, previous-session, new-session, open-left-sidebar, open-right-sidebar, open-session-switcher, open-tmux-switcher, open-menu, font-size-up, font-size-down, run-command, send-keys",
             TerminalGestureAction.getValidValues());
     }
 

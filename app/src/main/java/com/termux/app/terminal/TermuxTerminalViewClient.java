@@ -76,7 +76,6 @@ import java.util.Map;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.drawerlayout.widget.DrawerLayout;
 
 public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
 
@@ -473,13 +472,9 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
                 mActivity.toggleTerminalToolbarTextInput();
             }
 
-            @SuppressLint("RtlHardcoded")
             @Override
-            public void openSidebar() {
-                DrawerLayout drawer = mActivity.getDrawer();
-                // The drawer is locked closed while copying.
-                if (drawer.getDrawerLockMode(Gravity.LEFT) != DrawerLayout.LOCK_MODE_LOCKED_CLOSED)
-                    drawer.openDrawer(Gravity.LEFT);
+            public void openSidebar(boolean right) {
+                mActivity.openSidebar(right);
             }
 
             @Override

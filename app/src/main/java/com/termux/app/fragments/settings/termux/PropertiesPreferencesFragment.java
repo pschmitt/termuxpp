@@ -96,6 +96,10 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
                 ArrayList<String> entries = new ArrayList<>();
                 ArrayList<String> entryValues = new ArrayList<>();
                 String current = values.getProperty(key, "");
+                if (key.endsWith("-action")) {
+                    TerminalGestureAction action = TerminalGestureAction.parse(current);
+                    if (action != null && options.contains(action.getValue())) current = action.getValue();
+                }
                 entries.add(isBoolean ? getString(R.string.properties_default_boolean,
                     getString(defaultTrue ? R.string.properties_enabled : R.string.properties_disabled))
                     : key.equals(TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_STYLE)
@@ -227,7 +231,6 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
             return TermuxPropertyConstants.TERMINAL_ENGINE_GHOSTTY.equals(value) ? "libghostty" : "Termux";
         if (!key.endsWith("-action")) return value;
         TerminalGestureAction action = TerminalGestureAction.parse(value);
-        if (action == TerminalGestureAction.OPEN_SIDEBAR) return getString(R.string.properties_open_session_shelf);
         return action == null ? value : action.getLabel();
     }
 
