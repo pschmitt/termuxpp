@@ -1,5 +1,5 @@
 --- a/launcher.c	2026-11-27 12:42:13.779555021 +0100
-+++ b/launcher.c	2026-11-27 12:57:15.424614958 +0100
++++ b/launcher.c	2026-11-27 18:08:08.479969550 +0100
 @@ -936,7 +936,9 @@
  // is already installed and the binds are canonical; both are passed in argv
  // because programs (nix for its builders) clear the environment. On success
@@ -24,7 +24,7 @@
  }
  
  // ---- the SIGSYS handler ------------------------------------------------
-@@ -990,6 +996,26 @@
+@@ -990,6 +996,23 @@
  // during it (zsh's SIGCHLD while it traps rt_sigprocmask) runs the
  // program's handler on top of ours, and a syscall trapped there with SIGSYS
  // blocked is force-killed (signal 31). With NODEFER it nests into ours.
@@ -36,13 +36,10 @@
 +// (SIGSYS_MASK); they are delivered once it returns, on top of the program's
 +// own context. SIGSYS stays open (NODEFER), and so do the synchronous faults,
 +// which a mask cannot defer anyway.
-+// SA_ONSTACK runs the handler on the thread's sigaltstack when it has one:
-+// it keeps several PATHBUF buffers on its stack, and Go runs syscalls on
-+// goroutine stacks of a few KiB carved out of its heap. Without it, trapped
-+// syscalls from Go wrote past the goroutine stack into the heap ("found
-+// pointer to free object"). Go gives every thread a signal stack and
-+// requires SA_ONSTACK of foreign handlers; without a sigaltstack nothing
-+// changes.
++// No SA_ONSTACK: the handler keeps 17-25 KiB of PATHBUF buffers on its
++// stack, more than Rust's alternate signal stacks hold (multi-threaded Rust
++// programs crashed). On the current stack it still overflows Go's small
++// goroutine stacks; that needs a stack of the handler's own.
 +#define SIGBIT(s) (1ULL << ((s) - 1))
 +#define SIGSYS_MASK                                                        \
 +	(~0ULL & ~(SIGBIT(SIGSYS) | SIGBIT(SIGSEGV) | SIGBIT(SIGBUS) |    \
@@ -51,18 +48,16 @@
  struct kernel_sigaction {
  	void *handler;
  	unsigned long flags;
-@@ -998,8 +1024,8 @@
- };
+@@ -999,7 +1022,7 @@
  static void sigsys_handler(int sig, siginfo_t *si, void *ctx);
  static struct kernel_sigaction g_ka = { (void *)sigsys_handler,
--					SA_SIGINFO | SA_RESTORER | SA_NODEFER,
+ 					SA_SIGINFO | SA_RESTORER | SA_NODEFER,
 -					(void *)sig_restorer, 0 };
-+					SA_SIGINFO | SA_RESTORER | SA_NODEFER | SA_ONSTACK,
 +					(void *)sig_restorer, SIGSYS_MASK };
  
  // Canonicalise the path in r[pa] (dirfd in r[da], or the cwd if da < 0) into
  // buf and point r[pa] at the result. On error, fail the syscall with it.
-@@ -1121,7 +1147,7 @@
+@@ -1121,7 +1144,7 @@
  
  // execveat(dirfd, path, argv, envp, flags): turn (dirfd, path) into an
  // absolute guest path, since the dirfd may not survive the re-exec.
@@ -71,7 +66,7 @@
  {
  	char b1[PATHBUF], b2[PATHBUF];
  	const char *path = (const char *)r[1];
-@@ -1140,7 +1166,7 @@
+@@ -1140,7 +1163,7 @@
  	long e = guest_abs((long)(int)r[0], path, b2, &path);
  	if (e < 0)
  		return e;
@@ -80,7 +75,7 @@
  }
  
  static void handle(unsigned long *r, long nr, void *ctx);
-@@ -1183,10 +1209,11 @@
+@@ -1183,10 +1206,11 @@
  
  	// The new image is started by re-exec'ing the loader with the guest
  	// target path; it canonicalises the path itself against the same cwd.

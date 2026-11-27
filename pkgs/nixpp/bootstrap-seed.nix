@@ -38,9 +38,10 @@ let
 
   # Android's app seccomp filter traps openat2 (Android 15); the upstream
   # handler re-translated its own reissue until the stack overflowed.
-  # The SIGSYS handler runs on the signal stack with asynchronous signals
-  # blocked: on goroutine stacks, with Go's handlers nesting into it, it
-  # corrupted Go's heap (sops-install-secrets on zf10).
+  # The SIGSYS handler blocks asynchronous signals: Go's handlers nesting
+  # into it read a clobbered goroutine register. It still runs on the
+  # current stack (no SA_ONSTACK: Rust's alternate stacks are too small for
+  # it), which overflows Go's goroutine stacks until it gets a stack of its own.
   #
   # The exempt syscall stub (allow_start..allow_end, 0x30 bytes with the
   # rt_sigreturn trampoline at +0x24) is an ABI between launcher versions:
