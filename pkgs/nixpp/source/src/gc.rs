@@ -23,6 +23,8 @@ pub struct Report {
     pub deferred: Option<&'static str>,
     pub prune: Vec<String>,
     pub retained: Vec<String>,
+    /// Generations past the retention count kept because a session uses them.
+    pub in_use: Vec<String>,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -104,8 +106,44 @@ fn process_parent(proc_entry: &Path) -> Option<u32> {
         .ok()
 }
 
+enum Executable {
+    /// The runtime's current launcher.
+    Launcher,
+    /// A launcher replaced on disk since the process started. Its session
+    /// still holds the lease it inherited, so it is checked like a current one.
+    Replaced,
+    /// A launcher process whose executable cannot be inspected.
+    Unknown,
+    Other,
+}
+
+fn executable(process: &Path, launcher: (u64, u64)) -> Executable {
+    match fs::metadata(process.join("exe")) {
+        Ok(executable) if inode(&executable) == launcher => Executable::Launcher,
+        Ok(_) => {
+            if fs::read_link(process.join("exe"))
+                .is_ok_and(|exe| exe.ends_with("launcher (deleted)"))
+            {
+                Executable::Replaced
+            } else {
+                Executable::Other
+            }
+        }
+        Err(_) => {
+            if fs::read_to_string(process.join("comm")).is_ok_and(|name| name.trim() == "launcher")
+            {
+                Executable::Unknown
+            } else {
+                Executable::Other
+            }
+        }
+    }
+}
+
 /// Sessions started by an earlier launcher script do not have leases. Defer
 /// cleanup if a top-level launcher for this runtime cannot prove its lease.
+/// A launcher replaced after a switch keeps its session's lease on fd 8, so
+/// it protects only its own generation instead of deferring all cleanup.
 fn has_unleased_sessions(runtime: &Path, generations: &[controller::Generation]) -> Result<bool> {
     let script = read_bounded(&runtime.join("session.sh"), 64 * 1024)?;
     if script != include_bytes!("assets/session.sh") {
@@ -140,30 +178,19 @@ fn has_unleased_sessions(runtime: &Path, generations: &[controller::Generation])
         if owner.uid() != uid {
             continue;
         }
-        match fs::metadata(path.join("exe")) {
-            Ok(executable) if inode(&executable) == launcher => {}
-            Ok(_) => {
-                if fs::read_link(path.join("exe"))
-                    .is_ok_and(|exe| exe.ends_with("launcher (deleted)"))
-                {
-                    return Ok(true);
-                }
-                continue;
-            }
-            Err(_) => {
-                if fs::read_to_string(path.join("comm")).is_ok_and(|name| name.trim() == "launcher")
-                {
-                    return Ok(true);
-                }
-                continue;
-            }
+        match executable(&path, launcher) {
+            Executable::Launcher | Executable::Replaced => {}
+            Executable::Unknown => return Ok(true),
+            Executable::Other => continue,
         }
         if fs::metadata(path.join("fd/8")).is_ok_and(|fd| leases.contains(&inode(&fd))) {
             continue;
         }
         if let Some(parent) = process_parent(&path)
-            && fs::metadata(proc.join(parent.to_string()).join("exe"))
-                .is_ok_and(|exe| inode(&exe) == launcher)
+            && matches!(
+                executable(&proc.join(parent.to_string()), launcher),
+                Executable::Launcher | Executable::Replaced
+            )
         {
             // An inner launcher is protected by its top-level launcher.
             continue;
@@ -398,6 +425,7 @@ fn run_with(
         deferred: None,
         prune: Vec::new(),
         retained: Vec::new(),
+        in_use: Vec::new(),
     };
     if controller::pending_exists(&runtime)? {
         report.deferred = Some("an activation is unfinished; recover it first");
@@ -442,6 +470,7 @@ fn run_with(
         }
         let Some(_lease) = FileLock::try_acquire(&lease)? else {
             report.retained.push(name.clone());
+            report.in_use.push(name.clone());
             continue;
         };
         report.prune.push(name.clone());
@@ -562,8 +591,10 @@ mod tests {
         assert_eq!(summary.prune, vec![old.clone()]);
         assert!(!candidate(&fixture.runtime, &old).join(LEASE).exists());
         assert!(!fixture.runtime.join(HISTORY).exists());
+        assert_eq!(summary.in_use, vec![leased.clone()]);
         let summary = run_with(&fixture.runtime, 2, false, |_, _| Ok(false), || Ok(())).unwrap();
         assert_eq!(summary.prune, vec![old.clone()]);
+        assert_eq!(summary.in_use, vec![leased.clone()]);
         assert!(!candidate(&fixture.runtime, &old).exists());
         assert!(candidate(&fixture.runtime, &leased).exists());
         assert!(pin_is_obsolete(&fixture.runtime, &old).unwrap());

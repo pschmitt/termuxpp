@@ -804,9 +804,13 @@ fn guest_command(
                 ui.print(&canonical_json(&serde_json::to_value(report)?));
             } else if let Some(reason) = report.deferred {
                 ui.print(&format!("GC deferred: {reason}"));
-            } else if report.prune.is_empty() {
-                ui.print("No system generations to prune.");
             } else {
+                for name in &report.in_use {
+                    ui.print(&format!("Kept {name}: a running session uses it"));
+                }
+                if report.prune.is_empty() {
+                    ui.print("No system generations to prune.");
+                }
                 let action = if *dry_run { "Would prune" } else { "Pruned" };
                 for name in report.prune {
                     ui.print(&format!("{action} {name}"));
