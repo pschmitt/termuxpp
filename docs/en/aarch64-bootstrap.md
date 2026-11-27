@@ -5,15 +5,85 @@ page_ref: /docs/apps/termux/aarch64-bootstrap.html
 # Custom AArch64 Bootstrap
 
 TermuxPP embeds a bootstrap archive per ABI. `app/build.gradle` downloads the upstream archives
-and checks them against hardcoded SHA-256 hashes. For `aarch64` the archive can instead be built
-from the upstream bootstrap plus a few extra packages (`openssh`, `nixpp`, ...) with
-`scripts/build-aarch64-bootstrap.py`, and handed to Gradle together with its SHA-256.
+and checks them against hardcoded SHA-256 hashes. For `aarch64` there are two ways to replace it:
+pass your own archive and its SHA-256 to Gradle (see [Gradle](#gradle)).
+
+- **The slim outer environment** (the default for TermuxPP's own phones): only TermuxPP's own
+  files, no upstream Termux packages, no dpkg and no APT. It is the Nix derivation
+  `termuxpp-outer-bootstrap`. Everything else lives in the Nix guest.
+- **An upstream-based bootstrap**: the upstream Termux bootstrap plus extra packages, built by
+  `scripts/build-aarch64-bootstrap.py`. This keeps dpkg and APT. See
+  [Upstream-based bootstrap](#upstream-based-bootstrap).
+
+## The slim outer environment
+
+`termuxpp-outer-bootstrap` (`pkgs/nixpp/outer-bootstrap.nix`) writes `bootstrap-aarch64.zip` and
+its `.sha256` in the format `TermuxInstaller` reads. It holds:
+
+| Path | Content |
+| --- | --- |
+| `bin/nixpp` | the Android/Bionic nixpp runtime (`nixpp-runtime-termux`) |
+| `bin/nixpp-setup` | `#!/system/bin/sh` wrapper for `nixpp setup` |
+| `bin/rbw`, `bin/rbw-agent` | `rbw-termux`, for the Bitwarden login of `nixpp setup` |
+| `share/nixpp/{launcher,manifest.json,bootstrap-aarch64.zip}` | the seed: the guest's launcher and first Nix store |
+| `etc/tls/cert.pem` | CA bundle |
+| `etc/nixpp/setup.conf` | optional, mode 0600: private defaults of `nixpp setup` |
+| `SYMLINKS.txt` | `bin/sh` → `/system/bin/sh` |
+
+There is no bash in the prefix: native scripts run under Android's `/system/bin/sh`, with
+`/system/bin` on `PATH` for Android tools such as `pm`. Without `bin/apt` or dpkg,
+`TermuxInstaller` skips its APT helper hook. The archive is reproducible (sorted entries and one
+fixed timestamp).
+
+Nothing in the prefix needs a reinstall later. Every guest generation ships the current native
+pieces and nixpp's daemon installs them after a switch:
+
+- `native/nixpp` and `native/launcher` (the launcher only after a smoke test, run on its own and
+  under the current launcher);
+- `bootstrap/{busybox,nix}`;
+- the files listed in `native/prefix.json` (nixos-config `system.nativePrefix`: rbw, the seed,
+  `nixpp-setup`, `setup.conf`). A prefix file is replaced only if it is absent, identical, or
+  unchanged since nixpp last installed it. The first copy from the bootstrap is kept as
+  `<file>.nixpp.bak`, and files changed by hand are left alone. The record is
+  `$PREFIX/var/lib/nixpp/prefix-install.json`.
+
+There is no nightly `apt upgrade`; a generation switch is the only update path.
+
+Build it on an x86_64 Linux worker (it cross-builds the Android parts), with the private
+`setup.conf` from nixos-config's `termuxpp-setup-conf` for an enrollment build:
+
+```sh
+zip=$(nix build --accept-flake-config --no-link --print-out-paths --impure --expr '
+  let tp = builtins.getFlake "github:pschmitt/termuxpp";
+      nc = builtins.getFlake "github:pschmitt/nixos-config";
+  in ((tp.lib.nixpp.packagesFor tp.inputs.nixpkgs.legacyPackages.x86_64-linux).termuxpp-outer-bootstrap.override {
+    setupConfig = nc.packages.x86_64-linux.termuxpp-setup-conf; })')
+
+TERMUX_BOOTSTRAP_AARCH64_ZIP=$zip/bootstrap-aarch64.zip \
+TERMUX_BOOTSTRAP_AARCH64_SHA256=$(cat $zip/bootstrap-aarch64.zip.sha256) \
+nix develop --accept-flake-config -c ./gradlew --no-daemon :app:assembleDebug
+```
+
+Without `.override` the archive has no `setup.conf`; `nixpp setup` then needs its settings as
+options or environment variables. An archive or APK with `setup.conf` embeds private
+configuration: keep it mode 0600 and local, never in a public release. The archive is excluded
+from the flake's aarch64 package set because it is built on x86_64.
+
+On first start the app extracts the prefix and opens the seed guest (`(nix) nix:~$`). Enroll from
+there with `nixpp setup --host HOST` (or `nixpp-setup`); see
+[`nixpp setup`](../../pkgs/nixpp/source/README.md#nixpp-setup).
+
+## Upstream-based bootstrap
+
+The archive can also be built from the upstream bootstrap plus a few extra packages (`openssh`,
+`nixpp`, ...) with `scripts/build-aarch64-bootstrap.py`, and handed to Gradle together with its
+SHA-256. This keeps dpkg and APT in the native prefix.
 
 Nothing here compiles packages. Packages come from prebuilt `aarch64` `.deb` files (for example
 the Termux repository, which uses the same `com.termux` prefix as the bootstrap) or from a prepared
 package prefix. Python 3 and its standard library are all that is needed.
 
-## What the archive contains
+### What the archive contains
 
 The result has exactly the format `TermuxInstaller` reads: paths relative to `$PREFIX`, a
 `SYMLINKS.txt` with `target←path` lines (target kept verbatim, relative or absolute), and the dpkg
@@ -27,7 +97,7 @@ The upstream bootstrap already ships `curl`, `ca-certificates`, `gzip` and `xz-u
 fails unless these, `openssh` and (with `--nixpp`) `nixpp` are installed in the result.
 Override that with `--require-package` (repeatable).
 
-## Quick start
+### Quick start
 
 ```sh
 # 1. Download and verify the pinned upstream bootstrap.
@@ -85,7 +155,7 @@ refuses debs that do not match. The output is byte-for-byte reproducible for ide
 (sorted entries, fixed timestamps; `--source-date-epoch` or `SOURCE_DATE_EPOCH` sets the date of new
 entries).
 
-## Inputs of `build`
+### Inputs of `build`
 
 | Option | Meaning |
 | --- | --- |
@@ -150,7 +220,7 @@ repository; neither is packaged as a `.deb` here. Stock `termux-am` and
 [the differences](termuxpp-differences.md)), so do not add them to this
 bootstrap expecting the TermuxPP identity.
 
-## Limitations
+## Limitations of the upstream-based bootstrap
 
 - Packages are not cross-built here. Use Termux repository debs, or build them elsewhere and pass
   them as debs or as a prepared prefix.
