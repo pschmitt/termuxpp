@@ -131,7 +131,7 @@ impl Server {
             if let Some(tools) =
                 crate::native_update::tools_pending(&self.runtime, &mut tools_checked)
             {
-                match crate::native_update::install_tools(&self.runtime, &tools) {
+                match crate::native_update::install_tools(&self.runtime, &tools, runner) {
                     Ok(()) => eprintln!(
                         "nixpp: switched to the bootstrap tools of the selected generation"
                     ),

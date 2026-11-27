@@ -100,29 +100,35 @@ pub(crate) struct Tools {
     pub nix: String,
 }
 
-/// Make `tools` the runtime's bootstrap tools once both ran through the
-/// launcher: point session.env at them (read by every new session), root
+/// Make `tools` the runtime's bootstrap tools once both ran in a session of
+/// the selected generation (through `runner`, as the activation checks do,
+/// with the guest's binds): point session.env at them (read by every new session), root
 /// them, move /bin/sh and /usr/bin/env from the old busybox to the new one
 /// (links pointing elsewhere were changed on purpose and stay), and drop the
 /// roots of the old tools.
-pub(crate) fn install_tools(runtime: &Path, tools: &Tools) -> Result<()> {
+pub(crate) fn install_tools(
+    runtime: &Path,
+    tools: &Tools,
+    runner: &mut dyn crate::runner::Runner,
+) -> Result<()> {
     let root = runtime.join("root");
-    let host = |store: &str, file: &str| root.join(store.trim_start_matches('/')).join(file);
-    let launcher = runtime.join("launcher");
-    for (binary, args) in [
-        (host(&tools.busybox, "bin/busybox"), ["busybox", "true"]),
-        (host(&tools.nix, "bin/nix"), ["nix", "--version"]),
+    let name = selected(runtime).context("no selected generation")?;
+    for (binary, argument) in [
+        (format!("{}/bin/busybox", tools.busybox), "true"),
+        (format!("{}/bin/nix", tools.nix), "--version"),
     ] {
-        let child = Command::new(&launcher)
-            .arg(&binary)
-            .args(args)
-            .env_clear()
-            .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .spawn()
-            .with_context(|| format!("cannot run {}", launcher.display()))?;
-        wait_ok(child).with_context(|| format!("{} does not run", binary.display()))?;
+        let command = crate::controller::session_command(
+            runtime,
+            Some(&name),
+            &[binary.clone(), argument.to_owned()],
+        )?;
+        let status = runner
+            .run(&command, SMOKE_TIMEOUT)
+            .with_context(|| format!("cannot run {binary}"))?;
+        anyhow::ensure!(
+            status == 0,
+            "{binary} does not run in a guest session: exit status {status}"
+        );
     }
 
     let path = runtime.join("session.env");
@@ -554,13 +560,26 @@ mod tests {
         (directory, runtime, tools)
     }
 
+    /// Runs the guest command after `--` with store paths mapped into the
+    /// fixture runtime.
+    struct GuestRunner(PathBuf);
+
+    impl crate::runner::Runner for GuestRunner {
+        fn run(&mut self, command: &[String], _: Duration) -> crate::error::Result<i32> {
+            let guest = &command[command.iter().position(|arg| arg == "--").unwrap() + 1..];
+            let program = self.0.join("root").join(guest[0].trim_start_matches('/'));
+            let status = Command::new(program).args(&guest[1..]).status()?;
+            Ok(status.code().unwrap_or(-1))
+        }
+    }
+
     #[test]
     fn new_bootstrap_tools_replace_the_old_ones() {
         let (_directory, runtime, tools) = tools_fixture(true);
         let mut checked = None;
         assert_eq!(tools_pending(&runtime, &mut checked).as_ref(), Some(&tools));
         assert_eq!(tools_pending(&runtime, &mut checked), None);
-        install_tools(&runtime, &tools).unwrap();
+        install_tools(&runtime, &tools, &mut GuestRunner(runtime.clone())).unwrap();
         let environment = fs::read_to_string(runtime.join("session.env")).unwrap();
         assert!(environment.contains(&format!("BOOTSTRAP_NIX={}\n", tools.nix)));
         assert!(environment.contains(&format!("BOOTSTRAP_BUSYBOX={}\n", tools.busybox)));
@@ -597,7 +616,7 @@ mod tests {
         let (_directory, runtime, tools) = tools_fixture(false);
         let before = fs::read(runtime.join("session.env")).unwrap();
         let link = fs::read_link(runtime.join("root/bin/sh")).unwrap();
-        assert!(install_tools(&runtime, &tools).is_err());
+        assert!(install_tools(&runtime, &tools, &mut GuestRunner(runtime.clone())).is_err());
         assert_eq!(fs::read(runtime.join("session.env")).unwrap(), before);
         assert_eq!(fs::read_link(runtime.join("root/bin/sh")).unwrap(), link);
     }
