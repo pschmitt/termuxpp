@@ -158,18 +158,10 @@ auto-optimise-store = false' \
     "$@"
   if [[ -n $system_candidate ]]
   then
-    native_prefix=${PREFIX:-${TERMUX_APP__DATA_DIR:-/data/data/dev.pschmitt.termux}/files/usr}
-    # Android mksh closes high-numbered redirections on exec. Bash keeps
-    # fd 8 open so the native launcher protects the whole guest session.
-    # shellcheck disable=SC2016
-    BASH_ENV=/dev/null exec "$native_prefix/bin/bash" --noprofile --norc -c '
-      lease=$1
-      shift
-      exec 8>>"$lease" || exit 1
-      /system/bin/flock -s -n 8 || exit 1
-      [[ -r "${lease%/*}/generation" ]] || exit 1
-      exec "$@"
-    ' nixpp-session "$directory/system-candidates/$system_candidate/.session-lock" "$@"
+    # The session holds a shared lock on the generation's lease as fd 8 so gc
+    # keeps it. Android's shell closes such descriptors on exec; nixpp does it.
+    exec "$directory/nixpp" __session-lease \
+      "$directory/system-candidates/$system_candidate/.session-lock" "$@"
   fi
   exec "$@"
 }

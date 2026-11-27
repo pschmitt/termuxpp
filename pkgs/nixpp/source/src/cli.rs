@@ -258,6 +258,13 @@ pub enum Command {
     /// (exit 1), from the apk-library marker and TERMUX_PKG_REDIRECT_SO
     #[command(name = "__apk-replaced", hide = true)]
     ApkReplaced,
+    /// Hold a shared lock on LEASE as fd 8 for the life of COMMAND (session.sh)
+    #[command(name = "__session-lease", hide = true)]
+    SessionLease {
+        lease: PathBuf,
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true, required = true)]
+        command: Vec<std::ffi::OsString>,
+    },
     /// Continue a terminal's outer server after a re-exec into a newer nixpp
     #[command(name = "__outer-resume", hide = true)]
     OuterResume {
@@ -490,6 +497,10 @@ fn execute(cli: &Cli, ui: &Ui) -> Exit {
             },
             Err(error) => Exit::failure(format!("outer: {error:#}")),
         },
+        Command::SessionLease { lease, command } => {
+            let error = crate::provision::session_lease(lease, command);
+            Exit::failure(format!("session lease: {error:#}"))
+        }
         Command::OuterSupervise { command } => {
             let mut guest = std::process::Command::new(&command[0]);
             guest.args(&command[1..]);
@@ -889,6 +900,7 @@ fn guest_command(
         | Command::NativeShell
         | Command::ServiceSupervisor
         | Command::ApkReplaced
+        | Command::SessionLease { .. }
         | Command::OuterResume { .. }
         | Command::OuterSupervise { .. }
         | Command::Setup(_)

@@ -136,9 +136,9 @@ pub(crate) fn native_command(args: &[OsString]) -> Result<Command> {
     );
 
     let path = std::env::join_paths([prefix.join("bin"), PathBuf::from("/system/bin")])?;
-    let shell = prefix.join("bin/bash");
-    let mut command = Command::new(&shell);
-    command.args(["--noprofile", "--norc"]);
+    // Android's own shell: the native prefix carries no shell of its own.
+    let mut command = Command::new("/system/bin/sh");
+    command.env_remove("ENV");
     if !args.is_empty() {
         command.args(["-c", "exec \"$@\"", "nixpp"]).args(args);
     }
@@ -150,6 +150,59 @@ pub(crate) fn native_command(args: &[OsString]) -> Result<Command> {
         .env("LD_PRELOAD", &redirect)
         .env("TERMUX_PKG_REDIRECT_SO", &redirect);
     Ok(command)
+}
+
+/// `nixpp __session-lease LEASE -- COMMAND...` (session.sh): open LEASE as
+/// fd 8, take a shared lock on it, check that the generation it belongs to is
+/// still there, and exec COMMAND with fd 8 open. gc keeps a generation while a
+/// session holds its lease (gc.rs looks at fd 8). Android's shell closes such
+/// descriptors on exec, so this cannot be done in session.sh itself. Returns
+/// only on failure.
+pub fn session_lease(lease: &Path, command: &[std::ffi::OsString]) -> anyhow::Error {
+    use std::os::fd::AsRawFd;
+    use std::os::unix::process::CommandExt;
+    let held = (|| -> Result<()> {
+        let file = std::fs::OpenOptions::new()
+            .append(true)
+            .create(true)
+            .open(lease)
+            .with_context(|| format!("cannot open {}", lease.display()))?;
+        // SAFETY: plain descriptor calls on a descriptor we own; fd 8 is
+        // replaced on purpose, and dup2 leaves the copy without FD_CLOEXEC.
+        unsafe {
+            if file.as_raw_fd() != 8 {
+                ensure!(
+                    libc::dup2(file.as_raw_fd(), 8) == 8,
+                    "cannot dup the lease to fd 8"
+                );
+            }
+            ensure!(
+                libc::fcntl(8, libc::F_SETFD, 0) == 0,
+                "cannot keep fd 8 open"
+            );
+            ensure!(
+                libc::flock(8, libc::LOCK_SH | libc::LOCK_NB) == 0,
+                "the generation is being removed"
+            );
+        }
+        let generation = lease
+            .parent()
+            .context("invalid lease path")?
+            .join("generation");
+        ensure!(
+            std::fs::File::open(&generation).is_ok(),
+            "{} is missing",
+            generation.display()
+        );
+        Ok(())
+    })();
+    if let Err(error) = held {
+        return error;
+    }
+    let Some((program, arguments)) = command.split_first() else {
+        return anyhow::anyhow!("no command");
+    };
+    Command::new(program).args(arguments).exec().into()
 }
 
 /// The APK's own redirect library, for an app that predates the stable copy.
