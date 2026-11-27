@@ -1,9 +1,12 @@
 package com.termux.app;
 
 import android.os.Handler;
+import android.os.SystemClock;
 import android.util.Base64;
 
 import androidx.annotation.Nullable;
+
+import dev.pschmitt.termux.shared.logger.Logger;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -21,6 +24,8 @@ import java.util.concurrent.TimeUnit;
  * helper the moment it is chosen instead of with the next snapshot.
  */
 final class TmuxWindows {
+    static final long SWITCH_TIMEOUT_MS = 3000;
+    private static final String LOG_TAG = "TmuxWindows";
     private static final long LEASE_MS = 6000;
     /** The prefix of a plugin report: the protocol name and version, then the base64 window list. */
     static final String REPORT_PREFIX = "tmux-windows;1;";
@@ -42,6 +47,7 @@ final class TmuxWindows {
         JSONArray windows;
         String signature;
         Runnable expire;
+        PendingSwitch pending;
 
         Attachment(@Nullable String token) {
             this.token = token;
@@ -58,7 +64,7 @@ final class TmuxWindows {
         if (!token.matches("[0-9a-f]{32}")) throw new IllegalArgumentException("Invalid attachment token");
         Attachment entry = attachments.get(terminal);
         if (args.length() == 3) {
-            if (entry != null && entry.token.equals(token)) remove(terminal);
+            if (entry != null && token.equals(entry.token)) remove(terminal);
             return JSONObject.NULL;
         }
         JSONArray snapshot = args.getJSONArray(3);
@@ -80,7 +86,7 @@ final class TmuxWindows {
         if (!signature.equals(entry.signature)) {
             entry.signature = signature;
             entry.windows = snapshot;
-            onChange.run();
+            if (!resolveSwitch(entry)) onChange.run();
         }
         // Helpers without the wait request still pick the choice up here, with their next snapshot.
         String selected = selections.remove(token);
@@ -112,7 +118,7 @@ final class TmuxWindows {
         if (!signature.equals(entry.signature)) {
             entry.signature = signature;
             entry.windows = rows;
-            onChange.run();
+            if (!resolveSwitch(entry)) onChange.run();
         }
         return true;
     }
@@ -166,39 +172,77 @@ final class TmuxWindows {
         return entry == null ? new JSONArray() : entry.windows;
     }
 
-    enum Selection { UNAVAILABLE, ALREADY_ACTIVE, SWITCH_REQUESTED }
+    enum Selection { UNAVAILABLE, ALREADY_ACTIVE, SWITCH_REQUESTED, SWITCH_PENDING }
 
-    Selection select(String terminal, String id) {
+    interface SwitchResult {
+        void complete(boolean confirmed);
+    }
+
+    private final class PendingSwitch implements Runnable {
+        final Attachment entry;
+        final String id;
+        final SwitchResult result;
+        final long requestedAt = SystemClock.elapsedRealtime();
+
+        PendingSwitch(Attachment entry, String id, SwitchResult result) {
+            this.entry = entry;
+            this.id = id;
+            this.result = result;
+        }
+
+        @Override
+        public void run() {
+            finish(false);
+        }
+
+        void finish(boolean confirmed) {
+            handler.removeCallbacks(this);
+            entry.pending = null;
+            if (entry.token != null) selections.remove(entry.token, id);
+            Logger.logDebug(LOG_TAG, "Switch " + (confirmed ? "confirmed" : "unconfirmed")
+                + " after " + (SystemClock.elapsedRealtime() - requestedAt) + " ms");
+            result.complete(confirmed);
+            onChange.run();
+        }
+    }
+
+    boolean isSwitchPending(String terminal, String id) {
+        Attachment entry = attachments.get(terminal);
+        return entry != null && entry.pending != null && id.equals(entry.pending.id);
+    }
+
+    private static JSONObject findWindow(JSONArray windows, String id) {
+        for (int i = 0; i < windows.length(); i++) {
+            JSONObject window = windows.optJSONObject(i);
+            if (id.equals(window.optString("id"))) return window;
+        }
+        return null;
+    }
+
+    private boolean resolveSwitch(Attachment entry) {
+        if (entry.pending == null) return false;
+        JSONObject window = findWindow(entry.windows, entry.pending.id);
+        if (window != null && !window.optBoolean("active")) return false;
+        entry.pending.finish(window != null);
+        return true;
+    }
+
+    Selection select(String terminal, String id, SwitchResult result) {
         Attachment entry = attachments.get(terminal);
         if (entry == null) return Selection.UNAVAILABLE;
-        JSONArray windows = new JSONArray();
-        boolean found = false;
-        try {
-            for (int i = 0; i < entry.windows.length(); i++) {
-                // A copy keeps the key order, so the helper's next snapshot of the switched window
-                // matches this one and does not redraw the sidebar again.
-                JSONObject previous = entry.windows.getJSONObject(i);
-                boolean chosen = id.equals(previous.optString("id"));
-                if (chosen && previous.optBoolean("active")) return Selection.ALREADY_ACTIVE;
-                JSONObject row = new JSONObject(previous.toString());
-                found |= chosen;
-                windows.put(row.put("active", chosen));
-            }
-        } catch (JSONException e) {
-            return Selection.UNAVAILABLE;
-        }
-        if (!found) return Selection.UNAVAILABLE;
+        if (entry.pending != null) return Selection.SWITCH_PENDING;
+        JSONObject window = findWindow(entry.windows, id);
+        if (window == null) return Selection.UNAVAILABLE;
+        if (window.optBoolean("active")) return Selection.ALREADY_ACTIVE;
 
+        entry.pending = new PendingSwitch(entry, id, result);
+        handler.postDelayed(entry.pending, SWITCH_TIMEOUT_MS);
         if (entry.token != null) {
             synchronized (signal) {
                 selections.put(entry.token, id);
                 signal.notifyAll();
             }
         }
-        // Show the choice at once; the helper's next snapshot confirms or corrects it.
-        entry.windows = windows;
-        entry.signature = windows.toString();
-        onChange.run();
         return Selection.SWITCH_REQUESTED;
     }
 
@@ -230,5 +274,6 @@ final class TmuxWindows {
     private void forget(Attachment entry) {
         if (entry.expire != null) handler.removeCallbacks(entry.expire);
         if (entry.token != null) selections.remove(entry.token);
+        if (entry.pending != null) entry.pending.finish(false);
     }
 }

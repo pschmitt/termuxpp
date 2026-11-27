@@ -32,7 +32,9 @@ configuration is reloaded, replaces its hooks and keys instead of adding them tw
   Loading the plugin reports every session once.
 - **Selection.** The plugin defines `user-keys[77]` as `ESC [ 5 ; 3 0 0 7 7 ~` and binds the key
   `User77` to the key table `termuxpp`, which collects digits and selects window `@DIGITS` on Return.
-  Its hooks and keys use index 77 and the user option `@termuxpp-window`.
+  Its hooks and keys use index 77. Each client collects digits in its own temporary user option.
+  The app marks the window as switching until a report confirms it is active. If confirmation is
+  missing after three seconds, the row becomes available to retry.
 - **Clearing.** The app forgets the windows when the tmux client leaves the terminal's alternate
   screen: on detach, on exit, and when a connection drops and the shell takes over the terminal again.
 

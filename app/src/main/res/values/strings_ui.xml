@@ -46,6 +46,8 @@
     <string name="ui_picker_position_terminal">Center of the terminal</string>
     <string name="ui_tmux_preview_terminal">Remote shell</string>
     <string name="ui_tmux_active_window">%1$s (active)</string>
+    <string name="ui_tmux_window_switching">Switching to %1$s…</string>
+    <string name="ui_tmux_switch_unconfirmed">tmux did not confirm the window switch. Tap the window to retry.</string>
     <string name="ui_tmux_attachment_unavailable">tmux attachment unavailable</string>
     <string name="ui_session_unnamed">Session %1$d</string>
     <string name="ui_session_exited">Exited (%1$d)</string>

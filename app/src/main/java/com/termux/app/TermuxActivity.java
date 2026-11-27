@@ -16,6 +16,7 @@ import android.content.ServiceConnection;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.SystemClock;
 import android.view.ContextMenu;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.util.TypedValue;
@@ -1034,7 +1035,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             if (windows.length() > 0) {
                 windowsView.setVisibility(View.VISIBLE);
                 if (nested && !collapsedTmuxSessions.contains(session.mHandle)) {
-                    addTmuxWindows(windowsView, session, windows, true, this::dismissSessionSwitcher);
+                    addTmuxWindows(windowsView, session, windows, true, () -> sessionSwitcher);
                 } else {
                     addTmuxHeading(windowsView, getString(R.string.ui_tmux_sidebar_drill), view -> {
                         dismissSessionSwitcher();
@@ -1066,10 +1067,6 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private void dismissSessionSwitcher() {
         if (sessionSwitcher != null) sessionSwitcher.dismiss();
-    }
-
-    private void dismissTmuxSwitcher() {
-        if (tmuxSwitcher != null) tmuxSwitcher.dismiss();
     }
 
     private String pickerPosition() {
@@ -1198,16 +1195,24 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
     }
 
+    private interface PickerReference {
+        AlertDialog get();
+    }
+
+    private interface TmuxRowStatus {
+        void setPending(boolean pending);
+    }
+
     /**
      * Add the window rows of a tmux attachment in the configured sidebar style.
      *
      * @param guide Whether a guide line runs along the rows, to show they belong to the session above.
-     * @param onSelected Run after a window is chosen, for example to close the picker the rows are in.
+     * @param picker The picker containing these rows, if any.
      * @return The row of the active window, if there is one.
      */
     @Nullable
     private View addTmuxWindows(LinearLayout container, TerminalSession session, JSONArray windows,
-                                boolean guide, @Nullable Runnable onSelected) {
+                                boolean guide, @Nullable PickerReference picker) {
         boolean rounded = TermuxPropertyConstants.TMUX_SIDEBAR_ROUNDED.equals(mProperties.getInternalPropertyValue(
             TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_STYLE, true));
         int foreground = ContextCompat.getColor(this, R.color.ui_on_surface);
@@ -1232,6 +1237,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         for (int i = 0; i < windows.length(); i++) {
             JSONObject window = windows.optJSONObject(i);
             boolean active = window.optBoolean("active");
+            String id = window.optString("id");
             String label = window.optString("label");
             String[] parts = label.split("  ", 2);
 
@@ -1264,7 +1270,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 iconLayout.setMarginEnd(sidebarDp(10));
                 row.addView(icon, iconLayout);
             }
-            TextView title = tmuxWindowText(parts.length == 2 ? parts[1] : label, textColor, active);
+            String name = parts.length == 2 ? parts[1] : label;
+            TextView title = tmuxWindowText(name, textColor, active);
             row.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
             if (active) {
                 View dot = new View(this);
@@ -1279,11 +1286,13 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             LinearLayout.LayoutParams rowLayout = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, sidebarDp(48));
             rowLayout.bottomMargin = sidebarDp(2);
             rows.addView(row, rowLayout);
-            row.setContentDescription(active ? getString(R.string.ui_tmux_active_window, label) : label);
-            row.setOnClickListener(view -> {
-                if (onSelected != null) onSelected.run();
-                selectTmuxWindow(session, window.optString("id"));
-            });
+            String description = active ? getString(R.string.ui_tmux_active_window, label) : label;
+            TmuxRowStatus status = pending -> {
+                title.setText(pending ? getString(R.string.ui_tmux_window_switching, name) : name);
+                row.setContentDescription(pending ? getString(R.string.ui_tmux_window_switching, label) : description);
+            };
+            status.setPending(picker == null && mTermuxService != null && mTermuxService.isTmuxSwitchPending(session, id));
+            row.setOnClickListener(view -> selectTmuxWindow(session, id, picker == null ? null : picker.get(), status));
             if (active) activeRow = row;
         }
         return activeRow;
@@ -1335,7 +1344,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         LinearLayout list = new LinearLayout(this);
         ScrollView content = pickerContent(list);
         list.setPaddingRelative(sidebarDp(12), sidebarDp(12), sidebarDp(12), sidebarDp(8));
-        View activeRow = addTmuxWindows(list, session, windows, false, this::dismissTmuxSwitcher);
+        View activeRow = addTmuxWindows(list, session, windows, false, () -> tmuxSwitcher);
         scrollPickerTo(content, activeRow);
 
         tmuxSwitcher = pickerBuilder()
@@ -1347,13 +1356,37 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         return true;
     }
 
-    private void selectTmuxWindow(TerminalSession session, String id) {
-        if (mTermuxService == null || !mTermuxService.selectTmuxWindow(session, id)) {
-            Toast.makeText(this, R.string.ui_tmux_attachment_unavailable, Toast.LENGTH_SHORT).show();
-            return;
+    private void selectTmuxWindow(TerminalSession session, String id, @Nullable AlertDialog picker,
+                                  TmuxRowStatus status) {
+        long started = SystemClock.elapsedRealtime();
+        TmuxWindows.SwitchResult result = confirmed -> {
+            status.setPending(false);
+            if (!mIsVisible || isFinishing() || isDestroyed() || mTermuxService == null
+                || (picker != null && !picker.isShowing())) return;
+            if (!confirmed) {
+                Toast.makeText(this, R.string.ui_tmux_switch_unconfirmed, Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (picker != null) picker.dismiss();
+            getDrawer().closeDrawers();
+            if (session != getCurrentSession()) mTermuxTerminalSessionActivityClient.setCurrentSession(session);
+        };
+        TmuxWindows.Selection selection = mTermuxService == null ? TmuxWindows.Selection.UNAVAILABLE
+            : mTermuxService.selectTmuxWindow(session, id, result);
+        switch (selection) {
+            case UNAVAILABLE:
+                Toast.makeText(this, R.string.ui_tmux_attachment_unavailable, Toast.LENGTH_SHORT).show();
+                break;
+            case ALREADY_ACTIVE:
+                result.complete(true);
+                break;
+            case SWITCH_REQUESTED:
+                Logger.logDebug(LOG_TAG, "tmux switch dispatched in " + (SystemClock.elapsedRealtime() - started) + " ms");
+                status.setPending(true);
+                break;
+            case SWITCH_PENDING:
+                break;
         }
-        getDrawer().closeDrawers();
-        if (session != getCurrentSession()) mTermuxTerminalSessionActivityClient.setCurrentSession(session);
     }
 
     private final class Sidebar {

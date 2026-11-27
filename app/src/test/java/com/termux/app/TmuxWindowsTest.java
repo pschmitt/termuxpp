@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.robolectric.Shadows.shadowOf;
 
 import android.os.Handler;
 import android.os.Looper;
@@ -15,6 +16,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RobolectricTestRunner;
 
+import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -44,16 +46,34 @@ public class TmuxWindowsTest {
     }
 
     @Test
-    public void choosingAWindowHighlightsItAtOnce() throws Exception {
-        assertEquals(TmuxWindows.Selection.SWITCH_REQUESTED, windows.select(TERMINAL, "@2"));
-        assertEquals(1, changes);
-        JSONArray rows = windows.get(TERMINAL);
-        assertFalse(rows.getJSONObject(0).getBoolean("active"));
-        assertTrue(rows.getJSONObject(1).getBoolean("active"));
+    public void choosingAWindowWaitsForTmuxToConfirm() throws Exception {
+        AtomicReference<Boolean> confirmed = new AtomicReference<>();
+        assertEquals(TmuxWindows.Selection.SWITCH_REQUESTED, windows.select(TERMINAL, "@2", confirmed::set));
+        assertTrue(windows.isSwitchPending(TERMINAL, "@2"));
+        assertTrue(windows.get(TERMINAL).getJSONObject(0).getBoolean("active"));
 
-        // tmux confirming the switch matches the highlight, so the sidebar is not redrawn again.
+        assertEquals("@2", windows.update(TERMINAL, snapshot("@1")));
+        assertNull(confirmed.get());
+        assertTrue(windows.isSwitchPending(TERMINAL, "@2"));
+
         windows.update(TERMINAL, snapshot("@2"));
+        assertEquals(Boolean.TRUE, confirmed.get());
+        assertFalse(windows.isSwitchPending(TERMINAL, "@2"));
+        assertTrue(windows.get(TERMINAL).getJSONObject(1).getBoolean("active"));
         assertEquals(1, changes);
+    }
+
+    @Test
+    public void aTimedOutChoiceCanBeRetried() throws Exception {
+        AtomicReference<Boolean> confirmed = new AtomicReference<>();
+        windows.select(TERMINAL, "@2", confirmed::set);
+        assertEquals(TmuxWindows.Selection.SWITCH_PENDING, windows.select(TERMINAL, "@2", ignored -> {}));
+
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(TmuxWindows.SWITCH_TIMEOUT_MS));
+        assertEquals(Boolean.FALSE, confirmed.get());
+        assertFalse(windows.isSwitchPending(TERMINAL, "@2"));
+        assertEquals(JSONObject.NULL, windows.update(TERMINAL, snapshot("@1")));
+        assertEquals(TmuxWindows.Selection.SWITCH_REQUESTED, windows.select(TERMINAL, "@2", ignored -> {}));
     }
 
     @Test
@@ -71,7 +91,7 @@ public class TmuxWindowsTest {
         helper.start();
         Thread.sleep(50);
         long start = System.nanoTime();
-        windows.select(TERMINAL, "@2");
+        windows.select(TERMINAL, "@2", ignored -> {});
         assertTrue(done.await(2, TimeUnit.SECONDS));
         assertTrue(TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - start) < 1000);
         assertEquals("@2", chosen.get());
@@ -88,7 +108,7 @@ public class TmuxWindowsTest {
 
     @Test
     public void helpersWithoutTheWaitStillGetTheChoiceWithTheirSnapshot() throws Exception {
-        windows.select(TERMINAL, "@2");
+        windows.select(TERMINAL, "@2", ignored -> {});
         assertEquals("@2", windows.update(TERMINAL, snapshot("@1")));
         assertEquals(JSONObject.NULL, windows.update(TERMINAL, snapshot("@1")));
     }
@@ -113,10 +133,14 @@ public class TmuxWindowsTest {
     @Test
     public void choosingAReportedWindowDoesNotWaitForAHelper() throws Exception {
         windows.report("plugin", report("@4\t1\t1\tzsh\ta\n@5\t2\t0\tzsh\tb\n"));
-        assertEquals(TmuxWindows.Selection.SWITCH_REQUESTED, windows.select("plugin", "@5"));
-        assertTrue(windows.get("plugin").getJSONObject(1).getBoolean("active"));
+        AtomicReference<Boolean> confirmed = new AtomicReference<>();
+        assertEquals(TmuxWindows.Selection.SWITCH_REQUESTED, windows.select("plugin", "@5", confirmed::set));
+        assertFalse(windows.get("plugin").getJSONObject(1).getBoolean("active"));
         // Nothing is queued for a helper: the service types the choice into the terminal instead.
         assertNull(windows.awaitSelection(TOKEN, 20));
+        windows.report("plugin", report("@4\t1\t0\tzsh\ta\n@5\t2\t1\tzsh\tb\n"));
+        assertEquals(Boolean.TRUE, confirmed.get());
+        assertTrue(windows.get("plugin").getJSONObject(1).getBoolean("active"));
     }
 
     @Test
@@ -141,15 +165,15 @@ public class TmuxWindowsTest {
 
     @Test
     public void choosingAnAlreadyActiveWindowDoesNotRedrawOrQueueACommand() throws Exception {
-        assertEquals(TmuxWindows.Selection.ALREADY_ACTIVE, windows.select(TERMINAL, "@1"));
+        assertEquals(TmuxWindows.Selection.ALREADY_ACTIVE, windows.select(TERMINAL, "@1", ignored -> {}));
         assertNull(windows.awaitSelection(TOKEN, 20));
         assertEquals(0, changes);
     }
 
     @Test
     public void unknownWindowsAreNotChosen() {
-        assertEquals(TmuxWindows.Selection.UNAVAILABLE, windows.select(TERMINAL, "@9"));
-        assertEquals(TmuxWindows.Selection.UNAVAILABLE, windows.select("other", "@1"));
+        assertEquals(TmuxWindows.Selection.UNAVAILABLE, windows.select(TERMINAL, "@9", ignored -> {}));
+        assertEquals(TmuxWindows.Selection.UNAVAILABLE, windows.select("other", "@1", ignored -> {}));
         assertEquals(0, changes);
     }
 }

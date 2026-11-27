@@ -496,8 +496,10 @@ typing a key the plugin binds. Hosts need only the plugin; the `tpp tmux attach`
 for hosts without it. Upstream Termux has no tmux integration.
 
 A shell-launched SSH attachment can publish its remote tmux windows under its
-TermuxPP sidebar entry. Tap a window to select it, or hold the terminal's
-sidebar entry and choose **Open window picker**. The sidebar refreshes as the
+TermuxPP sidebar entry. Tap a window to select it. The row shows that the switch
+is pending until tmux confirms the new active window. If confirmation is missing
+after three seconds, tap again to retry. Hold the terminal's sidebar entry
+and choose **Open window picker**. The sidebar refreshes as the
 active window, names, and window list change. Choosing the active window closes
 the sidebar without sending another tmux switch. Upstream Termux's sidebar lists Android terminal
 sessions. [Upstream sidebar source](https://github.com/termux/termux-app/blob/master/app/src/main/java/com/termux/app/TermuxSessionsListViewController.java).
@@ -540,10 +542,10 @@ The shell helper owns the SSH connection. It keeps one remote `sh` open on
 that connection to identify the attached tmux client, list windows and select
 a window, and falls back to a new channel per command if that shell breaks.
 It sends snapshots over the app-UID session socket and keeps a `tmux-wait`
-request open there. When you tap a window, the app highlights it, answers the
-wait, and the helper selects the window and lists the windows again in one
-round trip. Without a choice the wait ends after 750 ms and the helper looks
-at tmux again. An app without `tmux-wait` hands the choice back with the next
+request open there. When you tap a window, the app answers the wait and
+shows the switch as pending. The helper selects the window and lists the
+windows again in one round trip, so the app can show the confirmed state.
+Without a choice the wait ends after 750 ms and the helper looks at tmux again. An app without `tmux-wait` hands the choice back with the next
 snapshot instead. The app clears the list when the attachment ends or its
 lease expires. The remote host needs tmux and the usual shell utilities. The
 command caps the snapshot to fit the session socket's request limit.
