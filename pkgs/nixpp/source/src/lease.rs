@@ -737,11 +737,20 @@ fn controller_output_with(
         .stderr(stderr)
         .output()
         .context("unable to start ssh")?;
-    ensure!(
-        output.status.success(),
-        "the rworker controller refused the request ({})",
-        output.status
-    );
+    if !output.status.success() {
+        // A piped stderr carries the gate's reason ("refused: ...").
+        let reason = String::from_utf8_lossy(&output.stderr);
+        match reason.lines().map(str::trim).rfind(|line| !line.is_empty()) {
+            Some(reason) => bail!(
+                "the rworker controller refused the request ({}: {reason})",
+                output.status
+            ),
+            None => bail!(
+                "the rworker controller refused the request ({})",
+                output.status
+            ),
+        }
+    }
     Ok(String::from_utf8(output.stdout)?)
 }
 
@@ -798,17 +807,31 @@ fn hosted(
     )?)?;
     let release = Release::Hosted(id.clone());
     let started = Instant::now();
+    // A status poll can fail transiently (the forge API, the controller):
+    // retry quietly, and name the last failure only if the wait times out.
+    let mut last_error = None;
     let result = (|| loop {
-        ensure!(
-            started.elapsed() < queue_timeout,
-            "timed out waiting for a runner"
+        if started.elapsed() >= queue_timeout {
+            match last_error.take() {
+                Some(error) => {
+                    bail!("timed out waiting for a runner (last status error: {error:#})")
+                }
+                None => bail!("timed out waiting for a runner"),
+            }
+        }
+        let reply = controller_output_with(
+            side,
+            controller,
+            &words(&["rworker", "github-status", &id]),
+            Stdio::piped(),
         );
-        let reply = controller_output(side, controller, &words(&["rworker", "github-status", &id]));
         match reply.and_then(|reply| parse_hosted_status(&reply, &id, &name)) {
             Ok(Hosted::Ready(worker)) => return Ok(worker),
             Ok(Hosted::Ended(state)) => bail!("the runner lease ended ({state})"),
-            Ok(Hosted::Waiting) | Err(_) => std::thread::sleep(Duration::from_secs(3)),
+            Ok(Hosted::Waiting) => last_error = None,
+            Err(error) => last_error = Some(error),
         }
+        std::thread::sleep(Duration::from_secs(3));
     })();
     if result.is_err() {
         // Do not leave a queued runner behind.
