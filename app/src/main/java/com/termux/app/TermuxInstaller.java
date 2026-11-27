@@ -190,9 +190,11 @@ final class TermuxInstaller {
                         }
 
                         // Keep the helpers correct after APT replaces them with the stock versions. Fatal:
-                        // without the hook the first apt upgrade of termux-tools breaks login.
-                        TermuxHelperRewrites.deployHook(TERMUX_STAGING_PREFIX_DIR,
-                            TermuxConstants.TERMUX_PREFIX_DIR_PATH, helperIdentityValues());
+                        // without the hook the first apt upgrade of termux-tools breaks login. A slim
+                        // bootstrap without dpkg has no APT and nothing for the hook to keep correct.
+                        if (new File(TERMUX_STAGING_PREFIX_DIR, "var/lib/dpkg").isDirectory())
+                            TermuxHelperRewrites.deployHook(TERMUX_STAGING_PREFIX_DIR,
+                                TermuxConstants.TERMUX_PREFIX_DIR_PATH, helperIdentityValues());
                         Logger.logInfo(LOG_TAG, "Adapted " + extracted.adaptedFiles.size() + " bootstrap files to "
                             + adapter.dataDir() + ".");
                     }
@@ -266,6 +268,8 @@ final class TermuxInstaller {
             @Override
             public void run() {
                 try {
+                    // A slim prefix has no APT (and no bash to run the hook with).
+                    if (!new File(TermuxConstants.TERMUX_PREFIX_DIR_PATH, "bin/apt").exists()) return;
                     Map<String, String> values = helperIdentityValues();
                     if (TermuxBootstrapAdapter.load(TermuxConstants.TERMUX_PACKAGE_NAME, values).isStock()) return;
 

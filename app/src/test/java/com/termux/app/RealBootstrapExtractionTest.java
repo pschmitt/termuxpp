@@ -116,7 +116,10 @@ public class RealBootstrapExtractionTest {
                     file.getValue(), extracted);
             }
         }
-        Assert.assertTrue(arch + ": the bootstrap has text files with the stock path", textWithNeedle > 0);
+        // An upstream bootstrap (with its dpkg database) must have had something to adapt; the slim
+        // TermuxPP outer bootstrap has no stock files at all.
+        if (original.containsKey("var/lib/dpkg/status"))
+            Assert.assertTrue(arch + ": the bootstrap has text files with the stock path", textWithNeedle > 0);
 
         if (original.containsKey("etc/profile.d/init-termux-properties.sh")) {
             String init = new String(Files.readAllBytes(new File(staging,

@@ -34,6 +34,8 @@ runCommand "termuxpp-outer-bootstrap" { nativeBuildInputs = [ zip ]; } ''
   # The installer requires one symlink; Android's shell is the prefix's sh.
   printf '%s\n' '/system/bin/sh←bin/sh' > "$tree/SYMLINKS.txt"
   mkdir -p "$out"
+  # Reproducible: one timestamp for every entry.
+  find "$tree" -exec touch -h -d @315532800 {} +
   (cd "$tree" && find . -mindepth 1 | LC_ALL=C sort | TZ=UTC zip -q -X -9 -@ "$out/bootstrap-aarch64.zip")
   sha256sum "$out/bootstrap-aarch64.zip" | cut -d' ' -f1 > "$out/bootstrap-aarch64.zip.sha256"
 ''
