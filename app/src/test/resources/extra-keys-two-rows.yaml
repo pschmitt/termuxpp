@@ -1,0 +1,74 @@
+extra-keys:
+  corner-radius: 7
+  keys:
+  - - display: Esc
+      inset: 2
+      key: ESC
+      popup: DEL
+    - display: Alt
+      hold: _
+      inset: 2
+      key: ALT
+    - display: Home
+      double-tap:
+        display: PgUp
+        key: PGUP
+      hint: PgUp
+      inset: 2
+      key: HOME
+    - inset: 2
+      key: UP
+    - display: End
+      double-tap:
+        display: PgDn
+        key: PGDN
+      hint: PgDn
+      inset: 2
+      key: END
+    - inset: 2
+      key: '|'
+      menu:
+      - '~'
+      - /
+      - \
+      - '-'
+      - $
+      - <
+      - '>'
+  - - inset: 2
+      key: TAB
+    - display: Ctrl
+      hold: SHIFT
+      hold-display: Shift
+      inset: 2
+      key: CTRL
+    - fling-left: HOME
+      inset: 2
+      key: LEFT
+      popup:
+        display: Home
+        key: HOME
+    - inset: 2
+      key: DOWN
+    - fling-right: END
+      inset: 2
+      key: RIGHT
+      popup:
+        display: End
+        key: END
+    - inset: 2
+      key: '-'
+      menu:
+      - '~'
+      - /
+      - \
+      - '|'
+      - $
+      - <
+      - '>'
+  swipe:
+    left:
+      action: previous-session
+    long-left:
+      action: new-session
+  theme: rounded

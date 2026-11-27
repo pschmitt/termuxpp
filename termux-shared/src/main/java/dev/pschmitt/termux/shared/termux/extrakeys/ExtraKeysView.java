@@ -48,6 +48,7 @@ import androidx.annotation.Nullable;
 
 import com.google.android.material.button.MaterialButton;
 import dev.pschmitt.termux.shared.R;
+import dev.pschmitt.termux.shared.logger.Logger;
 import dev.pschmitt.termux.shared.termux.terminal.io.TerminalExtraKeys;
 import dev.pschmitt.termux.shared.theme.ThemeUtils;
 import dev.pschmitt.termux.shared.termux.settings.properties.TermuxPropertyConstants;
@@ -160,6 +161,15 @@ public final class ExtraKeysView extends GridLayout {
     public static final int DEFAULT_LONG_PRESS_REPEAT_DELAY = 80;
 
 
+
+    private static final String LOG_TAG = "ExtraKeysView";
+
+    /** The size for which rows that overflowed the view were last rebuilt, so that is done once per size. */
+    private int mRepairedWidth = -1, mRepairedHeight = -1;
+    /** The keys and row height of the last {@link #reload(ExtraKeysInfo, float)}, to rebuild them. */
+    @Nullable private ExtraKeysInfo mLoadedInfo;
+    private float mLoadedHeightPx;
+    private boolean mRepairing;
 
     /** The implementation of the {@link IExtraKeysView} that acts as a client for the {@link ExtraKeysView}. */
     protected IExtraKeysView mExtraKeysViewClient;
@@ -683,6 +693,12 @@ public final class ExtraKeysView extends GridLayout {
         mKeyInfos.clear();
         mFlingKeys.clear();
         removeAllViews();
+        mLoadedInfo = extraKeysInfo;
+        mLoadedHeightPx = heightPx;
+        if (!mRepairing) {
+            mRepairedWidth = -1;
+            mRepairedHeight = -1;
+        }
 
         ExtraKeyButton[][] buttons = extraKeysInfo.getMatrix();
 
@@ -1204,6 +1220,35 @@ public final class ExtraKeysView extends GridLayout {
         if (mPendingTap != null && mHandler != null) mHandler.removeCallbacks(mPendingTap);
         mPendingTap = null;
         mPendingTapButton = null;
+    }
+
+    @Override
+    protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+        super.onLayout(changed, left, top, right, bottom);
+        // On a phone (Android 16) the grid was once laid out with every row as tall as the whole view, which put all
+        // rows but the first out of sight until the keys were reloaded. The cause is unknown, so notice such a layout,
+        // log it and rebuild the keys once for this size, as a reload did.
+        int width = right - left, height = bottom - top;
+        if (height <= 0 || (width == mRepairedWidth && height == mRepairedHeight)) return;
+        View overflowing = null;
+        for (int i = 0; i < getChildCount() && overflowing == null; i++) {
+            View child = getChildAt(i);
+            if (child.getVisibility() != GONE && child.getBottom() > height + 1) overflowing = child;
+        }
+        if (overflowing == null) return;
+        mRepairedWidth = width;
+        mRepairedHeight = height;
+        Logger.logWarn(LOG_TAG, "Extra keys rows overflow the " + width + "x" + height + " view: a key spans "
+            + overflowing.getTop() + "-" + overflowing.getBottom() + " of " + getRowCount() + " rows. Rebuilding the keys.");
+        post(() -> {
+            if (mLoadedInfo == null) return;
+            mRepairing = true;
+            try {
+                reload(mLoadedInfo, mLoadedHeightPx);
+            } finally {
+                mRepairing = false;
+            }
+        });
     }
 
     @Override
