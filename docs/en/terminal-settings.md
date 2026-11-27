@@ -588,6 +588,16 @@ extra-keys:
   compact: true
 ```
 
+`extra-keys.auto-hide: true` shows the extra keys only while the soft keyboard is visible: when the
+keyboard hides (the Back key, a gesture, a hardware keyboard), the extra keys hide with it, and they
+come back with the keyboard. Hiding the extra keys with the toolbar toggle still hides them until
+you show them again. It is off by default.
+
+```yaml
+extra-keys:
+  auto-hide: true
+```
+
 Choose **Press animation** in **Settings → Properties → Extra keys** and
 tap a preview key to try it. In YAML, set `extra-keys.animation` to
 `key-preview` (default), `key-bubble`, `press-in`, `pop`, `lift`, or `off`. Key preview shows

@@ -142,6 +142,9 @@ public final class TermuxPropertyConstants {
     /** Defines the key for whether the rows of the extra keys toolbar are lower than normal. */
     public static final String KEY_EXTRA_KEYS_COMPACT =  "extra-keys-compact"; // Default: "extra-keys-compact"
 
+    /** Defines the key for whether the extra keys toolbar is shown only while the soft keyboard is. */
+    public static final String KEY_EXTRA_KEYS_AUTO_HIDE =  "extra-keys-auto-hide"; // Default: "extra-keys-auto-hide"
+
     /** The factor that {@link #KEY_EXTRA_KEYS_COMPACT} applies to the row height, on top of
      * {@link #KEY_TERMINAL_TOOLBAR_HEIGHT_SCALE_FACTOR}. */
     public static final float EXTRA_KEYS_COMPACT_ROW_SCALE = 0.75f;
@@ -688,6 +691,7 @@ public final class TermuxPropertyConstants {
         KEY_ENFORCE_CHAR_BASED_INPUT,
         KEY_EXTRA_KEYS_TEXT_ALL_CAPS,
         KEY_EXTRA_KEYS_COMPACT,
+        KEY_EXTRA_KEYS_AUTO_HIDE,
         KEY_HIDE_SOFT_KEYBOARD_ON_STARTUP,
         KEY_HIDE_SOFT_KEYBOARD_ON_SIDEBAR,
         KEY_NIX_SESSION,
@@ -811,6 +815,7 @@ public final class TermuxPropertyConstants {
         KEY_DISABLE_TERMINAL_SESSION_CHANGE_TOAST,
         KEY_ENFORCE_CHAR_BASED_INPUT,
         KEY_EXTRA_KEYS_COMPACT,
+        KEY_EXTRA_KEYS_AUTO_HIDE,
         KEY_HIDE_SOFT_KEYBOARD_ON_STARTUP,
         KEY_TERMINAL_ONCLICK_URL_OPEN,
         KEY_USE_CTRL_SPACE_WORKAROUND,

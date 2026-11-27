@@ -213,6 +213,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private int mNavBarHeight;
 
+    /** Whether the soft keyboard is visible, from the window insets (extra-keys-auto-hide). */
+    private boolean mSoftKeyboardVisible;
+
     private float mTerminalToolbarDefaultHeight;
 
 
@@ -275,6 +278,17 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         content.setOnApplyWindowInsetsListener((v, insets) -> {
             mNavBarHeight = insets.getSystemWindowInsetBottom();
             return insets;
+        });
+        // extra-keys-auto-hide: the keyboard showing or hiding resizes the window. The root
+        // insets carry its real state; the insets a view receives may be consumed already.
+        content.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
+            WindowInsetsCompat rootInsets = ViewCompat.getRootWindowInsets(content);
+            if (rootInsets == null) return;
+            boolean keyboard = rootInsets.isVisible(WindowInsetsCompat.Type.ime());
+            if (keyboard != mSoftKeyboardVisible) {
+                mSoftKeyboardVisible = keyboard;
+                applyTerminalToolbarVisibility();
+            }
         });
 
         if (mProperties.isUsingFullScreen()) {
@@ -571,7 +585,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             mTermuxTerminalViewClient, mTermuxTerminalSessionActivityClient);
 
         final ViewPager terminalToolbarViewPager = getTerminalToolbarViewPager();
-        if (mPreferences.shouldShowTerminalToolbar()) terminalToolbarViewPager.setVisibility(View.VISIBLE);
+        applyTerminalToolbarVisibility();
 
         ViewGroup.LayoutParams layoutParams = terminalToolbarViewPager.getLayoutParams();
         mTerminalToolbarDefaultHeight = layoutParams.height;
@@ -669,11 +683,27 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         mPreferences.setShowTerminalToolbar(showNow);
         if (toast)
             Logger.showToast(this, (showNow ? getString(R.string.msg_enabling_terminal_toolbar) : getString(R.string.msg_disabling_terminal_toolbar)), true);
-        terminalToolbarViewPager.setVisibility(showNow ? View.VISIBLE : View.GONE);
-        if (showNow && isTerminalToolbarTextInputViewSelected()) {
+        boolean shown = applyTerminalToolbarVisibility();
+        if (shown && isTerminalToolbarTextInputViewSelected()) {
             // Focus the text input view if just revealed.
             findViewById(R.id.terminal_toolbar_text_input).requestFocus();
         }
+    }
+
+    /**
+     * Show the extra keys toolbar if the user enabled it and, with extra-keys-auto-hide, only while
+     * the soft keyboard is visible: then the toolbar hides and appears together with the keyboard.
+     *
+     * @return Whether the toolbar is shown now.
+     */
+    private boolean applyTerminalToolbarVisibility() {
+        final ViewPager terminalToolbarViewPager = getTerminalToolbarViewPager();
+        if (terminalToolbarViewPager == null) return false;
+        boolean shown = mPreferences.shouldShowTerminalToolbar()
+            && (mProperties == null || !mProperties.shouldExtraKeysAutoHide() || mSoftKeyboardVisible);
+        int visibility = shown ? View.VISIBLE : View.GONE;
+        if (terminalToolbarViewPager.getVisibility() != visibility) terminalToolbarViewPager.setVisibility(visibility);
+        return shown;
     }
 
     private void saveTerminalToolbarTextInput(Bundle savedInstanceState) {
@@ -1824,6 +1854,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
         setMargins();
         setTerminalToolbarHeight();
+        applyTerminalToolbarVisibility();
 
         FileReceiverActivity.updateFileReceiverActivityComponentsState(this);
         termuxSessionListNotifyUpdated();

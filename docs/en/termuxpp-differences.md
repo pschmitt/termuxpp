@@ -644,6 +644,8 @@ the keycap, and show an automatic or custom corner hint. The layout editor can r
 leave blank slots for unassigned keys.
 `extra-keys.compact` lowers every row to three quarters of the height that
 `extra-keys.height` gives, off by default.
+`extra-keys.auto-hide` (off by default) shows the extra keys only while the soft
+keyboard is visible, so both hide and appear together.
 [Extra-key appearance](terminal-settings.md#extra-key-appearance).
 
 TermuxPP adds optional extra-key press and release motion. Key preview is the

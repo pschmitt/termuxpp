@@ -88,6 +88,9 @@ public final class PropertyInputSpec {
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_COMPACT:
                 return bool(key, "Make the rows of the extra keys lower, three quarters of their normal height,"
                     + " on top of the toolbar height.");
+            case TermuxPropertyConstants.KEY_EXTRA_KEYS_AUTO_HIDE:
+                return bool(key, "Show the extra keys only while the soft keyboard is visible: they hide and"
+                    + " appear together with it. Hiding the extra keys still hides them for good.");
             case TermuxPropertyConstants.KEY_SIDEBAR_LEFT_SESSIONS:
                 return bool(key, "Show terminal sessions in the left sidebar.");
             case TermuxPropertyConstants.KEY_SIDEBAR_LEFT_TMUX_WINDOWS:

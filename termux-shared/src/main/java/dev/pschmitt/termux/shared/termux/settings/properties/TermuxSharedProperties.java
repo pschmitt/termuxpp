@@ -1236,6 +1236,11 @@ public abstract class TermuxSharedProperties {
         return (boolean) getInternalPropertyValue(TermuxPropertyConstants.KEY_EXTRA_KEYS_TEXT_ALL_CAPS, true);
     }
 
+    /** Whether the extra keys toolbar follows the soft keyboard: shown only while it is visible. */
+    public boolean shouldExtraKeysAutoHide() {
+        return (boolean) getInternalPropertyValue(TermuxPropertyConstants.KEY_EXTRA_KEYS_AUTO_HIDE, true);
+    }
+
     public boolean areExtraKeysCompact() {
         return (boolean) getInternalPropertyValue(TermuxPropertyConstants.KEY_EXTRA_KEYS_COMPACT, true);
     }

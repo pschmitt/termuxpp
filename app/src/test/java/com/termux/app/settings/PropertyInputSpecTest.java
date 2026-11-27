@@ -76,6 +76,7 @@ public class PropertyInputSpecTest {
         assertTrue(PropertyInputSpec.help("fullscreen").contains("Default: false"));
         assertTrue(PropertyInputSpec.help("extra-keys-text-all-caps").contains("Default: true"));
         assertTrue(PropertyInputSpec.help("extra-keys-compact").contains("Default: false"));
+        assertTrue(PropertyInputSpec.help("extra-keys-auto-hide").contains("Default: false"));
         // Inverted settings are described the way config.yaml names them: share-target defaults to true.
         assertTrue(PropertyInputSpec.help("disable-file-share-receiver").contains("Default: true"));
         assertTrue(PropertyInputSpec.help("terminal-single-tap-action").contains("gestures.tap.single.keys"));

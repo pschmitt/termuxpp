@@ -143,6 +143,7 @@ public final class TermuxConfigSchema {
         add("extra-keys.labels", "extra-keys-style");
         add("extra-keys.height", "terminal-toolbar-height");
         add("extra-keys.compact", "extra-keys-compact");
+        add("extra-keys.auto-hide", "extra-keys-auto-hide");
         add("extra-keys.background-color", "extra-keys-row-background-color");
         add("extra-keys.font", "extra-keys-font");
         add("extra-keys.animation", "extra-keys-animation");
