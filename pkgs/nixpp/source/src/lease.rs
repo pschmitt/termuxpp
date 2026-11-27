@@ -1608,14 +1608,19 @@ mod tests {
     #[test]
     fn worker_builds_are_rworker_jobs_with_their_logs() {
         let home = tempfile::tempdir().unwrap();
+        // The script prefers a writable /var/lib/rworker/jobs, which every
+        // rworker has; point it elsewhere so the test does not depend on the
+        // machine it runs on.
         let script = rworker_job(
             "nixpp upgrade p11\nx",
             "sh -c 'echo /nix/store/out; echo building >&2; exit 3'",
-        );
+        )
+        .replace("/var/lib/rworker/jobs", "/nonexistent/rworker/jobs");
         let output = Command::new("sh")
             .arg("-c")
             .arg(&script)
             .env("HOME", home.path())
+            .env_remove("RWORKER_JOBS_DIR")
             .output()
             .unwrap();
         // Only the output path on standard output; the logs on standard error.
