@@ -1,25 +1,39 @@
 //! `clipboard-get`: `tpp clipboard get`.
 //!
-//! Deviation: `-i` and `-m` can read images from the integrated Android API.
+//! Deviation: termuxpp can read typed clipboard content from the integrated app.
 use crate::{Call, Io, Stdin};
 
 pub const USAGE: &str = include_str!("../help/clipboard-get.txt");
 const NAME: &str = "tpp clipboard get";
+const TEXT_MAGIC: &[u8] = b"\0TPPTXT1\n";
 const IMAGE_MAGIC: &[u8] = b"\0TPPIMG1\n";
 const MAX_IMAGE_BYTES: usize = 32 * 1024 * 1024;
 
+enum Mode {
+    Automatic,
+    Text,
+    Image,
+    ImageWithMime,
+}
+
 pub fn run(args: &[String], io: &mut Io) -> i32 {
     match args {
-        [option] if option == "-i" => read_image(io, false),
-        [option] if option == "-m" => read_image(io, true),
+        [option] if option == "-a" => read_typed(io, Mode::Automatic),
+        [option] if option == "-t" => read_typed(io, Mode::Text),
+        [option] if option == "-i" => read_typed(io, Mode::Image),
+        [option] if option == "-m" => read_typed(io, Mode::ImageWithMime),
         _ => super::simple_call(args, io, NAME, USAGE, Call::new("Clipboard")),
     }
 }
 
-fn read_image(io: &mut Io, with_mime: bool) -> i32 {
-    let call = Call::new("Clipboard")
-        .es("api_version", 3)
+fn read_typed(io: &mut Io, mode: Mode) -> i32 {
+    let accepts_text = matches!(mode, Mode::Automatic | Mode::Text);
+    let mut call = Call::new("Clipboard")
+        .es("api_version", if accepts_text { 4 } else { 3 })
         .stdin(Stdin::None);
+    if matches!(mode, Mode::Text) {
+        call = call.ez("text_only", true);
+    }
     let result = io.call_capture(call);
     let (bytes, mut reply) = match result {
         Ok(value) => value,
@@ -30,10 +44,18 @@ fn read_image(io: &mut Io, with_mime: bool) -> i32 {
     };
     reply.close_fd();
 
-    match image_payload(&bytes) {
+    let payload = if matches!(mode, Mode::Text) && bytes.starts_with(IMAGE_MAGIC) {
+        Err("the app returned an image to a text-only request")
+    } else if accepts_text && !bytes.starts_with(IMAGE_MAGIC) {
+        // Older apps answer version 4 requests using the legacy text API.
+        Ok(("", bytes.strip_prefix(TEXT_MAGIC).unwrap_or(&bytes)))
+    } else {
+        image_payload(&bytes)
+    };
+    match payload {
         Ok((mime, image)) => {
             let result = (|| {
-                if with_mime {
+                if matches!(mode, Mode::ImageWithMime) {
                     writeln!(io.stdout, "{mime}")?;
                 }
                 io.stdout.write_all(image)?;
@@ -42,7 +64,9 @@ fn read_image(io: &mut Io, with_mime: bool) -> i32 {
             match result {
                 Ok(()) => 0,
                 Err(error) => {
-                    io.errln(&format!("{NAME}: could not write image: {error}"));
+                    io.errln(&format!(
+                        "{NAME}: could not write clipboard content: {error}"
+                    ));
                     1
                 }
             }

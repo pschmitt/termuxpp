@@ -1,8 +1,10 @@
-Usage: tpp clipboard get [-i | -m]
-Get the system clipboard text by default.
+Usage: tpp clipboard get [-t | -i | -m]
+Write clipboard text or the original image bytes to standard output.
 
 Options:
+  -t  Read clipboard text only.
   -i  Write the original clipboard image bytes to standard output.
   -m  Write the image MIME type and a newline before the original bytes.
 
+Use --json for text output with JSON wrapping.
 Image reads require input focus and support images up to 32 MiB.

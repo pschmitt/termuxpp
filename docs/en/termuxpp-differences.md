@@ -481,14 +481,13 @@ and [guest tools](../../pkgs/nixpp/clipboard.nix).
 
 ### Reading clipboard images with tpp
 
-Upstream `termux-clipboard-get` reads text. TermuxPP preserves that behavior
-for `tpp clipboard get` and adds two image modes. Use
-`tpp clipboard get --image > clipboard-image` for the original image bytes,
-or `tpp clipboard get --image-with-mime` for the MIME type on the first line
-followed by the same bytes. The latter reads the type and image from one
-clipboard item.
+Upstream `termux-clipboard-get` reads text. Bare `tpp clipboard get` writes
+text when the clipboard holds text and the original bytes when it holds an
+image. Use `--text` for text-only scripts or `--json` for the legacy wrapped
+text output. Use `--image` to require an image, or `--image-with-mime` to
+write its MIME type on the first line followed by the same bytes.
 
-Both modes need the updated app and CLI and Android clipboard access while
+Image reads need the updated app and CLI and Android clipboard access while
 TermuxPP has input focus. They fail without writing an image when the clip
 is unavailable, marked sensitive, or larger than 32 MiB.
 Sources:

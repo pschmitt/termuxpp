@@ -464,8 +464,9 @@ fn color_is_opt_in_off_a_terminal() {
 #[test]
 fn text_is_passed_through_and_wrapped_for_json() {
     let fx = Fixture::new("text");
-    let (o, call) = fx.app(&["clipboard", "get"], b"a \"b\"\nc");
+    let (o, call) = fx.app(&["clipboard", "get"], b"\0TPPTXT1\na \"b\"\nc");
     assert_eq!(call.method(), "Clipboard");
+    assert_eq!(call.extra("api_version"), Some("4"));
     assert_eq!(out(&o), "a \"b\"\nc");
     let (o, _) = fx.app(&["--json", "clipboard", "get"], b"a \"b\"\nc");
     assert_eq!(out(&o), "{\n  \"output\": \"a \\\"b\\\"\\nc\"\n}\n");
@@ -479,6 +480,16 @@ fn clipboard_images_use_raw_output_through_the_dispatcher() {
     assert_eq!(code(&output), 0, "{}", err(&output));
     assert_eq!(output.stdout, b"image/png\n\xff\0\r\n");
     assert_eq!(call.extra("api_version"), Some("3"));
+
+    let (automatic, call) = fx.app(&["clipboard", "get"], b"\0TPPIMG1\nimage/png\n4\n\xff\0\r\n");
+    assert_eq!(code(&automatic), 0);
+    assert_eq!(automatic.stdout, b"\xff\0\r\n");
+    assert_eq!(call.extra("api_version"), Some("4"));
+
+    let (text, call) = fx.app(&["clipboard", "get", "--text"], b"\0TPPTXT1\n");
+    assert_eq!(code(&text), 0);
+    assert!(text.stdout.is_empty());
+    assert!(call.has("--ez", "text_only", "true"));
 
     let rejected = fx.run(&["--json", "clipboard", "get", "--image"]);
     assert_eq!(code(&rejected), 2);

@@ -1,6 +1,6 @@
 # shellcheck shell=bash
 # wl-paste for the TermuxPP guest, which has no Wayland compositor. Text comes
-# from the Android clipboard (tpp clipboard get). An image pasted into a
+# from the Android clipboard (tpp clipboard get --text). An image pasted into a
 # session in the last 15 minutes is served from the handover directory
 # TermuxPP writes, so programs that read images with wl-paste (Claude Code's
 # Ctrl+V) can attach it.
@@ -64,7 +64,7 @@ paste_text() {
   local no_newline="$1"
   local text
 
-  text="$(tpp clipboard get)" || return 1
+  text="$(tpp clipboard get --text)" || return 1
   if [[ -n "$no_newline" ]]
   then
     printf '%s' "$text"

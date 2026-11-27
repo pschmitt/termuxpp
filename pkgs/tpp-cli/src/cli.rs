@@ -1196,6 +1196,12 @@ fn run_entry(e: &Entry, args: Vec<OsString>, json: bool) -> i32 {
             json,
         );
     }
+    if e.imp == "clipboard-get"
+        && !json
+        && (args.is_empty() || matches!(args.as_slice(), [arg] if is(arg, "--")))
+    {
+        return api::run(&e.imp, &[OsString::from("-a")]);
+    }
     let typed: Vec<String> = args.iter().map(lossy).collect();
     let class = e.effective_class(&typed);
 

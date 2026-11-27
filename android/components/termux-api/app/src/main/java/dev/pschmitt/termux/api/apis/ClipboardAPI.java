@@ -17,6 +17,7 @@ import dev.pschmitt.termux.shared.termux.clipboard.ClipboardImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 
@@ -30,12 +31,14 @@ public class ClipboardAPI {
         final ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
         final ClipData clipData = clipboard.getPrimaryClip();
 
-        if ("3".equals(intent.getStringExtra("api_version"))) {
-            returnImage(apiReceiver, context, intent, clipData);
+        String version = intent.getStringExtra("api_version");
+        boolean automatic = "4".equals(version);
+        if (automatic || "3".equals(version)) {
+            returnTypedClip(apiReceiver, context, intent, clipData, automatic);
             return;
         }
 
-        boolean version2 = "2".equals(intent.getStringExtra("api_version"));
+        boolean version2 = "2".equals(version);
         if (version2) {
             boolean set = intent.getBooleanExtra("set", false);
             if (set) {
@@ -51,20 +54,7 @@ public class ClipboardAPI {
                     }
                 });
             } else {
-                ResultReturner.returnData(apiReceiver, intent, out -> {
-                    if (clipData == null) {
-                        out.print("");
-                    } else {
-                        int itemCount = clipData.getItemCount();
-                        for (int i = 0; i < itemCount; i++) {
-                            Item item = clipData.getItemAt(i);
-                            CharSequence text = item.coerceToText(context);
-                            if (!TextUtils.isEmpty(text)) {
-                                out.print(text);
-                            }
-                        }
-                    }
-                });
+                ResultReturner.returnData(apiReceiver, intent, out -> writeText(context, clipData, out, false));
             }
         } else {
             final String newClipText = intent.getStringExtra("text");
@@ -74,53 +64,58 @@ public class ClipboardAPI {
             }
 
             ResultReturner.returnData(apiReceiver, intent, out -> {
-                if (newClipText == null) {
-                    // Get clip.
-                    if (clipData == null) {
-                        out.print("");
-                    } else {
-                        int itemCount = clipData.getItemCount();
-                        for (int i = 0; i < itemCount; i++) {
-                            Item item = clipData.getItemAt(i);
-                            CharSequence text = item.coerceToText(context);
-                            if (!TextUtils.isEmpty(text)) {
-                                out.print(text);
-                            }
-                        }
-                    }
-                }
+                if (newClipText == null) writeText(context, clipData, out, false);
             });
         }
     }
 
-    private static void returnImage(TermuxApiReceiver receiver, Context context, Intent intent, ClipData clip) {
+    private static void writeText(Context context, ClipData clip, PrintWriter out, boolean textOnly) {
+        if (clip == null) return;
+        for (int i = 0; i < clip.getItemCount(); i++) {
+            Item item = clip.getItemAt(i);
+            CharSequence text = textOnly ? item.getText() : item.coerceToText(context);
+            if (!TextUtils.isEmpty(text)) out.print(text);
+        }
+    }
+
+    private static void returnTypedClip(TermuxApiReceiver receiver, Context context, Intent intent,
+                                        ClipData clip, boolean automatic) {
         ResultReturner.returnData(receiver, intent, new ResultReturner.BinaryOutput() {
             @Override
             public void writeResult(OutputStream out) throws IOException {
-                out.write("\0TPPIMG1\n".getBytes(StandardCharsets.US_ASCII));
-                ClipDescription description = clip == null ? null : clip.getDescription();
-                PersistableBundle extras = description == null ? null : description.getExtras();
-                if (extras != null && extras.getBoolean(ClipDescription.EXTRA_IS_SENSITIVE)) {
-                    writeImageHeader(out, "unavailable", 0);
+                boolean textOnly = automatic && intent.getBooleanExtra("text_only", false);
+                if (textOnly) {
+                    writeTypedText(out, context, clip, true);
                     return;
                 }
 
-                ByteArrayOutputStream imageBytes = new ByteArrayOutputStream(64 * 1024);
+                ClipDescription description = clip == null ? null : clip.getDescription();
+                PersistableBundle extras = description == null ? null : description.getExtras();
+                boolean sensitive = extras != null && extras.getBoolean(ClipDescription.EXTRA_IS_SENSITIVE);
+
                 ClipboardImage image;
                 try {
-                    image = ClipboardImage.find(clip, context.getContentResolver());
-                    if (image != null) {
-                        ClipboardImage.copy(context.getContentResolver(), image.uri, imageBytes);
-                    }
+                    image = sensitive && !automatic ? null : ClipboardImage.find(clip, context.getContentResolver());
+                } catch (SecurityException e) {
+                    writeImageHeader(out, "unreadable", 0);
+                    return;
+                }
+                if (image == null && automatic) {
+                    writeTypedText(out, context, clip, false);
+                    return;
+                }
+                if (image == null || sensitive) {
+                    writeImageHeader(out, "unavailable", 0);
+                    return;
+                }
+                ByteArrayOutputStream imageBytes = new ByteArrayOutputStream(64 * 1024);
+                try {
+                    ClipboardImage.copy(context.getContentResolver(), image.uri, imageBytes);
                 } catch (IOException | SecurityException e) {
                     writeImageHeader(out, "unreadable", 0);
                     return;
                 }
 
-                if (image == null) {
-                    writeImageHeader(out, "unavailable", 0);
-                    return;
-                }
                 if (imageBytes.size() == 0) {
                     writeImageHeader(out, "unreadable", 0);
                     return;
@@ -131,8 +126,16 @@ public class ClipboardAPI {
         });
     }
 
+    private static void writeTypedText(OutputStream out, Context context, ClipData clip, boolean textOnly)
+        throws IOException {
+        out.write("\0TPPTXT1\n".getBytes(StandardCharsets.US_ASCII));
+        PrintWriter writer = new PrintWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8));
+        writeText(context, clip, writer, textOnly);
+        writer.flush();
+    }
+
     private static void writeImageHeader(OutputStream out, String mimeType, int length) throws IOException {
-        out.write((mimeType + "\n" + length + "\n").getBytes(StandardCharsets.UTF_8));
+        out.write(("\0TPPIMG1\n" + mimeType + "\n" + length + "\n").getBytes(StandardCharsets.UTF_8));
     }
 
 }
