@@ -1,0 +1,151 @@
+--- b/launcher.c	2026-11-27 18:08:08.479969550 +0100
++++ c/launcher.c	2026-11-27 18:29:16.595806655 +0100
+@@ -1004,10 +1004,11 @@
+ // (SIGSYS_MASK); they are delivered once it returns, on top of the program's
+ // own context. SIGSYS stays open (NODEFER), and so do the synchronous faults,
+ // which a mask cannot defer anyway.
+-// No SA_ONSTACK: the handler keeps 17-25 KiB of PATHBUF buffers on its
+-// stack, more than Rust's alternate signal stacks hold (multi-threaded Rust
+-// programs crashed). On the current stack it still overflows Go's small
+-// goroutine stacks; that needs a stack of the handler's own.
++// SA_ONSTACK puts the kernel's signal frame (up to ~5 KiB on arm64) on the
++// thread's sigaltstack, not on a goroutine stack of a few KiB. The handler's
++// own work, 17-25 KiB of PATHBUF buffers, then moves to a stack of the
++// launcher's (see handler_stack): it fits neither goroutine stacks nor
++// Rust's ~16 KiB alternate stacks.
+ #define SIGBIT(s) (1ULL << ((s) - 1))
+ #define SIGSYS_MASK                                                        \
+ 	(~0ULL & ~(SIGBIT(SIGSYS) | SIGBIT(SIGSEGV) | SIGBIT(SIGBUS) |    \
+@@ -1021,7 +1022,7 @@
+ };
+ static void sigsys_handler(int sig, siginfo_t *si, void *ctx);
+ static struct kernel_sigaction g_ka = { (void *)sigsys_handler,
+-					SA_SIGINFO | SA_RESTORER | SA_NODEFER,
++					SA_SIGINFO | SA_RESTORER | SA_NODEFER | SA_ONSTACK,
+ 					(void *)sig_restorer, SIGSYS_MASK };
+ 
+ // Canonicalise the path in r[pa] (dirfd in r[da], or the cwd if da < 0) into
+@@ -1167,6 +1168,89 @@
+ }
+ 
+ static void handle(unsigned long *r, long nr, void *ctx);
++static void dispatch(void *info, void *ctx, void *top);
++
++// ---- the handler's own stack ------------------------------------------
++//
++// Every thread that traps gets a private stack for the handler's work, mapped
++// on first use and kept for the thread's life: slots keyed by (pid, tid),
++// claimed with a compare-and-swap, and taken over from threads that no longer
++// exist. vfork children (shared memory) claim their own slot; a slot is only
++// reclaimed when tgkill says its thread is gone. Without a free slot the
++// handler runs on the current stack, as it always did.
++#define HSTACK_SIZE (512UL * 1024)
++#define HSTACK_GUARD 4096UL
++#define HSTACK_SLOTS 256
++struct hstack {
++	long tid; // 0: free
++	long pid;
++	char *base; // HSTACK_GUARD + HSTACK_SIZE, guard page first
++};
++static struct hstack g_hstacks[HSTACK_SLOTS];
++
++static char *hstack_top(struct hstack *slot)
++{
++	char *base = __atomic_load_n(&slot->base, __ATOMIC_ACQUIRE);
++	if (!base) {
++		long m = SYS6(SYS_mmap, 0, HSTACK_GUARD + HSTACK_SIZE, PROT_READ | PROT_WRITE,
++			      MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE, -1, 0);
++		if (m < 0 && m > -4096)
++			return NULL;
++		SYS3(SYS_mprotect, m, HSTACK_GUARD, PROT_NONE);
++		base = (char *)m;
++		__atomic_store_n(&slot->base, base, __ATOMIC_RELEASE);
++	}
++	return base + HSTACK_GUARD + HSTACK_SIZE;
++}
++
++static char *handler_stack(void)
++{
++	long pid = SYS0(SYS_getpid), tid = SYS0(SYS_gettid);
++	for (int i = 0; i < HSTACK_SLOTS; i++)
++		if (__atomic_load_n(&g_hstacks[i].tid, __ATOMIC_ACQUIRE) == tid &&
++		    __atomic_load_n(&g_hstacks[i].pid, __ATOMIC_ACQUIRE) == pid)
++			return hstack_top(&g_hstacks[i]);
++	for (int pass = 0; pass < 2; pass++) {
++		for (int i = 0; i < HSTACK_SLOTS; i++) {
++			struct hstack *slot = &g_hstacks[i];
++			long owner = __atomic_load_n(&slot->tid, __ATOMIC_ACQUIRE);
++			if (owner != 0 &&
++			    (pass == 0 ||
++			     SYS3(SYS_tgkill, __atomic_load_n(&slot->pid, __ATOMIC_ACQUIRE), owner, 0) != -ESRCH))
++				continue;
++			if (!__atomic_compare_exchange_n(&slot->tid, &owner, tid, 0, __ATOMIC_ACQ_REL,
++							 __ATOMIC_ACQUIRE))
++				continue;
++			__atomic_store_n(&slot->pid, pid, __ATOMIC_RELEASE);
++			return hstack_top(slot);
++		}
++	}
++	return NULL;
++}
++
++// Run fn(a, b, c) with the stack pointer at top, then come back.
++void call_on_stack(void (*fn)(void *, void *, void *), void *a, void *b, void *c, char *top);
++__asm__(".text\n"
++	".balign 16\n"
++	".globl call_on_stack\n"
++	".type call_on_stack, %function\n"
++	"call_on_stack:\n"
++	"	stp x29, x30, [sp, #-16]!\n"
++	"	mov x29, sp\n"
++	"	and x4, x4, #~15\n"
++	"	mov x9, sp\n"
++	"	mov sp, x4\n"
++	"	str x9, [sp, #-16]!\n"
++	"	mov x9, x0\n"
++	"	mov x0, x1\n"
++	"	mov x1, x2\n"
++	"	mov x2, x3\n"
++	"	blr x9\n"
++	"	ldr x9, [sp], #16\n"
++	"	mov sp, x9\n"
++	"	ldp x29, x30, [sp], #16\n"
++	"	ret\n"
++	".size call_on_stack, . - call_on_stack\n");
+ 
+ // execve(at) is handled here, on as little stack as possible: glibc's
+ // posix_spawn child (a clone that shares the parent's memory) runs on a
+@@ -1204,6 +1288,33 @@
+ 		return;
+ 	}
+ 
++	// Already on the private stack (the kernel put this frame there because
++	// it is the sigaltstack while the handler runs, or a nested trap): carry
++	// on below us. Switching to its top would overwrite this very frame.
++	char *top = handler_stack();
++	char *here = __builtin_frame_address(0);
++	if (!top || (here > top - HSTACK_SIZE && here <= top)) {
++		dispatch(si, ctx, 0);
++		return;
++	}
++	call_on_stack(dispatch, si, ctx, top, top);
++}
++
++// The handler's work, normally on the thread's private stack (top). A
++// trapped syscall nested into it (another seccomp filter trapping what the
++// handler reissues) arrives on the sigaltstack (SA_ONSTACK): make the private
++// stack the sigaltstack meanwhile, so it lands below us instead of on the
++// frame we came from. rt_sigreturn restores the program's own sigaltstack
++// from the saved context.
++static void dispatch(void *info, void *ctx, void *top)
++{
++	siginfo_t *si = info;
++	unsigned long *r = ((ucontext_t *)ctx)->uc_mcontext.regs;
++	long nr = si->si_syscall;
++	if (top) {
++		stack_t ss = { .ss_sp = (char *)top - HSTACK_SIZE, .ss_flags = 0, .ss_size = HSTACK_SIZE };
++		SYS2(SYS_sigaltstack, &ss, 0);
++	}
+ 	// The new image is started by re-exec'ing the loader with the guest
+ 	// target path; it canonicalises the path itself against the same cwd.
+ 	const uint64_t *mask = (const uint64_t *)&((ucontext_t *)ctx)->uc_sigmask;
