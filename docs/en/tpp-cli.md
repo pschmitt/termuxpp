@@ -81,6 +81,13 @@ actions and options.
 | Phone | `telephony`, `sms`, `call-log`, `contacts` |
 | Network and location | `wifi`, `location` |
 
+## The app's tpp from the guest
+
+In the Nix guest, `tpp --outer COMMAND ...` runs the native `tpp` that the
+installed app ships (`bin/tpp` of the native prefix) instead of the guest's
+build, with the same `am` and path conversion. The app's build is the one an
+app update changes, so this is the first step towards a single `tpp`.
+
 ## JSON output
 
 `--json` can go before the command or after it (`tpp --json battery`,

@@ -105,7 +105,6 @@ let
   tpp = writeShellApplication {
     name = "tpp";
     text = ''
-      export LD_PRELOAD=${signalStack}/lib/stack.so''${LD_PRELOAD:+:$LD_PRELOAD}
       export TPP_PLUGIN_DIR="${tppPlugins}:''${HOME}/.local/libexec/tpp/plugins''${TPP_PLUGIN_DIR:+:$TPP_PLUGIN_DIR}"
       # The API commands reach the app through TermuxAm, and guest paths
       # (/home, /nix, /android/...) are converted to the Android paths that the
@@ -114,6 +113,22 @@ let
       export TPP_API_PATH_CMD=${androidPath}
       PATH=${termux-am}/bin:"$PATH"
       export PATH
+      # tpp --outer ...: run the APK's native tpp (what the native prefix's
+      # bin/tpp links to) with the same hooks, through Android's linker. One
+      # tpp to update: the app's.
+      if [[ ''${1:-} == --outer ]]
+      then
+        shift
+        outer=$(readlink "${androidApp.dataDir}/files/usr/bin/tpp") || outer=
+        if [[ $outer != /* || ! -e /android$outer ]]
+        then
+          printf 'tpp: no native tpp in the TermuxPP prefix (bin/tpp)\n' >&2
+          exit 1
+        fi
+        unset LD_PRELOAD LD_LIBRARY_PATH
+        exec /system/bin/linker64 "/android$outer" "$@"
+      fi
+      export LD_PRELOAD=${signalStack}/lib/stack.so''${LD_PRELOAD:+:$LD_PRELOAD}
       if [[ ''${1:-} != --complete ]] &&
         { read -r apk_version < "${androidApp.dataDir}/files/usr/share/tpp/source-version"; } 2>/dev/null &&
         [[ "$apk_version" =~ ^[0-9a-f]{64}$ && "$apk_version" != "${tppCli.sourceVersion}" ]]
