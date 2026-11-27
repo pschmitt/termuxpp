@@ -24,7 +24,6 @@ let
   # through the abstract socket namespace, so no file of the app prefix is
   # involved.
   tppCli = callPackage ./tpp.nix { };
-  inherit (callPackage ./default.nix { }) signalStack;
   notifySend = writeShellApplication {
     name = "notify-send";
     text = ''
@@ -128,7 +127,6 @@ let
         unset LD_PRELOAD LD_LIBRARY_PATH
         exec /system/bin/linker64 "/android$outer" "$@"
       fi
-      export LD_PRELOAD=${signalStack}/lib/stack.so''${LD_PRELOAD:+:$LD_PRELOAD}
       if [[ ''${1:-} != --complete ]] &&
         { read -r apk_version < "${androidApp.dataDir}/files/usr/share/tpp/source-version"; } 2>/dev/null &&
         [[ "$apk_version" =~ ^[0-9a-f]{64}$ && "$apk_version" != "${tppCli.sourceVersion}" ]]
