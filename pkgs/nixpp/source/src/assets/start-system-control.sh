@@ -22,7 +22,8 @@ main() {
   socket_directory=${SESSION_TMP_DIR:-$directory/root/tmp}
   data_dir=${TERMUX_APP__DATA_DIR:-/data/data/dev.pschmitt.termux}
   prefix=$data_dir/files/usr
-  apk=$(/system/bin/pm path "${data_dir##*/}") || return 1
+  # pm is a script that runs cmd from PATH; the slim native prefix has none.
+  apk=$(PATH=/system/bin /system/bin/pm path "${data_dir##*/}") || return 1
   base_apk=
   while IFS= read -r line
   do

@@ -210,6 +210,7 @@ fn apk_redirect(package: &std::ffi::OsStr) -> Result<PathBuf> {
     let apk = Command::new("/system/bin/pm")
         .args(["path"])
         .arg(package)
+        .env("PATH", "/system/bin")
         .env_remove("LD_PRELOAD")
         .env_remove("LD_LIBRARY_PATH")
         .output()?;
