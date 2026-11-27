@@ -38,8 +38,14 @@ let
 
   # Android's app seccomp filter traps openat2 (Android 15); the upstream
   # handler re-translated its own reissue until the stack overflowed.
+  # The SIGSYS handler runs on the signal stack with asynchronous signals
+  # blocked: on goroutine stacks, with Go's handlers nesting into it, it
+  # corrupted Go's heap (sops-install-secrets on zf10).
   launcher = (static.callPackage "${src}/bootstrap/launcher" { }).overrideAttrs (old: {
-    patches = old.patches or [ ] ++ [ ./launcher-foreign-trap.patch ];
+    patches = old.patches or [ ] ++ [
+      ./launcher-foreign-trap.patch
+      ./launcher-sigsys-onstack.patch
+    ];
   });
 
   guestNixpp = pkgs.pkgsCross.aarch64-multiplatform.callPackage ./. { };

@@ -1,0 +1,96 @@
+--- a/launcher.c	2026-11-27 12:42:13.779555021 +0100
++++ b/launcher.c	2026-11-27 12:57:15.424614958 +0100
+@@ -936,7 +936,9 @@
+ // is already installed and the binds are canonical; both are passed in argv
+ // because programs (nix for its builders) clear the environment. On success
+ // this never returns; else it returns -errno.
+-static long reexec(const char *target, char **argv, char **envp)
++// mask: the program's signal mask (uc_sigmask), which execve hands on to
++// the new image; the handler runs with SIGSYS_MASK, see g_ka.
++static long reexec(const char *target, char **argv, char **envp, const uint64_t *mask)
+ {
+ 	long e = exec_check(target);
+ 	if (e < 0)
+@@ -957,7 +959,11 @@
+ 	for (int i = 0; i < n; i++)
+ 		na[k++] = argv[i];
+ 	na[k] = 0;
+-	return SYS3(SYS_execve, g_launcher, na, envp);
++	uint64_t prog = *mask & ~(1ULL << (SIGSYS - 1)), held;
++	SYS4(SYS_rt_sigprocmask, 2 /*SIG_SETMASK*/, &prog, &held, 8);
++	e = SYS3(SYS_execve, g_launcher, na, envp);
++	SYS4(SYS_rt_sigprocmask, 2 /*SIG_SETMASK*/, &held, 0, 8);
++	return e;
+ }
+ 
+ // ---- the SIGSYS handler ------------------------------------------------
+@@ -990,6 +996,26 @@
+ // during it (zsh's SIGCHLD while it traps rt_sigprocmask) runs the
+ // program's handler on top of ours, and a syscall trapped there with SIGSYS
+ // blocked is force-killed (signal 31). With NODEFER it nests into ours.
++//
++// Programs whose runtime owns registers break when their handlers nest into
++// ours: Go keeps the current goroutine in x28 on arm64, which this C code
++// reuses, and its handlers (SIGURG preemption, SIGPROF) then read garbage
++// and crash without a trace. So the handler blocks every asynchronous signal
++// (SIGSYS_MASK); they are delivered once it returns, on top of the program's
++// own context. SIGSYS stays open (NODEFER), and so do the synchronous faults,
++// which a mask cannot defer anyway.
++// SA_ONSTACK runs the handler on the thread's sigaltstack when it has one:
++// it keeps several PATHBUF buffers on its stack, and Go runs syscalls on
++// goroutine stacks of a few KiB carved out of its heap. Without it, trapped
++// syscalls from Go wrote past the goroutine stack into the heap ("found
++// pointer to free object"). Go gives every thread a signal stack and
++// requires SA_ONSTACK of foreign handlers; without a sigaltstack nothing
++// changes.
++#define SIGBIT(s) (1ULL << ((s) - 1))
++#define SIGSYS_MASK                                                        \
++	(~0ULL & ~(SIGBIT(SIGSYS) | SIGBIT(SIGSEGV) | SIGBIT(SIGBUS) |    \
++		   SIGBIT(SIGILL) | SIGBIT(SIGFPE) | SIGBIT(SIGTRAP) |        \
++		   SIGBIT(SIGKILL) | SIGBIT(SIGSTOP)))
+ struct kernel_sigaction {
+ 	void *handler;
+ 	unsigned long flags;
+@@ -998,8 +1024,8 @@
+ };
+ static void sigsys_handler(int sig, siginfo_t *si, void *ctx);
+ static struct kernel_sigaction g_ka = { (void *)sigsys_handler,
+-					SA_SIGINFO | SA_RESTORER | SA_NODEFER,
+-					(void *)sig_restorer, 0 };
++					SA_SIGINFO | SA_RESTORER | SA_NODEFER | SA_ONSTACK,
++					(void *)sig_restorer, SIGSYS_MASK };
+ 
+ // Canonicalise the path in r[pa] (dirfd in r[da], or the cwd if da < 0) into
+ // buf and point r[pa] at the result. On error, fail the syscall with it.
+@@ -1121,7 +1147,7 @@
+ 
+ // execveat(dirfd, path, argv, envp, flags): turn (dirfd, path) into an
+ // absolute guest path, since the dirfd may not survive the re-exec.
+-static __attribute__((noinline)) long execveat_reexec(unsigned long *r)
++static __attribute__((noinline)) long execveat_reexec(unsigned long *r, const uint64_t *mask)
+ {
+ 	char b1[PATHBUF], b2[PATHBUF];
+ 	const char *path = (const char *)r[1];
+@@ -1140,7 +1166,7 @@
+ 	long e = guest_abs((long)(int)r[0], path, b2, &path);
+ 	if (e < 0)
+ 		return e;
+-	return reexec(path, (char **)r[2], (char **)r[3]);
++	return reexec(path, (char **)r[2], (char **)r[3], mask);
+ }
+ 
+ static void handle(unsigned long *r, long nr, void *ctx);
+@@ -1183,10 +1209,11 @@
+ 
+ 	// The new image is started by re-exec'ing the loader with the guest
+ 	// target path; it canonicalises the path itself against the same cwd.
++	const uint64_t *mask = (const uint64_t *)&((ucontext_t *)ctx)->uc_sigmask;
+ 	if (nr == SYS_execve)
+-		r[0] = (unsigned long)reexec((const char *)r[0], (char **)r[1], (char **)r[2]);
++		r[0] = (unsigned long)reexec((const char *)r[0], (char **)r[1], (char **)r[2], mask);
+ 	else if (nr == SYS_execveat)
+-		r[0] = (unsigned long)execveat_reexec(r);
++		r[0] = (unsigned long)execveat_reexec(r, mask);
+ 	else
+ 		handle(r, nr, ctx);
+ }
