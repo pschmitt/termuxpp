@@ -1,0 +1,2 @@
+Usage: tpp wake-lock acquire
+Acquire the TermuxPP wake lock to keep the CPU awake.

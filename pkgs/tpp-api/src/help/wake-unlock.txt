@@ -1,0 +1,2 @@
+Usage: tpp wake-lock release
+Release the TermuxPP wake lock to let the CPU sleep.

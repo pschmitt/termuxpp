@@ -74,7 +74,7 @@ actions and options.
 
 | Area | Commands |
 | --- | --- |
-| Device | `battery`, `brightness`, `torch`, `vibrate`, `volume`, `wallpaper`, `sensor`, `fingerprint`, `keystore`, `infrared`, `usb`, `nfc` |
+| Device | `battery`, `brightness`, `torch`, `vibrate`, `volume`, `wake-lock`, `wallpaper`, `sensor`, `fingerprint`, `keystore`, `infrared`, `usb`, `nfc` |
 | Clipboard and sharing | `clipboard`, `share`, `download`, `storage`, `saf` |
 | Notifications and UI | `notification`, `toast`, `dialog`, `job-scheduler` |
 | Media | `audio`, `camera`, `media`, `tts`, `speech-to-text` |

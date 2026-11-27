@@ -133,6 +133,7 @@ pub mod tts_speak;
 pub mod usb;
 pub mod vibrate;
 pub mod volume;
+pub mod wake_lock;
 pub mod wallpaper;
 pub mod wifi_connectioninfo;
 pub mod wifi_enable;
@@ -192,6 +193,8 @@ pub const ALL: &[&str] = &[
     "usb",
     "vibrate",
     "volume",
+    "wake-lock",
+    "wake-unlock",
     "wallpaper",
     "wifi-connectioninfo",
     "wifi-enable",
@@ -256,6 +259,8 @@ pub fn lookup_any(imp: &str) -> Option<Handler> {
         "usb" => usb::run,
         "vibrate" => vibrate::run,
         "volume" => volume::run,
+        "wake-lock" => wake_lock::lock,
+        "wake-unlock" => wake_lock::unlock,
         "wallpaper" => wallpaper::run,
         "wifi-connectioninfo" => wifi_connectioninfo::run,
         "wifi-enable" => wifi_enable::run,
@@ -328,6 +333,8 @@ pub fn usage(imp: &str) -> Option<&'static str> {
         "usb" => usb::USAGE,
         "vibrate" => vibrate::USAGE,
         "volume" => volume::USAGE,
+        "wake-lock" => wake_lock::LOCK_USAGE,
+        "wake-unlock" => wake_lock::UNLOCK_USAGE,
         "wallpaper" => wallpaper::USAGE,
         "wifi-connectioninfo" => wifi_connectioninfo::USAGE,
         "wifi-enable" => wifi_enable::USAGE,
@@ -349,6 +356,6 @@ mod tests {
         for imp in IMPLS {
             assert!(ALL.contains(imp), "{imp} is not an implementation");
         }
-        assert_eq!(ALL.len(), 56);
+        assert_eq!(ALL.len(), 58);
     }
 }

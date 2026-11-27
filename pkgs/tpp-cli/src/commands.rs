@@ -116,6 +116,8 @@ pub const COMMANDS: &[Command] = &[
     Command { group: "vibrate", action: "-", imp: "vibrate", class: "auto", args: "-", desc: "Vibrate the device" },
     Command { group: "volume", action: "list", imp: "volume", class: "auto", args: "-", desc: "List audio stream volume levels" },
     Command { group: "volume", action: "set", imp: "volume", class: "auto", args: "-", desc: "Set the volume of an audio stream" },
+    Command { group: "wake-lock", action: "acquire", imp: "wake-lock", class: "auto", args: "-", desc: "Acquire the TermuxPP wake lock" },
+    Command { group: "wake-lock", action: "release", imp: "wake-unlock", class: "auto", args: "-", desc: "Release the TermuxPP wake lock" },
     Command { group: "wallpaper", action: "-", imp: "wallpaper", class: "auto", args: "-", desc: "Set the wallpaper" },
     Command { group: "wifi", action: "connection", imp: "wifi-connectioninfo", class: "auto", args: "-", desc: "Show the current Wi-Fi connection" },
     Command { group: "wifi", action: "scan", imp: "wifi-scaninfo", class: "auto", args: "-", desc: "Show the results of the last Wi-Fi scan" },

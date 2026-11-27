@@ -4,6 +4,33 @@
 mod common;
 use common::{parity, Case, Harness};
 
+/// Commands without a termux-api script to compare with: the wake lock was a
+/// termux-tools script, not part of termux-api.
+const NO_SCRIPT: &[&str] = &["wake-lock", "wake-unlock"];
+
+#[test]
+fn wake_lock_asks_the_termuxpp_service() {
+    let Some(h) = Harness::new("wake") else {
+        eprintln!("skipped: no sh/bash");
+        return;
+    };
+    for (imp, action) in [
+        ("wake-lock", "dev.pschmitt.termux.service_wake_lock"),
+        ("wake-unlock", "dev.pschmitt.termux.service_wake_unlock"),
+    ] {
+        let (o, calls) = h.rust(imp, &[], b"", &[]);
+        assert_eq!(o.status, 0, "{imp}");
+        let calls = format!("{calls:?}");
+        assert!(calls.contains("startservice") && calls.contains(action), "{imp}: {calls}");
+        assert!(calls.contains("dev.pschmitt.termux/com.termux.app.TermuxService"), "{calls}");
+        let (o, calls) = h.rust(imp, &["--help"], b"", &[]);
+        assert_eq!((o.status, calls.is_empty()), (0, true), "{imp} --help");
+        assert_eq!(o.stdout_str(), tpp_api::usage(imp).unwrap());
+        let (o, calls) = h.rust(imp, &["now"], b"", &[]);
+        assert_eq!((o.status, calls.is_empty()), (1, true), "{imp} now");
+    }
+}
+
 #[test]
 fn help_and_illegal_option_match_the_scripts() {
     let Some(h) = Harness::new("help") else {
@@ -11,6 +38,9 @@ fn help_and_illegal_option_match_the_scripts() {
         return;
     };
     for imp in tpp_api::IMPLS {
+        if NO_SCRIPT.contains(imp) {
+            continue;
+        }
         for args in [&["-h"][..], &["-Z"], &["--help"]] {
             if *imp == "clipboard-get" && args == ["-h"] {
                 // The public help documents the integrated app's image modes.
@@ -50,6 +80,9 @@ fn usage_text_is_the_captured_help() {
         return;
     };
     for imp in tpp_api::IMPLS {
+        if NO_SCRIPT.contains(imp) {
+            continue;
+        }
         let (o, _) = h.oracle(imp, &["-h"], b"", &["0\n"]);
         if *imp == "clipboard-get" {
             let usage = tpp_api::usage(imp).unwrap();
