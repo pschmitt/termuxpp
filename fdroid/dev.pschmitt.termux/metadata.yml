@@ -8,6 +8,6 @@ description: |
 
   It keeps Termux's terminal, package manager and add-on protocol, and adds TermuxPP-only features such as an optional ADB shell endpoint with fingerprint-approved client certificates, a kill intent and an in-app updater (Settings > Updates).
 
-  The add-ons TermuxPP:API, Boot, Float, Styling, Tasker and Widget are published in this repository as well. Their stock Termux counterparts do not work with TermuxPP.
+  The Termux add-ons API, Boot, Styling, Tasker and Widget are built in, so no separate add-on apps are needed. Their stock Termux counterparts do not work with TermuxPP.
 
   Source, changes against upstream Termux and issue tracker: https://github.com/pschmitt/termuxpp
