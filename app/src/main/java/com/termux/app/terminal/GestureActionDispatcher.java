@@ -27,6 +27,12 @@ public final class GestureActionDispatcher {
         /** Switch the terminal toolbar to its text input, or back to the extra keys. */
         void toggleTextInput();
 
+        /** Whether the extra keys toolbar is visible now. */
+        boolean isExtraKeysVisible();
+
+        /** Show or hide the extra keys toolbar. */
+        void setExtraKeysVisible(boolean visible);
+
         /** Open the sidebar, if it may be opened now. */
         void openSidebar(boolean right);
 
@@ -111,6 +117,18 @@ public final class GestureActionDispatcher {
                 target.toggleTextInput();
                 break;
 
+            case SHOW_EXTRA_KEYS:
+                if (!target.isExtraKeysVisible()) target.setExtraKeysVisible(true);
+                break;
+
+            case HIDE_EXTRA_KEYS:
+                if (target.isExtraKeysVisible()) target.setExtraKeysVisible(false);
+                break;
+
+            case TOGGLE_EXTRA_KEYS:
+                target.setExtraKeysVisible(!target.isExtraKeysVisible());
+                break;
+
             case OPEN_SIDEBAR:
                 target.openSidebar(false);
                 break;
@@ -140,6 +158,7 @@ public final class GestureActionDispatcher {
 
             case SHOW_KEYBOARD:
             case TOGGLE_KEYBOARD:
+            case HIDE_KEYBOARD:
                 boolean disabled = target.isSoftKeyboardDisabled();
                 // Do not even ask for the visibility if the keyboard is disabled.
                 boolean visible = !disabled && target.isSoftKeyboardVisible();

@@ -1236,6 +1236,17 @@ public abstract class TermuxSharedProperties {
         return (boolean) getInternalPropertyValue(TermuxPropertyConstants.KEY_EXTRA_KEYS_TEXT_ALL_CAPS, true);
     }
 
+    public boolean areExtraKeysCompact() {
+        return (boolean) getInternalPropertyValue(TermuxPropertyConstants.KEY_EXTRA_KEYS_COMPACT, true);
+    }
+
+    /** The height of one extra keys row as a factor of its normal height: the toolbar height
+     * scaled down further when the rows are compact. */
+    public float getExtraKeysRowScaleFactor() {
+        return getTerminalToolbarHeightScaleFactor()
+            * (areExtraKeysCompact() ? TermuxPropertyConstants.EXTRA_KEYS_COMPACT_ROW_SCALE : 1);
+    }
+
     public boolean shouldSoftKeyboardBeHiddenOnStartup() {
         return (boolean) getInternalPropertyValue(TermuxPropertyConstants.KEY_HIDE_SOFT_KEYBOARD_ON_STARTUP, true);
     }

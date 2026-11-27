@@ -21,6 +21,7 @@ public class GestureActionDispatcherTest {
         int sessionCount = 3;
         boolean keyboardDisabled;
         boolean keyboardVisible;
+        boolean extraKeysVisible = true;
         int visibilityQueries;
         final List<String> calls = new ArrayList<>();
         final List<TerminalKeySequence.Step> sent = new ArrayList<>();
@@ -31,6 +32,11 @@ public class GestureActionDispatcherTest {
         @Override public void switchSession(boolean forward) { calls.add(forward ? "next" : "previous"); }
         @Override public void createSession() { calls.add("newSession"); }
         @Override public void toggleTextInput() { calls.add("textInput"); }
+        @Override public boolean isExtraKeysVisible() { return extraKeysVisible; }
+        @Override public void setExtraKeysVisible(boolean visible) {
+            extraKeysVisible = visible;
+            calls.add(visible ? "showExtraKeys" : "hideExtraKeys");
+        }
         @Override public void openSidebar(boolean right) { calls.add(right ? "right-sidebar" : "sidebar"); }
         @Override public void openSessionSwitcher() { calls.add("switcher"); }
         @Override public void openTmuxSwitcher() { calls.add("tmuxSwitcher"); }
@@ -56,6 +62,29 @@ public class GestureActionDispatcherTest {
     @Before
     public void setUp() {
         mTarget = new FakeTarget();
+    }
+
+    @Test
+    public void extraKeysActionsShowHideAndToggleTheToolbar() {
+        GestureActionDispatcher.perform(TerminalGestureAction.SHOW_EXTRA_KEYS, mTarget);
+        assertTrue(mTarget.calls.isEmpty());
+        GestureActionDispatcher.perform(TerminalGestureAction.TOGGLE_EXTRA_KEYS, mTarget);
+        GestureActionDispatcher.perform(TerminalGestureAction.HIDE_EXTRA_KEYS, mTarget);
+        GestureActionDispatcher.perform(TerminalGestureAction.TOGGLE_EXTRA_KEYS, mTarget);
+        GestureActionDispatcher.perform(TerminalGestureAction.HIDE_EXTRA_KEYS, mTarget);
+        GestureActionDispatcher.perform(TerminalGestureAction.SHOW_EXTRA_KEYS, mTarget);
+        assertEquals(java.util.Arrays.asList("hideExtraKeys", "showExtraKeys", "hideExtraKeys", "showExtraKeys"), mTarget.calls);
+        assertEquals(0, mTarget.visibilityQueries);
+    }
+
+    @Test
+    public void hideKeyboardHidesEvenWhenTheVisibilityIsUnknown() {
+        GestureActionDispatcher.perform(TerminalGestureAction.HIDE_KEYBOARD, mTarget);
+        assertEquals(java.util.Collections.singletonList("hide"), mTarget.calls);
+        mTarget.calls.clear();
+        mTarget.keyboardDisabled = true;
+        GestureActionDispatcher.perform(TerminalGestureAction.HIDE_KEYBOARD, mTarget);
+        assertTrue(mTarget.calls.isEmpty());
     }
 
     @Test

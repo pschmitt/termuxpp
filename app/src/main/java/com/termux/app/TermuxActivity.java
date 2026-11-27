@@ -644,16 +644,31 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         ViewGroup.LayoutParams layoutParams = terminalToolbarViewPager.getLayoutParams();
         layoutParams.height = Math.round(mTerminalToolbarDefaultHeight *
             (mTermuxTerminalExtraKeys.getExtraKeysInfo() == null ? 0 : mTermuxTerminalExtraKeys.getExtraKeysInfo().getMatrix().length) *
-            mProperties.getTerminalToolbarHeightScaleFactor());
+            mProperties.getExtraKeysRowScaleFactor());
         terminalToolbarViewPager.setLayoutParams(layoutParams);
     }
 
     public void toggleTerminalToolbar() {
+        setTerminalToolbarVisible(!isTerminalToolbarVisible(), true);
+    }
+
+    /** Whether the extra keys toolbar is shown, as remembered across restarts. */
+    public boolean isTerminalToolbarVisible() {
+        return mPreferences.shouldShowTerminalToolbar();
+    }
+
+    /**
+     * Shows or hides the extra keys toolbar and remembers the choice.
+     *
+     * @param toast Whether to confirm the change with a toast. Gesture actions show their own feedback.
+     */
+    public void setTerminalToolbarVisible(boolean showNow, boolean toast) {
         final ViewPager terminalToolbarViewPager = getTerminalToolbarViewPager();
         if (terminalToolbarViewPager == null) return;
 
-        final boolean showNow = mPreferences.toogleShowTerminalToolbar();
-        Logger.showToast(this, (showNow ? getString(R.string.msg_enabling_terminal_toolbar) : getString(R.string.msg_disabling_terminal_toolbar)), true);
+        mPreferences.setShowTerminalToolbar(showNow);
+        if (toast)
+            Logger.showToast(this, (showNow ? getString(R.string.msg_enabling_terminal_toolbar) : getString(R.string.msg_disabling_terminal_toolbar)), true);
         terminalToolbarViewPager.setVisibility(showNow ? View.VISIBLE : View.GONE);
         if (showNow && isTerminalToolbarTextInputViewSelected()) {
             // Focus the text input view if just revealed.

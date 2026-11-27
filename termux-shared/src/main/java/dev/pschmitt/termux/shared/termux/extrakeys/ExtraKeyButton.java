@@ -232,8 +232,12 @@ public class ExtraKeyButton {
     public static String actionSymbol(@NonNull TerminalGestureAction action) {
         switch (action) {
             case SHOW_KEYBOARD:
-            case TOGGLE_KEYBOARD: return "⌨";
+            case TOGGLE_KEYBOARD:
+            case HIDE_KEYBOARD: return "⌨";
             case TOGGLE_TEXT_INPUT: return "✎";
+            case SHOW_EXTRA_KEYS:
+            case HIDE_EXTRA_KEYS:
+            case TOGGLE_EXTRA_KEYS: return "⌸";
             case NEXT_SESSION: return "»";
             case PREVIOUS_SESSION: return "«";
             case NEW_SESSION: return "+";

@@ -54,7 +54,8 @@ final class SettingsPreview extends FrameLayout {
         return key.equals("terminal-cursor-style") || key.equals("terminal-cursor-blink-rate")
             || key.equals("terminal-toast-position") || key.equals("gesture-feedback-position") || key.equals("terminal-margin-horizontal")
             || key.equals("terminal-margin-vertical") || key.equals("extra-keys-style")
-            || key.equals("extra-keys-text-all-caps") || key.equals("extra-keys-button-active-text-color")
+            || key.equals("extra-keys-text-all-caps") || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_COMPACT)
+            || key.equals("extra-keys-button-active-text-color")
             || key.equals("extra-keys-button-active-background-color") || key.equals("extra-keys-button-corner-radius")
             || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_THEME)
             || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_ROW_BACKGROUND_COLOR)
@@ -118,6 +119,8 @@ final class SettingsPreview extends FrameLayout {
         try { scale = Float.parseFloat(value("terminal-toolbar-height", "1")); }
         catch (NumberFormatException e) { scale = 1; }
         if (Float.isNaN(scale) || scale < .4f || scale > 3) scale = 1;
+        if ("true".equalsIgnoreCase(value(TermuxPropertyConstants.KEY_EXTRA_KEYS_COMPACT, "false")))
+            scale *= TermuxPropertyConstants.EXTRA_KEYS_COMPACT_ROW_SCALE;
         boolean interactive = key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION)
             || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT)
             || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_THEME)
@@ -379,7 +382,8 @@ final class SettingsPreview extends FrameLayout {
                 surface, foreground, accent, tmux ? getContext().getString(R.string.ui_tmux_switcher_title)
                     : menu ? getContext().getString(R.string.ui_menu_title) : getContext().getString(R.string.ui_drawer_title),
                 tmux ? "0  shell" : menu ? "Copy text" : "1  local", tmux ? "1  editor" : menu ? "Share transcript" : "2  remote");
-        } else if (action.equals("show-keyboard") || action.equals("toggle-keyboard") || action.equals("toggle-text-input")) {
+        } else if (action.equals("show-keyboard") || action.equals("toggle-keyboard") || action.equals("hide-keyboard")
+                || action.equals("toggle-text-input")) {
             float y = bottom - dp(54 * actionProgress);
             paint.setColor(surface);
             canvas.drawRoundRect(left, y, right, bottom + dp(8), dp(8), dp(8), paint);

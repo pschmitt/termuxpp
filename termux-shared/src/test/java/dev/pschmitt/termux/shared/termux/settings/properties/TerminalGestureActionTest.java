@@ -179,7 +179,7 @@ public class TerminalGestureActionTest {
 
     @Test
     public void validValuesListsEveryValue() {
-        assertEquals("none, show-keyboard, toggle-keyboard, toggle-text-input, next-session, previous-session, new-session, open-left-sidebar, open-right-sidebar, open-session-switcher, open-tmux-switcher, open-menu, font-size-up, font-size-down, run-command, send-keys",
+        assertEquals("none, show-keyboard, toggle-keyboard, hide-keyboard, toggle-text-input, show-extra-keys, hide-extra-keys, toggle-extra-keys, next-session, previous-session, new-session, open-left-sidebar, open-right-sidebar, open-session-switcher, open-tmux-switcher, open-menu, font-size-up, font-size-down, run-command, send-keys",
             TerminalGestureAction.getValidValues());
     }
 
@@ -224,10 +224,17 @@ public class TerminalGestureActionTest {
     }
 
     @Test
+    public void hideKeyboardAlwaysHidesUnlessDisabled() {
+        assertEquals(KeyboardOperation.HIDE, TerminalGestureAction.HIDE_KEYBOARD.keyboardOperation(false, false));
+        assertEquals(KeyboardOperation.HIDE, TerminalGestureAction.HIDE_KEYBOARD.keyboardOperation(false, true));
+    }
+
+    @Test
     public void disabledKeyboardWins() {
         for (boolean visible : new boolean[] {false, true}) {
             assertEquals(KeyboardOperation.NONE, TerminalGestureAction.SHOW_KEYBOARD.keyboardOperation(true, visible));
             assertEquals(KeyboardOperation.NONE, TerminalGestureAction.TOGGLE_KEYBOARD.keyboardOperation(true, visible));
+            assertEquals(KeyboardOperation.NONE, TerminalGestureAction.HIDE_KEYBOARD.keyboardOperation(true, visible));
         }
     }
 
@@ -237,7 +244,8 @@ public class TerminalGestureActionTest {
             TerminalGestureAction.NONE, TerminalGestureAction.NEXT_SESSION,
             TerminalGestureAction.PREVIOUS_SESSION, TerminalGestureAction.OPEN_SIDEBAR,
             TerminalGestureAction.OPEN_MENU, TerminalGestureAction.FONT_SIZE_UP,
-            TerminalGestureAction.FONT_SIZE_DOWN}) {
+            TerminalGestureAction.FONT_SIZE_DOWN, TerminalGestureAction.SHOW_EXTRA_KEYS,
+            TerminalGestureAction.HIDE_EXTRA_KEYS, TerminalGestureAction.TOGGLE_EXTRA_KEYS}) {
             assertEquals(KeyboardOperation.NONE, action.keyboardOperation(false, false));
             assertEquals(KeyboardOperation.NONE, action.keyboardOperation(false, true));
         }

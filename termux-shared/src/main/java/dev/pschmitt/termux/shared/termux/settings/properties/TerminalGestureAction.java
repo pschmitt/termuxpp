@@ -32,11 +32,23 @@ public enum TerminalGestureAction {
     /** Hide the soft keyboard if it is visible, otherwise show it. */
     TOGGLE_KEYBOARD("toggle-keyboard"),
 
+    /** Hide the soft keyboard. Hiding it while it is already hidden does nothing. */
+    HIDE_KEYBOARD("hide-keyboard"),
+
     /**
      * Switch the extra keys toolbar to its text input, or back to the extra keys if the text input
      * is shown. Does nothing while the toolbar is hidden.
      */
     TOGGLE_TEXT_INPUT("toggle-text-input"),
+
+    /** Show the extra keys toolbar. Showing it while it is already visible does nothing. */
+    SHOW_EXTRA_KEYS("show-extra-keys"),
+
+    /** Hide the extra keys toolbar. Hiding it while it is already hidden does nothing. */
+    HIDE_EXTRA_KEYS("hide-extra-keys"),
+
+    /** Hide the extra keys toolbar if it is visible, otherwise show it. */
+    TOGGLE_EXTRA_KEYS("toggle-extra-keys"),
 
     /** Switch to the next terminal session, wrapping around after the last one. */
     NEXT_SESSION("next-session"),
@@ -127,7 +139,11 @@ public enum TerminalGestureAction {
         switch (this) {
             case SHOW_KEYBOARD: return "Show keyboard";
             case TOGGLE_KEYBOARD: return "Toggle keyboard";
+            case HIDE_KEYBOARD: return "Hide keyboard";
             case TOGGLE_TEXT_INPUT: return "Text input";
+            case SHOW_EXTRA_KEYS: return "Show extra keys";
+            case HIDE_EXTRA_KEYS: return "Hide extra keys";
+            case TOGGLE_EXTRA_KEYS: return "Toggle extra keys";
             case NEXT_SESSION: return "Next session";
             case PREVIOUS_SESSION: return "Previous session";
             case NEW_SESSION: return "New session";
@@ -202,7 +218,7 @@ public enum TerminalGestureAction {
      *
      * Nothing is done if the keyboard is disabled by the user's flags, which always win, nor for
      * actions that do not concern the keyboard. A toggle hides a visible keyboard and shows a hidden
-     * one, and showing is idempotent.
+     * one, and showing and hiding are idempotent.
      *
      * @param keyboardDisabled Whether the soft keyboard is disabled, see
      *                         {@code KeyboardUtils#areDisableSoftKeyboardFlagsSet}.
@@ -216,6 +232,9 @@ public enum TerminalGestureAction {
                 return KeyboardOperation.SHOW;
             case TOGGLE_KEYBOARD:
                 return keyboardVisible ? KeyboardOperation.HIDE : KeyboardOperation.SHOW;
+            case HIDE_KEYBOARD:
+                // Hiding is idempotent, and before Android 6 the visibility cannot be read.
+                return KeyboardOperation.HIDE;
             default:
                 return KeyboardOperation.NONE;
         }

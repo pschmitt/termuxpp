@@ -640,6 +640,8 @@ for the main, long-press, and swipe-up keys. Custom labels keep their case.
 Individual keys can override their text and background colors, add spacing around
 the keycap, and show an automatic or custom corner hint. The layout editor can resize each row and
 leave blank slots for unassigned keys.
+`extra-keys.compact` lowers every row to three quarters of the height that
+`terminal.toolbar-height` gives, off by default.
 [Extra-key appearance](terminal-settings.md#extra-key-appearance).
 
 TermuxPP adds optional extra-key press and release motion. Key preview is the
@@ -656,7 +658,10 @@ from right to left. In TermuxPP both swipe directions over the extra keys row
 are configurable actions, and the right-to-left swipe switches to the next
 session by default. Opening the text input is the `toggle-text-input` action,
 which any gesture can run. Set `extra-keys-swipe-right-action = toggle-text-input`
-for the upstream behavior. The key row follows the finger slightly and a pill
+for the upstream behavior. Any gesture, volume button or action key can also run
+`show-extra-keys`, `hide-extra-keys` or `toggle-extra-keys` to show or hide the toolbar,
+and `hide-keyboard` to hide the soft keyboard; upstream only toggles the toolbar
+with volume up + Q or K and the Keyboard button's long press. The key row follows the finger slightly and a pill
 previews the action. The label updates when the gesture reaches the
 long-swipe threshold. Sources: [swipe pager](../../app/src/main/java/com/termux/app/terminal/io/ExtraKeysSwipeViewPager.java),
 [swipe detector](../../app/src/main/java/com/termux/app/terminal/io/ExtraKeysSwipeDetector.java)

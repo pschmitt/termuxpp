@@ -75,6 +75,7 @@ public class PropertyInputSpecTest {
         assertTrue(PropertyInputSpec.help("night-mode").contains("system"));
         assertTrue(PropertyInputSpec.help("fullscreen").contains("Default: false"));
         assertTrue(PropertyInputSpec.help("extra-keys-text-all-caps").contains("Default: true"));
+        assertTrue(PropertyInputSpec.help("extra-keys-compact").contains("Default: false"));
         assertTrue(PropertyInputSpec.help("extra-keys-style").contains("arrows-only"));
         assertTrue(PropertyInputSpec.help("volume-keys").contains("virtual"));
     }
@@ -191,7 +192,8 @@ public class PropertyInputSpecTest {
             "extra-keys-long-swipe-left-action", "extra-keys-long-swipe-right-action"};
         for (String key : keys) {
             valid(key, "none", "show-keyboard", "toggle-keyboard", "next-session", "previous-session",
-                "new-session", "toggle-text-input",
+                "new-session", "toggle-text-input", "hide-keyboard", "show-extra-keys", "hide-extra-keys",
+                "toggle-extra-keys",
                 "open-sidebar", "open-menu", "font-size-up", "font-size-down", "send-keys", " Open-Menu ");
             invalid(key, "modifier", "keyboard", "tap");
         }

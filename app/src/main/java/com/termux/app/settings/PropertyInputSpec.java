@@ -84,6 +84,9 @@ public final class PropertyInputSpec {
                     + " you press Enter, which happens with some keyboards, for example on Samsung devices.");
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_TEXT_ALL_CAPS:
                 return bool(key, "Show the text of the extra keys buttons in capital letters.");
+            case TermuxPropertyConstants.KEY_EXTRA_KEYS_COMPACT:
+                return bool(key, "Make the rows of the extra keys lower, three quarters of their normal height,"
+                    + " on top of the toolbar height.");
             case TermuxPropertyConstants.KEY_SIDEBAR_LEFT_SESSIONS:
                 return bool(key, "Show terminal sessions in the left sidebar.");
             case TermuxPropertyConstants.KEY_SIDEBAR_LEFT_TMUX_WINDOWS:

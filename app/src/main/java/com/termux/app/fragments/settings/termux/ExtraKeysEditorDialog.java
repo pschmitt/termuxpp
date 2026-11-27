@@ -37,6 +37,7 @@ import dev.pschmitt.termux.shared.termux.extrakeys.ExtraKeysColorParser;
 import dev.pschmitt.termux.shared.termux.extrakeys.ExtraKeysConstants;
 import dev.pschmitt.termux.shared.termux.extrakeys.ExtraKeysInfo;
 import dev.pschmitt.termux.shared.termux.extrakeys.ExtraKeysView;
+import dev.pschmitt.termux.shared.termux.settings.properties.TermuxPropertyConstants;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -87,7 +88,7 @@ public class ExtraKeysEditorDialog extends DialogFragment {
         ExtraKeysEditorDialog dialog = new ExtraKeysEditorDialog();
         Bundle args = new Bundle();
         args.putString("value", value);
-        for (String key : new String[]{"extra-keys-style", "extra-keys-font", "extra-keys-theme", "extra-keys-row-background-color", "extra-keys-text-all-caps", "terminal-toolbar-height",
+        for (String key : new String[]{"extra-keys-style", "extra-keys-font", "extra-keys-theme", "extra-keys-row-background-color", "extra-keys-text-all-caps", "extra-keys-compact", "terminal-toolbar-height",
                 "extra-keys-button-active-text-color", "extra-keys-button-active-background-color", "extra-keys-button-corner-radius"}) {
             args.putString(key, values.getProperty(key));
         }
@@ -294,6 +295,7 @@ public class ExtraKeysEditorDialog extends DialogFragment {
             try { scale = Float.parseFloat(options.getString("terminal-toolbar-height", "1")); }
             catch (NumberFormatException | NullPointerException ignored) { }
             if (Float.isNaN(scale) || scale < 0.4f || scale > 3) scale = 1;
+            if ("true".equalsIgnoreCase(options.getString("extra-keys-compact"))) scale *= TermuxPropertyConstants.EXTRA_KEYS_COMPACT_ROW_SCALE;
             int rowHeight = dp(37.5f * scale);
             int height = rowHeight * layout.rowCount();
             previewHost.addView(view, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height));

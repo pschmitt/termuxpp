@@ -473,6 +473,16 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
             }
 
             @Override
+            public boolean isExtraKeysVisible() {
+                return mActivity.isTerminalToolbarVisible();
+            }
+
+            @Override
+            public void setExtraKeysVisible(boolean visible) {
+                mActivity.setTerminalToolbarVisible(visible, false);
+            }
+
+            @Override
             public void openSidebar(boolean right) {
                 mActivity.openSidebar(right);
             }

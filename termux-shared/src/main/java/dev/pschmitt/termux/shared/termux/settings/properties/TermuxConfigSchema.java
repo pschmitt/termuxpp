@@ -95,6 +95,7 @@ public final class TermuxConfigSchema {
         add("extra-keys.font", "extra-keys-font");
         add("extra-keys.animation", "extra-keys-animation");
         add("extra-keys.all-caps", "extra-keys-text-all-caps");
+        add("extra-keys.compact", "extra-keys-compact");
         add("extra-keys.corner-radius", "extra-keys-button-corner-radius");
         add("extra-keys.active.text-color", "extra-keys-button-active-text-color");
         add("extra-keys.active.background-color", "extra-keys-button-active-background-color");

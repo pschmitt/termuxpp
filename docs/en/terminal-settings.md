@@ -199,6 +199,7 @@ are left out and logged.
 | `extra-keys.font` | `extra-keys-font` |
 | `extra-keys.animation` | `extra-keys-animation` |
 | `extra-keys.all-caps` | `extra-keys-text-all-caps` |
+| `extra-keys.compact` | `extra-keys-compact` |
 | `extra-keys.corner-radius` | `extra-keys-button-corner-radius` |
 | `extra-keys.active.text-color` | `extra-keys-button-active-text-color` |
 | `extra-keys.active.background-color` | `extra-keys-button-active-background-color` |
@@ -382,10 +383,14 @@ The gesture keys are independent and active at the same time. Valid values, case
 | `none` | Do nothing. |
 | `show-keyboard` | Show the soft keyboard. If it is already visible nothing changes. |
 | `toggle-keyboard` | Hide the soft keyboard if it is visible, otherwise show it. Before Android 6 the visibility cannot be read and this only shows it. |
+| `hide-keyboard` | Hide the soft keyboard. If it is already hidden nothing changes. |
 | `next-session` | Switch to the next session, wrapping around. With one session, creates a new one if `sessions.create-on-single-session-switch: true`. |
 | `previous-session` | Switch to the previous session, wrapping around. With one session, creates a new one if `sessions.create-on-single-session-switch: true`. |
 | `new-session` | Open a new terminal session and switch to it, like the **New** button. |
 | `toggle-text-input` | Switch the extra keys toolbar to its text input, or back to the extra keys. Does nothing while the toolbar is hidden. |
+| `show-extra-keys` | Show the extra keys toolbar. If it is already visible nothing changes. |
+| `hide-extra-keys` | Hide the extra keys toolbar. If it is already hidden nothing changes. |
+| `toggle-extra-keys` | Hide the extra keys toolbar if it is visible, otherwise show it. The choice is remembered like the Keyboard button's long press. |
 | `open-left-sidebar` | Open the left sidebar. The existing `open-sidebar` binding also opens this side. |
 | `open-right-sidebar` | Open the right sidebar when it is enabled. |
 | `open-session-switcher` | Open a compact picker with the current session selected, plus New session, Keyboard and Settings actions. |
@@ -397,8 +402,8 @@ The gesture keys are independent and active at the same time. Valid values, case
 | `run-command` | Run the matching `*-command` text in a new visible terminal session. See [Running commands](#running-commands). |
 
 A missing or empty key uses its default. A value that is not listed is logged and the default is
-used. The soft keyboard flags that disable the keyboard always win: `show-keyboard` and
-`toggle-keyboard` do nothing while it is disabled, the other actions still work.
+used. The soft keyboard flags that disable the keyboard always win: `show-keyboard`,
+`toggle-keyboard` and `hide-keyboard` do nothing while it is disabled, the other actions still work.
 
 When a triple-tap action is configured, `terminal-triple-tap-focus-title` can
 match the title reported by a program such as tmux. A match focuses that
@@ -569,6 +574,7 @@ same file:
 
 The two buttons are independent. Valid values of the action keys, case-insensitive, are `modifier`
 and every action of the table above except `run-command` (`none`, `show-keyboard`, `toggle-keyboard`,
+`hide-keyboard`, `show-extra-keys`, `hide-extra-keys`, `toggle-extra-keys`,
 `next-session`, `previous-session`, `open-left-sidebar`, `open-right-sidebar`, `open-session-switcher`, `open-tmux-switcher`, `open-menu`, `font-size-up`, `font-size-down`,
 `send-keys`).
 The `*-keys` keys are written as described in "Sending keys".
@@ -586,8 +592,8 @@ The `*-keys` keys are written as described in "Sending keys".
   `font-size-up` and `font-size-down` repeat with it, so that holding the button keeps growing or
   shrinking the text. Every other action (a session switch, the sidebar, the menu, the keyboard,
   keys) runs once however long the button is held.
-* The soft keyboard flags that disable the keyboard win as for every other gesture: `show-keyboard`
-  and `toggle-keyboard` do nothing while it is disabled, the other actions still work.
+* The soft keyboard flags that disable the keyboard win as for every other gesture: `show-keyboard`,
+  `toggle-keyboard` and `hide-keyboard` do nothing while it is disabled, the other actions still work.
 * `send-keys` without a usable `volume-up-keys` or `volume-down-keys` is logged and does nothing,
   as if the action were `none`, which gives the button back to the system volume.
 * A value that is not listed is logged and `modifier` is used.
@@ -691,6 +697,15 @@ extra-keys:
   keys: [[{key: CTRL, display: Ctrl, hold: SHIFT, hold-display: "⇧"}, TAB]]
 ```
 
+`terminal.toolbar-height` scales the height of every extra keys row, from 0.4 to 3 times the
+normal height. `extra-keys.compact: true` lowers the rows further to three quarters of that, for a
+denser toolbar. It is off by default.
+
+```yaml
+extra-keys:
+  compact: true
+```
+
 Choose **Extra keys animation** in **Settings → Properties → Extra keys** and
 tap a preview key to try it. In YAML, set `extra-keys.animation` to
 `key-preview` (default), `key-bubble`, `press-in`, `pop`, `lift`, or `off`. Key preview shows
@@ -758,7 +773,8 @@ extra-keys:
 A key, or any of its gestures, can run an app **action** instead of sending input: `action` takes
 the same names as the gesture settings (`open-left-sidebar`, `open-right-sidebar`, `new-session`,
 `next-session`, `previous-session`, `open-session-switcher`, `open-tmux-switcher`, `open-menu`,
-`show-keyboard`, `toggle-keyboard`, `toggle-text-input`, `font-size-up`, `font-size-down`).
+`show-keyboard`, `toggle-keyboard`, `hide-keyboard`, `toggle-text-input`, `show-extra-keys`,
+`hide-extra-keys`, `toggle-extra-keys`, `font-size-up`, `font-size-down`).
 Use `macro` to send keys and `command` to run a command. An action key shows a symbol unless
 `display` sets a label. **Double tap** (`double-tap`) binds a second tap within the double-tap
 timeout; only keys that have one wait for it, so other keys stay instant.

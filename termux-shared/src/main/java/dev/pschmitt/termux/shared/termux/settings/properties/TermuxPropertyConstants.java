@@ -139,6 +139,13 @@ public final class TermuxPropertyConstants {
     /** Defines the key for whether text for the extra keys buttons should be all capitalized automatically */
     public static final String KEY_EXTRA_KEYS_TEXT_ALL_CAPS =  "extra-keys-text-all-caps"; // Default: "extra-keys-text-all-caps"
 
+    /** Defines the key for whether the rows of the extra keys toolbar are lower than normal. */
+    public static final String KEY_EXTRA_KEYS_COMPACT =  "extra-keys-compact"; // Default: "extra-keys-compact"
+
+    /** The factor that {@link #KEY_EXTRA_KEYS_COMPACT} applies to the row height, on top of
+     * {@link #KEY_TERMINAL_TOOLBAR_HEIGHT_SCALE_FACTOR}. */
+    public static final float EXTRA_KEYS_COMPACT_ROW_SCALE = 0.75f;
+
 
 
     /** Defines the key for whether to hide soft keyboard when termux app is started */
@@ -666,6 +673,7 @@ public final class TermuxPropertyConstants {
         KEY_DISABLE_TERMINAL_SESSION_CHANGE_TOAST,
         KEY_ENFORCE_CHAR_BASED_INPUT,
         KEY_EXTRA_KEYS_TEXT_ALL_CAPS,
+        KEY_EXTRA_KEYS_COMPACT,
         KEY_HIDE_SOFT_KEYBOARD_ON_STARTUP,
         KEY_HIDE_SOFT_KEYBOARD_ON_SIDEBAR,
         KEY_NIX_SESSION,
@@ -785,6 +793,7 @@ public final class TermuxPropertyConstants {
         KEY_CREATE_SESSION_ON_SINGLE_SESSION_SWITCH,
         KEY_DISABLE_TERMINAL_SESSION_CHANGE_TOAST,
         KEY_ENFORCE_CHAR_BASED_INPUT,
+        KEY_EXTRA_KEYS_COMPACT,
         KEY_HIDE_SOFT_KEYBOARD_ON_STARTUP,
         KEY_TERMINAL_ONCLICK_URL_OPEN,
         KEY_USE_CTRL_SPACE_WORKAROUND,
