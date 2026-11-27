@@ -246,6 +246,7 @@ fn run(plan: &Plan, job: &Job<'_>, builder: &mut dyn Builder) -> anyhow::Result<
     let scratch = Scratch::new("nixpp-upgrade")?;
     let known_hosts = scratch.path().join("known_hosts");
     let side = Side {
+        native_runtime: None,
         key: plan.key.clone(),
         known_hosts: known_hosts.clone(),
     };
@@ -282,7 +283,7 @@ fn run(plan: &Plan, job: &Job<'_>, builder: &mut dyn Builder) -> anyhow::Result<
     let agent = if plan.ssh_inputs.is_empty() {
         None
     } else {
-        Some(Agent::start(scratch.path(), &plan.key)?)
+        Some(Agent::start(&side, scratch.path(), &plan.key)?)
     };
     let spec = Build {
         flake: job.flake.to_owned(),

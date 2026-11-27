@@ -126,9 +126,49 @@ impl Controller {
 pub struct Side {
     pub key: PathBuf,
     pub known_hosts: PathBuf,
+    /// Set for a native nixpp (`nixpp setup`): the slim native prefix has no
+    /// OpenSSH, so ssh, ssh-agent and ssh-add run in the guest through this
+    /// runtime's session.sh, and every path handed to them is the guest's
+    /// view of it (/android/...).
+    pub native_runtime: Option<PathBuf>,
+}
+
+/// Where the native `path` appears in the guest: Android's root is /android.
+pub fn guest_path(path: &Path) -> PathBuf {
+    Path::new("/android").join(path.strip_prefix("/").unwrap_or(path))
 }
 
 impl Side {
+    /// `path` as the OpenSSH tools see it.
+    fn path(&self, path: &Path) -> String {
+        match self.native_runtime {
+            Some(_) => guest_path(path).display().to_string(),
+            None => path.display().to_string(),
+        }
+    }
+
+    /// `program` with `env`, here or (native) in the guest.
+    pub(crate) fn command(&self, program: &str, env: &[(&str, &Path)]) -> Command {
+        match &self.native_runtime {
+            None => {
+                let mut command = Command::new(program);
+                for (key, value) in env {
+                    command.env(key, value);
+                }
+                command
+            }
+            Some(runtime) => {
+                let mut command = Command::new(runtime.join("session.sh"));
+                command.args(["--legacy", "--", "env"]);
+                for (key, value) in env {
+                    command.arg(format!("{key}={}", self.path(value)));
+                }
+                command.arg(program);
+                command
+            }
+        }
+    }
+
     /// Options of every connection: only our key, only pinned host keys.
     fn pairs(&self) -> Vec<(String, String)> {
         [
@@ -136,8 +176,8 @@ impl Side {
             ("StrictHostKeyChecking", "yes".to_owned()),
             ("IdentitiesOnly", "yes".to_owned()),
             ("ConnectTimeout", "30".to_owned()),
-            ("IdentityFile", self.key.display().to_string()),
-            ("UserKnownHostsFile", self.known_hosts.display().to_string()),
+            ("IdentityFile", self.path(&self.key)),
+            ("UserKnownHostsFile", self.path(&self.known_hosts)),
         ]
         .map(|(key, value)| (key.to_owned(), value))
         .to_vec()
@@ -658,7 +698,9 @@ impl Lease {
         }
         let command = release_command(&self.worker.release, &self.owner);
         eprintln!("Releasing worker {}…", self.worker.name);
-        let status = Command::new("ssh")
+        let status = self
+            .side
+            .command("ssh", &[])
             .args(self.side.controller_args(&self.controller, &command))
             .stdin(Stdio::null())
             .stdout(Stdio::null())
@@ -688,7 +730,8 @@ fn controller_output_with(
     remote: &str,
     stderr: Stdio,
 ) -> Result<String> {
-    let output = Command::new("ssh")
+    let output = side
+        .command("ssh", &[])
         .args(side.controller_args(controller, remote))
         .stdin(Stdio::null())
         .stderr(stderr)
@@ -769,7 +812,8 @@ fn hosted(
     })();
     if result.is_err() {
         // Do not leave a queued runner behind.
-        let _ = Command::new("ssh")
+        let _ = side
+            .command("ssh", &[])
             .args(side.controller_args(controller, &release_command(&release, &request.owner)))
             .stdin(Stdio::null())
             .stdout(Stdio::null())
@@ -785,11 +829,12 @@ pub struct Agent {
 }
 
 impl Agent {
-    pub fn start(directory: &Path, key: &Path) -> Result<Self> {
+    pub fn start(side: &Side, directory: &Path, key: &Path) -> Result<Self> {
         let socket = directory.join("agent.sock");
-        let child = Command::new("ssh-agent")
+        let child = side
+            .command("ssh-agent", &[])
             .args(["-D", "-a"])
-            .arg(&socket)
+            .arg(side.path(&socket))
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .spawn()
@@ -801,9 +846,9 @@ impl Agent {
             }
             std::thread::sleep(Duration::from_millis(100));
         }
-        let status = Command::new("ssh-add")
-            .arg(key)
-            .env("SSH_AUTH_SOCK", &agent.socket)
+        let status = side
+            .command("ssh-add", &[("SSH_AUTH_SOCK", &agent.socket)])
+            .arg(side.path(key))
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .status()
@@ -1046,10 +1091,14 @@ exit "$(cat "$job/exit")"
 /// The `ssh` command for `script` on the worker; with an agent socket the
 /// agent is forwarded (`-A`), so the key never leaves the phone.
 fn worker_command(lease: &Lease, agent_socket: Option<&Path>, script: &str) -> Command {
-    let mut command = Command::new("ssh");
+    let env: Vec<(&str, &Path)> = agent_socket
+        .map(|socket| ("SSH_AUTH_SOCK", socket))
+        .into_iter()
+        .collect();
+    let mut command = lease.side.command("ssh", &env);
     command.args(lease.worker.ssh_options(&lease.side, &lease.controller));
-    if let Some(socket) = agent_socket {
-        command.arg("-A").env("SSH_AUTH_SOCK", socket);
+    if agent_socket.is_some() {
+        command.arg("-A");
     }
     command.args(["--", &lease.worker.destination(), script]);
     command
@@ -1193,8 +1242,54 @@ mod tests {
         Controller::new("jump@controller.example:2222", KEY).unwrap()
     }
 
+    #[test]
+    fn a_native_side_runs_openssh_in_the_guest_with_guest_paths() {
+        let side = Side {
+            native_runtime: Some(PathBuf::from("/data/runtime")),
+            key: PathBuf::from("/data/scratch/id_ed25519"),
+            known_hosts: PathBuf::from("/data/scratch/known_hosts"),
+        };
+        let command = side.command(
+            "ssh-add",
+            &[("SSH_AUTH_SOCK", Path::new("/data/s/agent.sock"))],
+        );
+        assert_eq!(command.get_program(), "/data/runtime/session.sh");
+        let args: Vec<_> = command
+            .get_args()
+            .map(|arg| arg.to_str().unwrap())
+            .collect();
+        assert_eq!(
+            args,
+            [
+                "--legacy",
+                "--",
+                "env",
+                "SSH_AUTH_SOCK=/android/data/s/agent.sock",
+                "ssh-add"
+            ]
+        );
+        let options = side.options();
+        assert!(options.contains(&"IdentityFile=/android/data/scratch/id_ed25519".to_owned()));
+        assert!(
+            options.contains(&"UserKnownHostsFile=/android/data/scratch/known_hosts".to_owned())
+        );
+
+        let guest = Side {
+            native_runtime: None,
+            ..side
+        };
+        let command = guest.command("ssh", &[]);
+        assert_eq!(command.get_program(), "ssh");
+        assert!(
+            guest
+                .options()
+                .contains(&"IdentityFile=/data/scratch/id_ed25519".to_owned())
+        );
+    }
+
     fn side(name: &str) -> Side {
         Side {
+            native_runtime: None,
             key: PathBuf::from(format!("/{name}/id")),
             known_hosts: PathBuf::from(format!("/{name}/known_hosts")),
         }

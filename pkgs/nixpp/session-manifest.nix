@@ -26,6 +26,8 @@ let
     guest.less
     guest.gitMinimal
     guest.openssh
+    # nixpp setup runs OpenSSH and curl here: the native prefix has neither.
+    guest.curl
     guest.python3
     guest.ncurses
     guest.cacert

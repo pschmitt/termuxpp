@@ -505,9 +505,12 @@ fn from_lease(runtime: &Path, activation: &Activation<'_>, origin: &LeaseOrigin)
     let native = Side {
         key: key.clone(),
         known_hosts: credentials.join("known_hosts"),
+        // The native prefix has no OpenSSH: run it in the enrollment guest.
+        native_runtime: cfg!(target_os = "android").then(|| runtime.to_path_buf()),
     };
     let guest_dir = format!("/home/{user}/.config/nixpp-enrollment");
     let guest = Side {
+        native_runtime: None,
         key: PathBuf::from(format!("/home/{user}/.ssh/id_ed25519")),
         known_hosts: PathBuf::from(format!("{guest_dir}/known_hosts")),
     };
@@ -546,7 +549,7 @@ fn from_lease(runtime: &Path, activation: &Activation<'_>, origin: &LeaseOrigin)
     if cache.is_some() {
         lease.enable_cache_push();
     }
-    let agent = Agent::start(scratch.path(), &key)?;
+    let agent = Agent::start(&native, scratch.path(), &key)?;
     let spec = Build {
         flake: activation.flake_of_target()?,
         target_attribute: format!("termuxppConfigurations.{host}.system"),
@@ -674,9 +677,10 @@ impl guest::Builder for SetupBuilder<'_> {
     fn output(&mut self, command: &[String]) -> crate::error::Result<String> {
         let invalid = |message: String| crate::error::Error::invalid(message);
         if command == ["/nixpp-setup-pin"] {
-            let output = Command::new("curl")
-                .args(["--disable", "--config"])
-                .arg(self.curl_config)
+            // The native prefix has no curl: read the pin in the enrollment guest.
+            let output = Command::new(self.runtime.join("session.sh"))
+                .args(["--legacy", "--", "curl", "--disable", "--config"])
+                .arg(crate::lease::guest_path(self.curl_config))
                 .args([
                     "--fail",
                     "--silent",

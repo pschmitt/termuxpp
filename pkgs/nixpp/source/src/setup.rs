@@ -909,7 +909,7 @@ if ! yadm rev-parse --verify HEAD >/dev/null 2>&1
 then
   staging=$(mktemp -d /tmp/nixpp-setup.XXXXXXXX)
   trap 'rm -rf -- "$staging"' EXIT
-  tar -xf - -C "$staging"
+  cp -- "$3/deploy_key" "$3/known_hosts" "$staging/"
   export GIT_CONFIG_COUNT=2
   export GIT_CONFIG_KEY_0=yadm.auto-alt GIT_CONFIG_VALUE_0=false
   export GIT_CONFIG_KEY_1=yadm.auto-perms GIT_CONFIG_VALUE_1=false
@@ -957,23 +957,16 @@ fn clone_dotfiles(
     write_private(&directory.join("known_hosts"), GITHUB_KNOWN_HOSTS)?;
 
     eprintln!("Cloning the dotfiles…");
-    let mut archive = Command::new("tar")
-        .arg("-C")
-        .arg(&directory)
-        .args(["-cf", "-", "deploy_key", "known_hosts"])
-        .stdout(Stdio::piped())
-        .spawn()
-        .context("cannot run tar")?;
-    let archive_out = archive.stdout.take().context("tar has no output")?;
+    // The guest reads the key straight from the scratch directory (under
+    // /android); the native prefix has no tar to stream it.
     let status = Command::new(std::env::current_exe().context("cannot find nixpp")?)
         .args(["enter", "--", "bash", "-c", DOTFILES_SCRIPT, "nixpp-setup"])
         .arg(&resolved.host)
         .arg(repo)
-        .stdin(Stdio::from(archive_out))
+        .arg(crate::lease::guest_path(&directory))
+        .stdin(Stdio::null())
         .status()
         .context("cannot enter the guest")?;
-    let tar_status = archive.wait()?;
-    ensure!(tar_status.success(), "tar failed");
     ensure!(status.success(), "cloning the dotfiles failed ({status})");
     Ok(())
 }
