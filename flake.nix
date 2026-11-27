@@ -184,20 +184,22 @@
       };
     in
     {
-      # nixpp built with a caller's Nixpkgs, e.g. nixos-config's guest pkgs.
-      lib.nixpp = {
-        packagesFor = nixppFor;
-        # Tests and assets that nixos-config's system checks run against.
-        src = ./pkgs/nixpp;
+      lib = {
+        # nixpp built with a caller's Nixpkgs, e.g. nixos-config's guest pkgs.
+        nixpp = {
+          packagesFor = nixppFor;
+          # Tests and assets that nixos-config's system checks run against.
+          src = ./pkgs/nixpp;
+        };
+
+        # The host-side ADB client for a caller's Nixpkgs (nixos-config:
+        # `inputs.termuxpp.lib.adbShell.packagesFor pkgs`).
+        adbShell.packagesFor = adbShellFor;
+
+        # The tmux plugin for a caller's Nixpkgs (nixos-config:
+        # `inputs.termuxpp.lib.tmux.packagesFor pkgs`).
+        tmux.packagesFor = tmuxPluginFor;
       };
-
-      # The host-side ADB client for a caller's Nixpkgs (nixos-config:
-      # `inputs.termuxpp.lib.adbShell.packagesFor pkgs`).
-      lib.adbShell.packagesFor = adbShellFor;
-
-      # The tmux plugin for a caller's Nixpkgs (nixos-config:
-      # `inputs.termuxpp.lib.tmux.packagesFor pkgs`).
-      lib.tmux.packagesFor = tmuxPluginFor;
 
       circus.consumerBuilds.nixos-config = {
         repository = "pschmitt/nixos-config";
