@@ -86,7 +86,13 @@ actions and options.
 In the Nix guest, `tpp --outer COMMAND ...` runs the native `tpp` that the
 installed app ships (`bin/tpp` of the native prefix) instead of the guest's
 build, with the same `am` and path conversion. The app's build is the one an
-app update changes, so this is the first step towards a single `tpp`.
+app update changes, so this is the first step towards a single `tpp`. Shell
+completion offers `--outer` and completes the words after it like any `tpp`
+command line.
+
+The native prefix itself is bound at `/outer` in the guest (the app's
+`files/usr`, also reachable through `/android`). Its binaries are Android
+executables: run them through `/system/bin/linker64`, as `tpp --outer` does.
 
 ## JSON output
 

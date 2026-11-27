@@ -115,10 +115,26 @@ let
       # tpp --outer ...: run the APK's native tpp (what the native prefix's
       # bin/tpp links to) with the same hooks, through Android's linker. One
       # tpp to update: the app's.
+      # Completion knows --outer: offered as the first word, and the words
+      # after it complete like a plain tpp command line.
+      if [[ ''${1:-} == --complete ]]
+      then
+        if [[ ''${2:-} == --outer && $# -gt 2 ]]
+        then
+          set -- --complete "''${@:3}"
+        elif [[ $# -eq 2 && --outer == "$2"* ]]
+        then
+          ${tppCli}/bin/tpp --complete "$2" 2>/dev/null
+          printf '%s\n' --outer
+          exit 0
+        fi
+      fi
       if [[ ''${1:-} == --outer ]]
       then
         shift
-        outer=$(readlink "${androidApp.dataDir}/files/usr/bin/tpp") || outer=
+        # /outer is the app's native prefix (session.sh binds it).
+        outer=$(readlink /outer/bin/tpp 2>/dev/null) ||
+          outer=$(readlink "${androidApp.dataDir}/files/usr/bin/tpp") || outer=
         if [[ $outer != /* || ! -e /android$outer ]]
         then
           printf 'tpp: no native tpp in the TermuxPP prefix (bin/tpp)\n' >&2

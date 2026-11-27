@@ -130,7 +130,8 @@ options.
 
 `--secrets-file` is the one path argument. The guest sees the app's files
 differently from the native side: the guest's `/home` is `<runtime>/root/home`
-natively, and the whole native file system is mounted at `/android`. The path
+natively, the whole native file system is mounted at `/android`, and the
+app's native prefix (`files/usr`) also at `/outer`. The path
 is translated before the handoff:
 
 | Given in the guest | Read natively as |

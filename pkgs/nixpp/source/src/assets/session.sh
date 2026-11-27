@@ -124,6 +124,13 @@ main() {
   then
     set -- -b "$directory/root/nix/store/$system_candidate:/run/current-system!" "$@"
   fi
+  # The app's native prefix (the outer layer), as /outer in the guest. The
+  # runtime always lives at files/home/.local/share/termuxpp-nix.
+  outer_prefix=${PREFIX:-${directory%/home/.local/share/termuxpp-nix}/usr}
+  if [[ -d $outer_prefix ]]
+  then
+    set -- -b "$outer_prefix:/outer" "$@"
+  fi
   cd "$directory/root$session_home" || return 1
   set -- /system/bin/env -i \
     HOME="$session_home" USER="$session_user" LOGNAME="$session_user" \
