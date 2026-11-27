@@ -96,6 +96,89 @@ public class TermuxYamlConfigTest {
     }
 
     @Test
+    public void formerPathsAreReadAndCurrentPathsWin() {
+        List<String> former = new ArrayList<>();
+        Properties properties = TermuxYamlConfig.read(""
+            + "tmux:\n  sidebar:\n    style: subtle\n    right: true\n"
+            + "terminal:\n  toolbar-height: 1.5\n"
+            + "extra-keys:\n  style: arrows-all\n  swipe:\n    left:\n      action: previous-session\n"
+            + "keyboard:\n  volume-keys: volume\n"
+            + "sidebar:\n  style: rounded\n", null, former);
+        assertEquals("rounded", properties.getProperty("terminal-tmux-sidebar-style"));
+        assertEquals("true", properties.getProperty("tmux-right-sidebar"));
+        assertEquals("1.5", properties.getProperty("terminal-toolbar-height"));
+        assertEquals("arrows-all", properties.getProperty("extra-keys-style"));
+        assertEquals("previous-session", properties.getProperty("extra-keys-swipe-left-action"));
+        assertEquals("volume", properties.getProperty("volume-keys"));
+        assertTrue(former.toString(), former.contains("tmux.sidebar.style"));
+        assertFalse(former.toString(), former.contains("sidebar.style"));
+    }
+
+    @Test
+    public void extraKeySwipesAreNamedByTheFingerDirection() {
+        Properties properties = TermuxYamlConfig.read(""
+            + "gestures:\n  extra-keys:\n    swipe:\n      right:\n        action: previous-session\n"
+            + "    long-swipe:\n      left:\n        action: new-session\n", null);
+        // The internal keys are named after the toolbar page, the opposite of the finger.
+        assertEquals("previous-session", properties.getProperty("extra-keys-swipe-left-action"));
+        assertEquals("new-session", properties.getProperty("extra-keys-long-swipe-right-action"));
+    }
+
+    @Test
+    public void positiveBooleansAreInverted() {
+        Properties properties = TermuxYamlConfig.read(""
+            + "appearance:\n  session-change-toast: false\n"
+            + "keyboard:\n  hardware-shortcuts: true\n"
+            + "integrations:\n  share-target: false\n  disable-file-view-receiver: true\n", null);
+        assertEquals("true", properties.getProperty("disable-terminal-session-change-toast"));
+        assertEquals("false", properties.getProperty("disable-hardware-keyboard-shortcuts"));
+        assertEquals("true", properties.getProperty("disable-file-share-receiver"));
+        // A former, negative path keeps its meaning.
+        assertEquals("true", properties.getProperty("disable-file-view-receiver"));
+
+        String yaml = TermuxYamlConfig.write(properties, null);
+        assertTrue(yaml, yaml.contains("  session-change-toast: false\n"));
+        assertTrue(yaml, yaml.contains("  hardware-shortcuts: true\n"));
+        assertTrue(yaml, yaml.contains("  share-target: false\n  open-with-target: false\n"));
+    }
+
+    @Test
+    public void updateKeepsCommentsAndReplacesFormerPaths() {
+        String text = "# Managed by hand.\n"
+            + "appearance:\n  night-mode: true  # dark\n"
+            + "\n# The tmux bits\n"
+            + "tmux:\n  sidebar:\n    style: subtle\n"
+            + "extra-keys:\n  keys:\n    - [ESC, TAB]\n";
+        String out = TermuxYamlConfig.update(text, "terminal-tmux-sidebar-style", "rounded");
+        assertTrue(out, out.startsWith("# Managed by hand.\n"));
+        assertTrue(out, out.contains("night-mode: true  # dark") || out.contains("night-mode: true # dark"));
+        assertFalse(out, out.contains("tmux:"));
+        assertTrue(out, out.contains("sidebar:\n  style: rounded\n"));
+        assertTrue(out, out.contains("    - [ESC, TAB]\n"));
+        // The new group goes where the schema puts it: after appearance, before extra-keys.
+        assertTrue(out, out.indexOf("sidebar:") > out.indexOf("appearance:"));
+        assertTrue(out, out.indexOf("sidebar:") < out.indexOf("extra-keys:"));
+        assertEquals("rounded", TermuxYamlConfig.read(out, null).getProperty("terminal-tmux-sidebar-style"));
+
+        String removed = TermuxYamlConfig.update(out, "terminal-tmux-sidebar-style", null);
+        assertFalse(removed, removed.contains("sidebar:"));
+        assertTrue(removed, removed.contains("# dark"));
+
+        String inverted = TermuxYamlConfig.update(removed, "disable-hardware-keyboard-shortcuts", "true");
+        assertTrue(inverted, inverted.contains("keyboard:\n  hardware-shortcuts: false\n"));
+
+        String rows = TermuxYamlConfig.update("", "extra-keys", "[['ESC'], ['CTRL', {key: '-', popup: '|'}]]");
+        assertTrue(rows, rows.startsWith(TermuxYamlConfig.HEADER));
+        assertTrue(rows, rows.contains("extra-keys:\n  keys:\n    - [ESC]\n    - [CTRL, {key: '-', popup: '|'}]\n"));
+        assertThrows(IllegalArgumentException.class,
+            () -> TermuxYamlConfig.update("a: [unclosed\n", "fullscreen", "true"));
+
+        String commentsOnly = TermuxYamlConfig.update("# just a note\n", "fullscreen", "true");
+        assertTrue(commentsOnly, commentsOnly.startsWith("# just a note\n"));
+        assertTrue(commentsOnly, commentsOnly.contains("appearance:\n  fullscreen: true\n"));
+    }
+
+    @Test
     public void invalidDocumentsAreRejected() {
         assertThrows(IllegalArgumentException.class, () -> TermuxYamlConfig.read("appearance: [oops", null));
         assertThrows(IllegalArgumentException.class, () -> TermuxYamlConfig.read("- a\n- b\n", null));
@@ -115,7 +198,7 @@ public class TermuxYamlConfigTest {
 
         assertEquals(first, TermuxConfigMigration.migrate(yaml, legacy));
         String text = new String(Files.readAllBytes(yaml.toPath()), StandardCharsets.UTF_8);
-        assertTrue(text, text.contains("appearance:\n  fullscreen: true\n  night-mode: true\n"));
+        assertTrue(text, text.contains("appearance:\n  night-mode: true\n  fullscreen: true\n"));
         assertFalse(first.exists());
         assertTrue(new File(first + TermuxConfigMigration.MIGRATED_SUFFIX).isFile());
         // Once the YAML file exists, the other legacy file is never read.

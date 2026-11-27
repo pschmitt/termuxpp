@@ -62,7 +62,7 @@ public class SettingsActivitySearchTest {
         activity.filterSearch("triple tap action");
         Preference result = root.findPreference("settings-search-result-0");
         assertNotNull(result);
-        assertEquals("Terminal triple tap action", result.getTitle());
+        assertEquals("Triple tap: action", result.getTitle());
         result.performClick();
         activity.getSupportFragmentManager().executePendingTransactions();
 

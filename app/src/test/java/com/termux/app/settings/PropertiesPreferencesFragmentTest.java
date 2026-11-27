@@ -30,6 +30,11 @@ public class PropertiesPreferencesFragmentTest {
         PropertiesPreferencesFragment editor = new PropertiesPreferencesFragment();
         activity.getSupportFragmentManager().beginTransaction().replace(R.id.settings, editor).commitNow();
         for (String key : TermuxPropertyConstants.TERMUX_APP_PROPERTIES_LIST) {
+            // The accent, color scheme and font are edited on the Display screen.
+            if (dev.pschmitt.termux.shared.termux.settings.properties.TermuxConfigSchema.isDisplayKey(key)) {
+                assertNull(key, editor.findPreference(key));
+                continue;
+            }
             Preference preference = editor.findPreference(key);
             assertNotNull(key, preference);
             assertFalse(key, preference.isPersistent());

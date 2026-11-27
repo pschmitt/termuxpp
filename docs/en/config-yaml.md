@@ -14,7 +14,6 @@ in more detail.
 - [appearance](#appearance)
 - [terminal](#terminal)
 - [sessions](#sessions)
-- [tmux](#tmux)
 - [sidebar](#sidebar)
 - [keyboard](#keyboard)
 - [extra-keys](#extra-keys)
@@ -22,6 +21,7 @@ in more detail.
 - [integrations](#integrations)
 - [power](#power)
 - [Gesture actions](#gesture-actions)
+- [Former names](#former-names)
 - [Settings outside config.yaml](#settings-outside-configyaml)
 - [Migration from termux.properties](#migration-from-termuxproperties)
 
@@ -29,22 +29,23 @@ in more detail.
 
 - **Location:** `~/.config/termuxpp/config.yaml`. In a provisioned Nix guest,
   the app reads the file from the guest's home first and falls back to the
-  native home. `XDG_CONFIG_HOME` does not change this path. The file must be a
-  regular file: the app does not follow a symlink, so a file that Home Manager
-  links into the Nix store is not read. Fonts may be symlinks.
+  native home. `XDG_CONFIG_HOME` does not change this path.
+- **Symlinks:** the file may be a symlink, for example into your dotfiles.
+  The app reads it, but does not change it: saving a setting in the app then
+  shows an error, and you edit the linked file instead.
 - **Reload:** the app reads the file at start. After editing it, run
   `tpp settings reload`.
-- **Editing in the app:** **Settings → Properties** edits the same file. When
-  you save a setting there, the app rewrites the whole file in the order
-  used on this page. **Comments and your formatting are lost.** If you manage
-  the file through dotfiles, edit only the file, or copy changes made in the
-  app back into your dotfiles.
+- **Editing in the app:** **Settings → Properties** and **Settings → Display**
+  edit the same file. A change edits only that setting and keeps the rest of
+  the file, including comments. A missing group is added in the order used on
+  this page. If the setting was written under a [former name](#former-names),
+  the app replaces it with the current one.
 - **Missing settings** use their default. You only need to write the settings
   you change.
 - **Invalid values** are logged and replaced by the default. The app still
   starts.
-- **Unknown paths** are ignored and logged. A typo such as `apperance:` turns
-  off every setting below it without an error on screen.
+- **Unknown paths** are ignored, logged and listed in a message on screen,
+  so a typo such as `apperance:` does not go unnoticed.
 - **A YAML syntax error or a duplicate key** rejects the whole file: the app
   shows a message and every setting uses its default until you fix it.
 
@@ -79,109 +80,111 @@ gestures:
 | command | Shell text, see [Running commands](terminal-settings.md#running-commands) |
 | action | A [gesture action](#gesture-actions) |
 
-The **Legacy key** column gives the setting's name in the former
-`termux.properties` format. The **Properties** screen also shows these names.
+The **Properties** screen groups the settings like this page, with a readable
+title for each, for example **Triple tap: action** for
+`gestures.tap.triple.action`. The search in Settings also finds a setting by
+its path and by its key in the former `termux.properties` format.
 
 ## appearance
 
-| Path | Type | Default | Legacy key | Description |
-| --- | --- | --- | --- | --- |
-| `fullscreen` | bool | `false` | `fullscreen` | Hide the status bar. |
-| `fullscreen-workaround` | bool | `false` | `use-fullscreen-workaround` | Keep the soft keyboard from covering the terminal in fullscreen mode. It only applies with `fullscreen: true`. |
-| `night-mode` | enum: `true`, `false`, `system` | `system` | `night-mode` | Dark theme always, never, or following the device. |
-| `toast-position` | enum: [position](#positions) | `top-center` | `terminal-toast-position` | Where short terminal messages appear, such as the session number after a switch. |
-| `disable-session-change-toast` | bool | `false` | `disable-terminal-session-change-toast` | Do not show the session number and name when you switch sessions. |
+| Path | Type | Default | Description |
+| --- | --- | --- | --- |
+| `night-mode` | enum: `true`, `false`, `system` | `system` | Dark theme always, never, or following the device. |
+| `accent` | enum: `default`, `adaptive`, `blue`, `teal`, `rose` | `default` | Accent color of the app interface. Set on **Settings → Display**. |
+| `color-scheme` | `config`, `default` or a preset name | `config` | Terminal colors. `config` reads `colors.properties`, `default` uses the built-in colors. Set on **Settings → Display**, which lists the presets. |
+| `font` | `config`, `default` or a preset name | `config` | Terminal font. `config` reads `font.ttf` and its variants. Set on **Settings → Display**. |
+| `fullscreen` | bool | `false` | Hide the status bar. |
+| `fullscreen-workaround` | bool | `false` | Keep the soft keyboard from covering the terminal in fullscreen mode. It only applies with `fullscreen: true`. |
+| `toast-position` | enum: [position](#positions) | `top-center` | Where short terminal messages appear, such as the session number after a switch. |
+| `session-change-toast` | bool | `true` | Show the session number and name when you switch sessions. |
 
 ## terminal
 
-| Path | Type | Default | Legacy key | Description |
-| --- | --- | --- | --- | --- |
-| `engine` | enum: `termux`, `libghostty` | `termux` | `terminal-engine` | Terminal engine for new sessions. `libghostty` is only available on ARM64. |
-| `margin.horizontal` | int 0–100 (dp) | `3` | `terminal-margin-horizontal` | Space to the left and right of the text. |
-| `margin.vertical` | int 0–100 (dp) | `0` | `terminal-margin-vertical` | Space above and below the text. |
-| `cursor.style` | enum: `block`, `underline`, `bar` | `block` | `terminal-cursor-style` | Cursor shape. |
-| `cursor.blink-rate` | int 0 or 100–2000 (ms) | `0` | `terminal-cursor-blink-rate` | Duration of each blink phase. `0` turns blinking off. |
-| `transcript-rows` | int 100–50000 | `2000` | `terminal-transcript-rows` | Scrollback lines kept per session. |
-| `toolbar-height` | float 0.4–3 | `1` | `terminal-toolbar-height` | Height of the extra keys toolbar as a factor of its normal height. |
-| `bell` | enum: `vibrate`, `beep`, `ignore` | `vibrate` | `bell-character` | Response to the BEL character. |
-| `open-url-on-click` | bool | `false` | `terminal-onclick-url-open` | Open a link when you tap it, without the long-press menu. See [URLs and hyperlinks](terminal-settings.md#urls-and-hyperlinks). |
-| `default-working-directory` | path | `~` | `default-working-directory` | Start directory of new sessions. It must exist and be readable. |
+| Path | Type | Default | Description |
+| --- | --- | --- | --- |
+| `engine` | enum: `termux`, `libghostty` | `termux` | Terminal engine for new sessions. `libghostty` is only available on ARM64. |
+| `margin.horizontal` | int 0–100 (dp) | `3` | Space to the left and right of the text. |
+| `margin.vertical` | int 0–100 (dp) | `0` | Space above and below the text. |
+| `cursor.style` | enum: `block`, `underline`, `bar` | `block` | Cursor shape. |
+| `cursor.blink-rate` | int 0 or 100–2000 (ms) | `0` | Duration of each blink phase. `0` turns blinking off. |
+| `transcript-rows` | int 100–50000 | `2000` | Scrollback lines kept per session. |
+| `bell` | enum: `vibrate`, `beep`, `ignore` | `vibrate` | Response to the BEL character. |
+| `open-url-on-click` | bool | `false` | Open a link when you tap it, without the long-press menu. See [URLs and hyperlinks](terminal-settings.md#urls-and-hyperlinks). |
+| `default-working-directory` | path | `~` | Start directory of new sessions. It must exist and be readable. |
 
 ## sessions
 
-| Path | Type | Default | Legacy key | Description |
-| --- | --- | --- | --- | --- |
-| `picker-position` | enum: `top`, `center`, `terminal` | `top` | `terminal-picker-position` | Where the session picker and tmux window picker open. `terminal` centers them on the terminal, above the keyboard. |
-| `create-on-single-session-switch` | bool | `false` | `create-session-on-single-session-switch` | With only one session open, next/previous session creates a new one. |
-| `tmpdir-max-age-days` | int −1–100000 | `3` | `delete-tmpdir-files-older-than-x-days-on-exit` | When the last session exits, delete files in `$TMPDIR` that were not used for this many days. `-1` keeps all files and `0` deletes all of them. |
-| `nix.session` | bool | `true` | `nix-session` | Start new sessions in the Nix guest when it is available. With `false`, they start the native shell. The failsafe session always starts the native shell. |
-| `nix.user` | string | `nix` | `nix-user` | User name in the Nix guest: a lowercase letter or `_`, then up to 31 lowercase letters, digits, `_` or `-`. It is read only when the guest is set up. |
-
-## tmux
-
-| Path | Type | Default | Legacy key | Description |
-| --- | --- | --- | --- | --- |
-| `sidebar.layout` | enum: `nested`, `drill-down`, `modes` | `nested` | `terminal-tmux-sidebar-layout` | Layout of a sidebar that shows both sessions and tmux windows. See [tmux sidebar layout](terminal-settings.md#tmux-sidebar-layout). |
-| `sidebar.style` | enum: `rounded`, `subtle` | `rounded` | `terminal-tmux-sidebar-style` | How the active tmux window and the current session are marked in the sidebars and pickers. |
-| `sidebar.right` | bool | `false` | `tmux-right-sidebar` | Enable the right sidebar, opened by a swipe from the right edge. Configure what it shows under [`sidebar.right`](#sidebar). |
+| Path | Type | Default | Description |
+| --- | --- | --- | --- |
+| `picker-position` | enum: `top`, `center`, `terminal` | `top` | Where the session picker and tmux window picker open. `terminal` centers them on the terminal, above the keyboard. |
+| `create-on-single-session-switch` | bool | `false` | With only one session open, next/previous session creates a new one. |
+| `command-context` | enum: `session`, `nix`, `outer` | `session` | Where commands run: every `run-command` gesture and every extra key with a `command`. `session` follows `nix.enabled`, `nix` always uses the guest, and `outer` uses the native prefix. |
+| `tmpdir-cleanup-days` | int −1–100000 | `3` | When the last session exits, delete files in `$TMPDIR` that were not used for this many days. `-1` keeps every file and `0` deletes all of them. |
+| `nix.enabled` | bool | `true` | Start new sessions in the Nix guest when it is available. With `false`, they start the native shell. The failsafe session always starts the native shell. |
+| `nix.user` | string | `nix` | User name in the Nix guest: a lowercase letter or `_`, then up to 31 lowercase letters, digits, `_` or `-`. It is read only when the guest is set up. |
 
 ## sidebar
 
-Each drawer has the same four switches. A drawer with tmux windows on and
-sessions off shows the windows of the current session.
+| Path | Type | Default | Description |
+| --- | --- | --- | --- |
+| `layout` | enum: `nested`, `drill-down`, `modes` | `nested` | Layout of a sidebar that shows both sessions and tmux windows. See [tmux sidebar layout](terminal-settings.md#tmux-sidebar-layout). |
+| `style` | enum: `rounded`, `subtle` | `rounded` | How the current session and the active tmux window are marked in the sidebars and pickers. |
+| `right.enabled` | bool | `false` | Enable the right sidebar, opened by a swipe from the right edge. |
 
-| Path | Type | Default (left / right) | Legacy key | Description |
-| --- | --- | --- | --- | --- |
-| `left.show-sessions`, `right.show-sessions` | bool | `true` / `false` | `sidebar-{left,right}-show-sessions` | List terminal sessions. |
-| `left.show-tmux-windows`, `right.show-tmux-windows` | bool | `true` / `true` | `sidebar-{left,right}-show-tmux-windows` | List tmux windows. |
-| `left.show-new-session`, `right.show-new-session` | bool | `true` / `false` | `sidebar-{left,right}-show-new-session` | Show the **New session** button. |
-| `left.show-keyboard-button`, `right.show-keyboard-button` | bool | `true` / `false` | `sidebar-{left,right}-show-keyboard-button` | Show the **Keyboard** button. |
+Each sidebar has the same four switches, under `left` and `right`. A sidebar
+with tmux windows on and sessions off shows the windows of the current
+session.
 
-The right drawer only opens after `tmux.sidebar.right: true`.
+| Path | Type | Default (left / right) | Description |
+| --- | --- | --- | --- |
+| `left.show-sessions`, `right.show-sessions` | bool | `true` / `false` | List terminal sessions. |
+| `left.show-tmux-windows`, `right.show-tmux-windows` | bool | `true` / `true` | List tmux windows. |
+| `left.show-new-session`, `right.show-new-session` | bool | `true` / `false` | Show the **New session** button. |
+| `left.show-keyboard-button`, `right.show-keyboard-button` | bool | `true` / `false` | Show the **Keyboard** button. |
 
 ## keyboard
 
-| Path | Type | Default | Legacy key | Description |
-| --- | --- | --- | --- | --- |
-| `back-key` | enum: `back`, `escape` | `back` | `back-key` | What the Back button does when the terminal has focus. |
-| `hide-on-startup` | bool | `false` | `hide-soft-keyboard-on-startup` | Do not show the soft keyboard when the app starts. |
-| `hide-on-sidebar` | bool | `true` | `hide-soft-keyboard-on-sidebar` | Hide the soft keyboard while a sidebar is open and show it again when the sidebar closes. |
-| `toggle-behaviour` | enum: `show/hide`, `enable/disable` | `show/hide` | `soft-keyboard-toggle-behaviour` | What the keyboard toggle does. `enable/disable` keeps the keyboard from popping up until you toggle it again. |
-| `char-based-input` | bool | `false` | `enforce-char-based-input` | Send each character as you type. Use it when typed text only appears after Enter, which happens with some keyboards (for example on Samsung devices). |
-| `ctrl-space-workaround` | bool | `false` | `ctrl-space-workaround` | Fix Ctrl+Space not sending NUL on some devices. |
-| `disable-hardware-shortcuts` | bool | `false` | `disable-hardware-keyboard-shortcuts` | Turn off the built-in Ctrl+Alt shortcuts of a hardware keyboard (for example Ctrl+Alt+N for the next session) so that the keys reach the terminal. |
-| `shortcuts.create-session` | `ctrl+X` or `disabled` | `ctrl+t` | `shortcut.create-session` | Ctrl shortcut for a new session, for example `ctrl+t`. `disabled` removes it. |
-| `shortcuts.next-session` | `ctrl+X` or `disabled` | `ctrl+2` | `shortcut.next-session` | Shortcut for the next session. |
-| `shortcuts.previous-session` | `ctrl+X` or `disabled` | `ctrl+1` | `shortcut.previous-session` | Shortcut for the previous session. |
-| `shortcuts.rename-session` | `ctrl+X` or `disabled` | `ctrl+r` | `shortcut.rename-session` | Shortcut to rename the current session. |
-| `volume-keys` | enum: `virtual`, `volume` | `virtual` | `volume-keys` | `volume` gives both buttons back to Android and ignores `keyboard.volume.*`. |
-| `volume.up.action` | `modifier` or action | `modifier` | `volume-up-action` | Volume up. `modifier` makes it a virtual Fn key while held. `run-command` is not allowed. |
-| `volume.up.keys` | keys | unset | `volume-up-keys` | Keys for `send-keys`. |
-| `volume.down.action` | `modifier` or action | `modifier` | `volume-down-action` | Volume down. `modifier` makes it a virtual Ctrl key while held. |
-| `volume.down.keys` | keys | unset | `volume-down-keys` | Keys for `send-keys`. |
+| Path | Type | Default | Description |
+| --- | --- | --- | --- |
+| `back-key` | enum: `back`, `escape` | `back` | What the Back button does when the terminal has focus. |
+| `hide-on-startup` | bool | `false` | Do not show the soft keyboard when the app starts. |
+| `hide-on-sidebar` | bool | `true` | Hide the soft keyboard while a sidebar is open and show it again when the sidebar closes. |
+| `toggle-behaviour` | enum: `show/hide`, `enable/disable` | `show/hide` | What the keyboard toggle does. `enable/disable` keeps the keyboard from popping up until you toggle it again. |
+| `char-based-input` | bool | `false` | Send each character as you type. Use it when typed text only appears after Enter, which happens with some keyboards (for example on Samsung devices). |
+| `ctrl-space-workaround` | bool | `false` | Fix Ctrl+Space not sending NUL on some devices. |
+| `hardware-shortcuts` | bool | `true` | Handle the built-in Ctrl+Alt shortcuts of a hardware keyboard (for example Ctrl+Alt+N for the next session). Turn it off so that the keys reach the terminal. |
+| `shortcuts.create-session` | `ctrl+X` or `disabled` | `ctrl+t` | Ctrl shortcut for a new session. `disabled` removes it. |
+| `shortcuts.next-session` | `ctrl+X` or `disabled` | `ctrl+2` | Ctrl shortcut for the next session. |
+| `shortcuts.previous-session` | `ctrl+X` or `disabled` | `ctrl+1` | Ctrl shortcut for the previous session. |
+| `shortcuts.rename-session` | `ctrl+X` or `disabled` | `ctrl+r` | Ctrl shortcut to rename the current session. |
+| `volume.mode` | enum: `virtual`, `volume` | `virtual` | `volume` gives both buttons back to Android and ignores `volume.up` and `volume.down`. |
+| `volume.up.action` | `modifier` or action | `modifier` | Volume up. `modifier` makes it a virtual Fn key while held. `run-command` is not allowed. |
+| `volume.up.keys` | keys | unset | Keys for `send-keys`. |
+| `volume.down.action` | `modifier` or action | `modifier` | Volume down. `modifier` makes it a virtual Ctrl key while held. |
+| `volume.down.keys` | keys | unset | Keys for `send-keys`. |
 
 See [Volume buttons](terminal-settings.md#volume-buttons) for repeat and
 modifier details.
 
 ## extra-keys
 
-| Path | Type | Default | Legacy key | Description |
-| --- | --- | --- | --- | --- |
-| `keys` | list of rows | two rows, see below | `extra-keys` | The buttons. See [Extra-key appearance](terminal-settings.md#extra-key-appearance). |
-| `style` | enum: `default`, `arrows-only`, `arrows-all`, `all`, `none` | `default` | `extra-keys-style` | How key **names** are drawn, for example `LEFT` as an arrow. It does not change the look of the buttons, that is `theme`. |
-| `theme` | enum: `default`, `rounded` | `default` | `extra-keys-theme` | Look of the button row. |
-| `background-color` | color | theme | `extra-keys-row-background-color` | Color behind the row. |
-| `font` | enum: `system`, `terminal`, `monospace`, `serif` | `system` | `extra-keys-font` | Font of the labels. `terminal` uses the terminal font. |
-| `animation` | enum: `key-preview`, `key-bubble`, `press-in`, `pop`, `lift`, `off` | `key-preview` | `extra-keys-animation` | Effect of a pressed key. |
-| `all-caps` | bool | `true` | `extra-keys-text-all-caps` | Show labels in capital letters. |
-| `compact` | bool | `false` | `extra-keys-compact` | Make each row three quarters of its normal height. This applies on top of `terminal.toolbar-height`. |
-| `corner-radius` | float 0–32 (dp) | theme | `extra-keys-button-corner-radius` | Corner radius of the buttons. It overrides the theme. |
-| `active.text-color` | color | theme | `extra-keys-button-active-text-color` | Label color of a latched or locked modifier. |
-| `active.background-color` | color | theme | `extra-keys-button-active-background-color` | Button color while pressed. |
-| `swipe.left.{action,keys,command}` | action / keys / command | `none` | `extra-keys-swipe-left-*` | Swipe on the row with the finger moving **left to right**. |
-| `swipe.right.{action,keys,command}` | action / keys / command | `next-session` | `extra-keys-swipe-right-*` | Swipe with the finger moving **right to left**. |
-| `swipe.long-left.{action,keys,command}` | action / keys / command | `none` | `extra-keys-long-swipe-left-*` | Longer swipe in the `swipe.left` direction. |
-| `swipe.long-right.{action,keys,command}` | action / keys / command | `none` | `extra-keys-long-swipe-right-*` | Longer swipe in the `swipe.right` direction. |
+| Path | Type | Default | Description |
+| --- | --- | --- | --- |
+| `keys` | list of rows | two rows, see below | The buttons. See [Extra-key appearance](terminal-settings.md#extra-key-appearance). |
+| `theme` | enum: `default`, `rounded` | `default` | Look of the button row. |
+| `labels` | enum: `default`, `arrows-only`, `arrows-all`, `all`, `none` | `default` | How key names are drawn, for example `LEFT` as an arrow. |
+| `height` | float 0.4–3 | `1` | Height of the toolbar as a factor of its normal height. |
+| `compact` | bool | `false` | Make each row three quarters of its normal height, on top of `height`. |
+| `background-color` | color | theme | Color behind the row. |
+| `font` | enum: `system`, `terminal`, `monospace`, `serif` | `system` | Font of the labels. `terminal` uses the terminal font. |
+| `animation` | enum: `key-preview`, `key-bubble`, `press-in`, `pop`, `lift`, `off` | `key-preview` | Effect of a pressed key. |
+| `all-caps` | bool | `true` | Show labels in capital letters. |
+| `corner-radius` | float 0–32 (dp) | theme | Corner radius of the buttons. It overrides the theme. |
+| `active.text-color` | color | theme | Label color of a latched or locked modifier. |
+| `active.background-color` | color | theme | Button color while pressed. |
+
+Swipes on the extra keys are gestures, see
+[`gestures.extra-keys`](#gestures).
 
 The default `keys`:
 
@@ -192,26 +195,29 @@ extra-keys:
     - [TAB, CTRL, ALT, LEFT, DOWN, RIGHT, PGDN]
 ```
 
-The swipe directions are named after the toolbar page that the swipe moves
-towards, not after the movement of the finger. See
-[Extra keys swipe](terminal-settings.md#extra-keys-swipe).
-
 ## gestures
 
-| Path | Type | Default | Legacy key | Description |
-| --- | --- | --- | --- | --- |
-| `animations` | bool | `true` | `gesture-animations` | Visual feedback for custom taps, extra-key swipes and volume button actions. |
-| `command-context` | enum: `session`, `nix`, `outer` | `session` | `gesture-command-context` | Where every `run-command` action and every extra-key `command` button runs. `session` follows `sessions.nix.session`, `nix` always uses the guest, and `outer` uses the native prefix. |
-| `feedback.style` | enum: `soft-flash`, `touch-ripples`, `edge-glow`, `light-sweep`, `touch-bloom`, `corner-brackets` | `soft-flash` | `gesture-feedback-style` | Effect shown for a recognized gesture. |
-| `feedback.position` | enum: [position](#positions) | `bottom-center` | `gesture-feedback-position` | Where the action label appears. This setting is independent of `appearance.toast-position`. |
-| `tap.single.{action,keys,command}` | action / keys / command | `show-keyboard` | `terminal-single-tap-*` | One tap on the terminal. |
-| `tap.double.{action,keys,command}` | action / keys / command | `none` | `terminal-double-tap-*` | Two quick taps. |
-| `tap.triple.{action,keys,command}` | action / keys / command | `none` | `terminal-triple-tap-*` | Three quick taps. |
-| `tap.triple.focus-title` | regular expression | unset | `terminal-triple-tap-focus-title` | Before the triple-tap action runs, switch to a session whose title matches. If no session matches, the action runs. |
-| `swipe.{two,three}-finger.{up,down,left,right}.{action,keys,command}` | action / keys / command | `none`, except `two-finger.down`: `open-tmux-switcher` | `terminal-{2,3}-finger-swipe-DIR-*` | Multi-finger swipes on the terminal. They are named by the direction the fingers move. |
+Every gesture binding has three keys. `action` selects what happens, `keys`
+is read only for `send-keys`, and `command` only for `run-command`. Swipes are
+named by the direction the finger moves.
 
-Each binding has three keys. `action` selects what happens, `keys` is read
-only for `send-keys`, and `command` only for `run-command`:
+| Path | Type | Default | Description |
+| --- | --- | --- | --- |
+| `animations` | bool | `true` | Visual feedback for custom taps, swipes and volume button actions. |
+| `feedback.style` | enum: `soft-flash`, `touch-ripples`, `edge-glow`, `light-sweep`, `touch-bloom`, `corner-brackets` | `soft-flash` | Effect shown for a recognized gesture. |
+| `feedback.position` | enum: [position](#positions) | `bottom-center` | Where the action label appears. This setting is independent of `appearance.toast-position`. |
+| `tap.single.{action,keys,command}` | binding | `show-keyboard` | One tap on the terminal. |
+| `tap.double.{action,keys,command}` | binding | `none` | Two quick taps. |
+| `tap.triple.{action,keys,command}` | binding | `none` | Three quick taps. |
+| `tap.triple.focus-title` | regular expression | unset | Before the triple-tap action runs, switch to a session whose title matches. If no session matches, the action runs. |
+| `swipe.{two,three}-finger.{up,down,left,right}.{action,keys,command}` | binding | `none`, except `two-finger.down`: `open-tmux-switcher` | Multi-finger swipes on the terminal. |
+| `extra-keys.swipe.right.{action,keys,command}` | binding | `none` | Swipe along the extra keys row, finger moving to the right. |
+| `extra-keys.swipe.left.{action,keys,command}` | binding | `next-session` | Swipe along the row, finger moving to the left. |
+| `extra-keys.long-swipe.right.{action,keys,command}` | binding | `none` | Longer swipe to the right. |
+| `extra-keys.long-swipe.left.{action,keys,command}` | binding | `none` | Longer swipe to the left. |
+
+See [Extra keys swipe](terminal-settings.md#extra-keys-swipe) for the swipe
+distances. Example:
 
 ```yaml
 gestures:
@@ -220,24 +226,28 @@ gestures:
       action: run-command
       command: htop
       focus-title: '^htop'
+  extra-keys:
+    swipe:
+      right:
+        action: previous-session
 ```
 
 ## integrations
 
-| Path | Type | Default | Legacy key | Description |
-| --- | --- | --- | --- | --- |
-| `allow-external-apps` | bool | `false` | `allow-external-apps` | Let other apps run commands through the `RUN_COMMAND` intent. Any app with the permission can then run commands as you. |
-| `am-socket-server` | bool | `true` | `run-termux-am-socket-server` | Start the socket server of the fast `am` command at app start. |
-| `disable-file-share-receiver` | bool | `false` | `disable-file-share-receiver` | Hide TermuxPP from the Android Share menu. |
-| `disable-file-view-receiver` | bool | `false` | `disable-file-view-receiver` | Hide TermuxPP from **Open with**. |
-| `adb-shell.allowed-ssids` | string | unset (any network) | `adb-shell-allowed-ssids` | Comma-separated exact Wi-Fi SSIDs on which the ADB shell service may run. Android must allow the app to read the SSID. |
+| Path | Type | Default | Description |
+| --- | --- | --- | --- |
+| `allow-external-apps` | bool | `false` | Let other apps run commands through the `RUN_COMMAND` intent. Any app with the permission can then run commands as you. |
+| `am-socket-server` | bool | `true` | Start the socket server of the fast `am` command at app start. |
+| `share-target` | bool | `true` | Offer TermuxPP in the Android Share menu. |
+| `open-with-target` | bool | `true` | Offer TermuxPP in **Open with**. |
+| `adb-shell.allowed-ssids` | string | unset (any network) | Comma-separated exact Wi-Fi SSIDs on which the ADB shell service may run. Android must allow the app to read the SSID. |
 
 ## power
 
-| Path | Type | Default | Legacy key | Description |
-| --- | --- | --- | --- | --- |
-| `wake-lock.timeout` | int 0–10080 (minutes) | `0` | `wake-lock-timeout` | Release the wake lock automatically after this time. `0` keeps it until you release it. |
-| `wake-lock.wifi` | bool | `false` | `wake-lock-wifi` | Also hold a high-performance Wi-Fi lock while the wake lock is held. This uses more battery. See [Wake lock](terminal-settings.md#wake-lock). |
+| Path | Type | Default | Description |
+| --- | --- | --- | --- |
+| `wake-lock.timeout` | int 0–10080 (minutes) | `0` | Release the wake lock automatically after this time. `0` keeps it until you release it. |
+| `wake-lock.wifi` | bool | `false` | Also hold a high-performance Wi-Fi lock while the wake lock is held. This uses more battery. See [Wake lock](terminal-settings.md#wake-lock). |
 
 ## Gesture actions
 
@@ -260,18 +270,45 @@ each action.
 values `top-left`, `top-center`, `top-right`, `center-left`, `center`,
 `center-right`, `bottom-left`, `bottom-center` and `bottom-right`.
 
+## Former names
+
+The settings were renamed in November 2026 so that their names say what they
+do. The former names are still read. When both are present, the current name
+wins. When you change such a setting in the app, it is written under its
+current name. A message in the log lists the former names a file still uses.
+
+| Former path | Current path |
+| --- | --- |
+| `appearance.disable-session-change-toast: X` | `appearance.session-change-toast: !X` |
+| `terminal.toolbar-height` | `extra-keys.height` |
+| `sessions.tmpdir-max-age-days` | `sessions.tmpdir-cleanup-days` |
+| `sessions.nix.session` | `sessions.nix.enabled` |
+| `gestures.command-context` | `sessions.command-context` |
+| `tmux.sidebar.layout` | `sidebar.layout` |
+| `tmux.sidebar.style` | `sidebar.style` |
+| `tmux.sidebar.right` | `sidebar.right.enabled` |
+| `keyboard.disable-hardware-shortcuts: X` | `keyboard.hardware-shortcuts: !X` |
+| `keyboard.volume-keys` | `keyboard.volume.mode` |
+| `extra-keys.style` | `extra-keys.labels` |
+| `extra-keys.swipe.left.*` | `gestures.extra-keys.swipe.right.*` |
+| `extra-keys.swipe.right.*` | `gestures.extra-keys.swipe.left.*` |
+| `extra-keys.swipe.long-left.*` | `gestures.extra-keys.long-swipe.right.*` |
+| `extra-keys.swipe.long-right.*` | `gestures.extra-keys.long-swipe.left.*` |
+| `integrations.disable-file-share-receiver: X` | `integrations.share-target: !X` |
+| `integrations.disable-file-view-receiver: X` | `integrations.open-with-target: !X` |
+
+`!X` is the opposite boolean. The former extra-keys swipe names said which
+toolbar page the swipe moves to, so `left` was a swipe with the finger moving
+to the right. The current names follow the finger, like the terminal swipes.
+
 ## Settings outside config.yaml
 
-Some settings are stored elsewhere and cannot be set in `config.yaml`:
+Whether the extra keys toolbar is shown is not a setting but remembered state.
+The Keyboard button's long press and the `toggle-extra-keys` action change it,
+and it is stored in the app's private preferences.
 
-- **Color scheme and font:** `colors.properties` and `font*.ttf` in
-  `~/.config/termuxpp`, or a preset chosen under **Settings → Display**.
-  Presets are stored in the app's private preferences. See
-  [Configuration files](terminal-settings.md#configuration-files).
-- **Accent color:** **Settings → Display**, stored in the app's private
-  preferences.
-- **Extra keys visibility** (the Keyboard button's long press or
-  `toggle-extra-keys`): stored in the app's private preferences.
+`colors.properties` and the `font*.ttf` files live next to `config.yaml`, see
+[Configuration files](terminal-settings.md#configuration-files).
 
 ## Migration from termux.properties
 
@@ -286,3 +323,6 @@ order:
 It then renames that file with a `.migrated` suffix and does not read
 properties files again. `use-black-ui` becomes `appearance.night-mode`. Keys
 that `config.yaml` does not know are left out and logged.
+
+Earlier versions kept the accent, color scheme and font in the app's private
+preferences. The app moves them to `config.yaml` once, at start.

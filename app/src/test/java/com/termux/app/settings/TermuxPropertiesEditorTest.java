@@ -29,6 +29,15 @@ public class TermuxPropertiesEditorTest {
                 : Files.isRegularFile(file) ? android.system.OsConstants.S_IFREG : android.system.OsConstants.S_IFDIR;
             return new android.system.StructStat(0, 0, mode, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         }
+
+        @org.robolectric.annotation.Implementation
+        protected static android.system.StructStat stat(String path) throws android.system.ErrnoException {
+            java.nio.file.Path file = new File(path).toPath();
+            if (!Files.exists(file))
+                throw new android.system.ErrnoException("stat", android.system.OsConstants.ENOENT);
+            int mode = Files.isRegularFile(file) ? android.system.OsConstants.S_IFREG : android.system.OsConstants.S_IFDIR;
+            return new android.system.StructStat(0, 0, mode, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        }
     }
 
     @Rule public TemporaryFolder temp = new TemporaryFolder();
@@ -48,7 +57,7 @@ public class TermuxPropertiesEditorTest {
         assertFalse(legacy.exists());
         assertTrue(new File(legacy + ".migrated").isFile());
         assertTrue(text(target).contains("appearance:\n  fullscreen: false\n"));
-        assertTrue(text(target).contains("tmux:\n  sidebar:\n    style: subtle\n"));
+        assertTrue(text(target).contains("sidebar:\n  style: subtle\n"));
 
         editor.set("fullscreen", "true");
         assertEquals("true", editor.read().getProperty("fullscreen"));
@@ -84,15 +93,30 @@ public class TermuxPropertiesEditorTest {
         assertTrue(text(target).contains("Grüße ☃ 日本語"));
     }
 
-    @Test public void symlinkTargetsAreRejected() throws Exception {
+    @Test public void symlinksAreReadButNotReplaced() throws Exception {
         File real = temp.newFile("real.yaml");
         byte[] original = "appearance:\n  fullscreen: false\n".getBytes(StandardCharsets.UTF_8);
         Files.write(real.toPath(), original);
         File link = new File(temp.getRoot(), "config.yaml");
         Files.createSymbolicLink(link.toPath(), real.toPath());
         TermuxPropertiesEditor editor = new TermuxPropertiesEditor(link, Arrays.asList());
-        assertThrows(java.io.IOException.class, () -> editor.set("fullscreen", "true"));
+        assertEquals("false", editor.read().getProperty("fullscreen"));
+        java.io.IOException error = assertThrows(java.io.IOException.class, () -> editor.set("fullscreen", "true"));
+        assertTrue(error.getMessage(), error.getMessage().contains("symlink"));
+        assertTrue(Files.isSymbolicLink(link.toPath()));
         assertArrayEquals(original, Files.readAllBytes(real.toPath()));
+    }
+
+    @Test public void commentsSurviveAChange() throws Exception {
+        File target = temp.newFile("config.yaml");
+        Files.write(target.toPath(), ("# mine\nappearance:\n  # dark please\n  night-mode: true\n")
+            .getBytes(StandardCharsets.UTF_8));
+        TermuxPropertiesEditor editor = new TermuxPropertiesEditor(target, Arrays.asList());
+        editor.set("fullscreen", "true");
+        String text = text(target);
+        assertTrue(text, text.startsWith("# mine\n"));
+        assertTrue(text, text.contains("# dark please\n  night-mode: true\n"));
+        assertEquals("true", editor.read().getProperty("fullscreen"));
     }
 
     @Test public void malformedFileIsNotOverwritten() throws Exception {

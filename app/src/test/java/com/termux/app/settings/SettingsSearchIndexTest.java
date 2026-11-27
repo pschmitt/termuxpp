@@ -27,7 +27,9 @@ public class SettingsSearchIndexTest {
 
         SettingsSearchIndex.Result tripleTap = resultFor(results, "terminal-triple-tap-action");
         assertNotNull(tripleTap);
-        assertTrue(tripleTap.title.toLowerCase().contains("triple tap action"));
+        // Titled for people; the path gestures.tap.triple.action is searchable too.
+        assertEquals("Triple tap: action", tripleTap.title);
+        assertTrue(tripleTap.matches("gestures.tap.triple.action"));
         assertEquals("com.termux.app.fragments.settings.termux.PropertiesPreferencesFragment",
             tripleTap.fragmentPath.get(0));
         assertTrue(tripleTap.matches("triple"));
@@ -50,6 +52,12 @@ public class SettingsSearchIndexTest {
         assertTrue(logLevel.title + " :: " + logLevel.breadcrumb, logLevel.matches("api log level"));
         assertEquals("com.termux.app.fragments.settings.termux.DebuggingPreferencesFragment",
             logLevel.fragmentPath.get(0));
+    }
+
+    @Test
+    public void everySettingHasAWrittenTitle() {
+        for (String path : dev.pschmitt.termux.shared.termux.settings.properties.TermuxConfigSchema.paths().keySet())
+            assertNotNull(path, SettingTitles.forPath(path));
     }
 
     @Test

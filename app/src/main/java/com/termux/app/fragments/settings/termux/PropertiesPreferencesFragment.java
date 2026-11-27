@@ -21,6 +21,7 @@ import com.termux.app.settings.SettingsSearchIndex;
 import dev.pschmitt.termux.shared.interact.DialogUtils;
 import dev.pschmitt.termux.shared.termux.TermuxConstants;
 import dev.pschmitt.termux.shared.termux.settings.properties.TerminalGestureAction;
+import dev.pschmitt.termux.shared.termux.settings.properties.TermuxConfigSchema;
 import dev.pschmitt.termux.shared.termux.settings.properties.TermuxPropertyConstants;
 
 import java.io.IOException;
@@ -64,19 +65,26 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
         });
         screen.addPreference(help);
         Map<Integer, PreferenceCategory> categories = new LinkedHashMap<>();
-        for (int title : new int[]{R.string.properties_extra_keys, R.string.properties_appearance, R.string.properties_sidebars, R.string.properties_keyboard,
-                R.string.properties_gestures, R.string.properties_advanced}) {
+        // One category per group of config.yaml, in the order of the file.
+        for (int title : new int[]{R.string.properties_appearance, R.string.properties_terminal,
+                R.string.properties_sessions, R.string.properties_sidebars, R.string.properties_keyboard,
+                R.string.properties_extra_keys, R.string.properties_gestures, R.string.properties_integrations,
+                R.string.properties_power}) {
             PreferenceCategory category = new PreferenceCategory(requireContext());
             category.setTitle(title);
             screen.addPreference(category);
             categories.put(title, category);
         }
-        ArrayList<String> keys = new ArrayList<>(TermuxPropertyConstants.TERMUX_APP_PROPERTIES_LIST);
-        Collections.sort(keys);
+        // In the order of config.yaml; the Display screen edits the accent, color scheme and font.
+        ArrayList<String> keys = new ArrayList<>(TermuxConfigSchema.paths().values());
         for (String key : keys) {
+            if (TermuxConfigSchema.isDisplayKey(key)) continue;
             Preference preference;
-            boolean defaultTrue = TermuxPropertyConstants.TERMUX_DEFAULT_TRUE_BOOLEAN_BEHAVIOUR_PROPERTIES_LIST.contains(key);
-            boolean isBoolean = defaultTrue || TermuxPropertyConstants.TERMUX_DEFAULT_FALSE_BOOLEAN_BEHAVIOUR_PROPERTIES_LIST.contains(key);
+            boolean inverted = TermuxConfigSchema.isInverted(key);
+            boolean internalDefaultTrue = TermuxPropertyConstants.TERMUX_DEFAULT_TRUE_BOOLEAN_BEHAVIOUR_PROPERTIES_LIST.contains(key);
+            boolean isBoolean = internalDefaultTrue || TermuxPropertyConstants.TERMUX_DEFAULT_FALSE_BOOLEAN_BEHAVIOUR_PROPERTIES_LIST.contains(key);
+            // An inverted setting is shown as it is written in config.yaml, the positive way round.
+            boolean defaultTrue = inverted != internalDefaultTrue;
             Set<String> options = choices(key);
             if (key.equals("extra-keys")) {
                 preference = new Preference(requireContext());
@@ -96,6 +104,7 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
                 ArrayList<String> entries = new ArrayList<>();
                 ArrayList<String> entryValues = new ArrayList<>();
                 String current = values.getProperty(key, "");
+                if (inverted) current = TermuxConfigSchema.invert(current);
                 if (key.endsWith("-action")) {
                     TerminalGestureAction action = TerminalGestureAction.parse(current);
                     if (action != null && options.contains(action.getValue())) current = action.getValue();
@@ -150,7 +159,8 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
             preference.setTitle(SettingsSearchIndex.propertyTitle(key));
             if (preference instanceof DialogPreference)
                 ((DialogPreference) preference).setDialogTitle(preference.getTitle());
-            preference.setOnPreferenceChangeListener((p, value) -> save(key, value.toString()));
+            preference.setOnPreferenceChangeListener((p, value) -> save(key,
+                inverted ? TermuxConfigSchema.invert(value.toString()) : value.toString()));
             if ("extra-keys".equals(key)) preference.setOrder(-1);
             categories.get(categoryFor(key)).addPreference(preference);
         }
@@ -166,23 +176,21 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
         }
     }
 
+    /** The category of a setting: the group of its path in config.yaml. */
     public static int categoryFor(@NonNull String key) {
-        if (key.startsWith("extra-keys") && !key.contains("-swipe-")) return R.string.properties_extra_keys;
-        if (key.startsWith("extra-keys") || key.endsWith("-action") || key.endsWith("-keys")
-            || key.endsWith("-command") || key.equals(TermuxPropertyConstants.KEY_GESTURE_COMMAND_CONTEXT)
-            || key.equals(TermuxPropertyConstants.KEY_TERMINAL_TRIPLE_TAP_FOCUS_TITLE)
-            || key.equals(TermuxPropertyConstants.KEY_GESTURE_ANIMATIONS)
-            || key.equals(TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_STYLE)
-            || key.equals(TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_POSITION))
-            return R.string.properties_gestures;
-        if (key.contains("keyboard") || key.startsWith("shortcut.") || key.equals("back-key")
-            || key.equals("volume-keys") || key.equals("ctrl-space-workaround")
-            || key.equals("enforce-char-based-input")) return R.string.properties_keyboard;
-        if (key.startsWith("sidebar-") || key.startsWith("terminal-tmux-sidebar-")
-            || key.equals(TermuxPropertyConstants.KEY_TMUX_RIGHT_SIDEBAR)) return R.string.properties_sidebars;
-        if (key.startsWith("terminal-") || key.equals("fullscreen") || key.equals("use-fullscreen-workaround")
-            || key.equals("night-mode") || key.equals("bell-character")) return R.string.properties_appearance;
-        return R.string.properties_advanced;
+        String path = TermuxConfigSchema.pathFor(key);
+        String group = path == null ? "" : path.substring(0, path.indexOf('.'));
+        switch (group) {
+            case "appearance": return R.string.properties_appearance;
+            case "terminal": return R.string.properties_terminal;
+            case "sessions": return R.string.properties_sessions;
+            case "sidebar": return R.string.properties_sidebars;
+            case "keyboard": return R.string.properties_keyboard;
+            case "extra-keys": return R.string.properties_extra_keys;
+            case "gestures": return R.string.properties_gestures;
+            case "power": return R.string.properties_power;
+            default: return R.string.properties_integrations;
+        }
     }
 
     private int iconFor(String key) {

@@ -243,15 +243,24 @@ public class SharedProperties {
                 // The grouped YAML settings file, flattened into the keys used everywhere else.
                 Logger.logVerbose(LOG_TAG, "Loading settings from \"" + propertiesFile.getAbsolutePath() + "\" file");
                 java.util.List<String> unknown = new java.util.ArrayList<>();
+                java.util.List<String> former = new java.util.ArrayList<>();
                 java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
                 try (FileInputStream in = new FileInputStream(propertiesFile)) {
                     byte[] buffer = new byte[8192];
                     for (int count; (count = in.read(buffer)) != -1; ) bytes.write(buffer, 0, count);
                 }
                 properties = dev.pschmitt.termux.shared.termux.settings.properties.TermuxYamlConfig.read(
-                    new String(bytes.toByteArray(), StandardCharsets.UTF_8), unknown);
-                if (!unknown.isEmpty())
+                    new String(bytes.toByteArray(), StandardCharsets.UTF_8), unknown, former);
+                if (!former.isEmpty())
+                    Logger.logInfo(LOG_TAG, "Read former setting names in \"" + propertiesFile.getAbsolutePath()
+                        + "\", see docs/en/config-yaml.md for the current ones: " + former);
+                if (!unknown.isEmpty()) {
                     Logger.logWarn(LOG_TAG, "Ignoring unknown settings in \"" + propertiesFile.getAbsolutePath() + "\": " + unknown);
+                    // A typo in a group name silently drops every setting below it, so say it on screen.
+                    if (context != null)
+                        Logger.showToast(context, "Unknown settings in " + propertiesFile.getName() + ": "
+                            + android.text.TextUtils.join(", ", unknown), true);
+                }
             } else {
                 try (FileInputStream in = new FileInputStream(propertiesFile)) {
                     Logger.logVerbose(LOG_TAG, "Loading properties from \"" + propertiesFile.getAbsolutePath() + "\" file");
@@ -287,8 +296,9 @@ public class SharedProperties {
         for(String propertiesFilePath : propertiesFilePaths) {
             File propertiesFile = new File(propertiesFilePath);
 
-            // Symlinks **will not** be followed.
-            FileType fileType = FileUtils.getFileType(propertiesFilePath, false);
+            // Symlinks are followed only for config.yaml, which dotfile managers often link; the legacy
+            // properties files keep upstream's rule of not following them.
+            FileType fileType = FileUtils.getFileType(propertiesFilePath, propertiesFilePath.endsWith(".yaml"));
             if (fileType == FileType.REGULAR) {
                 if (propertiesFile.canRead())
                     return propertiesFile;

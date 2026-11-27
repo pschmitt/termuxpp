@@ -67,7 +67,7 @@ The native API tools and the TermuxAm helper have their own build instructions.
 
 ## ADB shell Wi-Fi restriction
 
-Set `adb-shell-allowed-ssids` in **Settings → Properties → Advanced** or
+Set **ADB shell Wi-Fi networks** in **Settings → Properties → Integrations** or
 `integrations.adb-shell.allowed-ssids` in `config.yaml` to a comma-separated
 list of exact Wi-Fi names.
 The ADB shell listener closes active connections when the network becomes

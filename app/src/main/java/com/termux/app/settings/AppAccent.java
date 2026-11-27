@@ -2,11 +2,11 @@ package com.termux.app.settings;
 
 import android.content.Context;
 
-import androidx.preference.PreferenceManager;
-
 import com.termux.R;
 
-/** The app accent belongs to Android preferences, independent of the terminal palette. */
+import dev.pschmitt.termux.shared.termux.settings.properties.TermuxPropertyConstants;
+
+/** The app accent, {@code appearance.accent} in config.yaml, independent of the terminal palette. */
 public final class AppAccent {
     public static final String KEY = "app_accent";
 
@@ -14,11 +14,13 @@ public final class AppAccent {
     }
 
     public static String get(Context context) {
-        return PreferenceManager.getDefaultSharedPreferences(context).getString(KEY, "default");
+        return ConfigSettings.get(context, TermuxPropertyConstants.KEY_APP_ACCENT,
+            TermuxPropertyConstants.DEFAULT_APP_ACCENT);
     }
 
     public static void set(Context context, String value) {
-        PreferenceManager.getDefaultSharedPreferences(context).edit().putString(KEY, value).apply();
+        ConfigSettings.set(context, TermuxPropertyConstants.KEY_APP_ACCENT,
+            TermuxPropertyConstants.DEFAULT_APP_ACCENT.equals(value) ? null : value);
     }
 
     public static void apply(Context context, String accent) {

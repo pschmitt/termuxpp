@@ -14,6 +14,7 @@ import dev.pschmitt.termux.shared.termux.extrakeys.ExtraKeysInfo;
 import dev.pschmitt.termux.shared.termux.extrakeys.TerminalKeySequence;
 import dev.pschmitt.termux.shared.termux.settings.properties.TerminalGestureAction;
 import dev.pschmitt.termux.shared.termux.settings.properties.GestureCommandContext;
+import dev.pschmitt.termux.shared.termux.settings.properties.TermuxConfigSchema;
 import dev.pschmitt.termux.shared.termux.settings.properties.TermuxPropertyConstants;
 
 import com.google.common.collect.BiMap;
@@ -23,7 +24,7 @@ import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 /**
- * Describes how each property of {@code termuxpp.properties} is edited in the settings GUI: help
+ * Describes how each setting of {@code config.yaml} is edited in the settings GUI: help
  * text, validation, the Android input type and (for the extra keys style) the allowed names.
  *
  * Validation mirrors the runtime parsing of
@@ -66,18 +67,18 @@ public final class PropertyInputSpec {
         switch (key) {
             /* boolean */
             case TermuxPropertyConstants.KEY_DISABLE_FILE_SHARE_RECEIVER:
-                return bool(key, "Do not offer the app as a target in the Share menu of other apps, which is used to"
+                return bool(key, "Offer the app as a target in the Share menu of other apps, which is used to"
                     + " send files or text to a terminal.");
             case TermuxPropertyConstants.KEY_DISABLE_FILE_VIEW_RECEIVER:
-                return bool(key, "Do not offer the app as a target for opening files or links from other apps"
+                return bool(key, "Offer the app as a target for opening files or links from other apps"
                     + " (\"Open with\").");
             case TermuxPropertyConstants.KEY_DISABLE_HARDWARE_KEYBOARD_SHORTCUTS:
-                return bool(key, "Turn off the Ctrl+Alt keyboard shortcuts of a hardware keyboard, like creating or"
-                    + " switching sessions, so that those keys reach the terminal programs.");
+                return bool(key, "Handle the Ctrl+Alt keyboard shortcuts of a hardware keyboard, like creating or"
+                    + " switching sessions. Turn it off so that those keys reach the terminal programs.");
             case TermuxPropertyConstants.KEY_CREATE_SESSION_ON_SINGLE_SESSION_SWITCH:
                 return "Open a new terminal when previous or next session is invoked with only one open. Default: disabled.";
             case TermuxPropertyConstants.KEY_DISABLE_TERMINAL_SESSION_CHANGE_TOAST:
-                return bool(key, "Do not show the short message with the session number and name when you switch to"
+                return bool(key, "Show a short message with the session number and name when you switch to"
                     + " another terminal session.");
             case TermuxPropertyConstants.KEY_ENFORCE_CHAR_BASED_INPUT:
                 return bool(key, "Force character based input. Enable it if the letters you type do not appear until"
@@ -104,7 +105,8 @@ public final class PropertyInputSpec {
             case TermuxPropertyConstants.KEY_SIDEBAR_RIGHT_KEYBOARD:
                 return bool(key, "Show the Keyboard button in the right sidebar.");
             case TermuxPropertyConstants.KEY_TMUX_RIGHT_SIDEBAR:
-                return bool(key, "Enable the right sidebar for tmux windows in the current terminal session.");
+                return bool(key, "Enable the right sidebar, which opens with a swipe from the right edge of the"
+                    + " screen. The other sidebar.right settings choose what it shows.");
             case TermuxPropertyConstants.KEY_HIDE_SOFT_KEYBOARD_ON_SIDEBAR:
                 return bool(key, "Hide the soft keyboard when the session sidebar opens and restore it when the"
                     + " sidebar closes if it was visible before.");
@@ -202,7 +204,8 @@ public final class PropertyInputSpec {
             case TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_POSITION:
                 return "Where gesture action labels appear in the terminal. Default: bottom-center.";
             case TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_STYLE:
-                return "How the active tmux window looks. Subtle uses an outlined row with an accent dot. "
+                return "How the current session and the active tmux window are marked in the sidebars and pickers."
+                    + " Subtle uses an outlined row with an accent dot. "
                     + "Rounded uses a filled accent pill. Default: rounded.";
             case TermuxPropertyConstants.KEY_TERMINAL_PICKER_POSITION:
                 return "Where the session picker and the tmux window picker open. Top: at the top of the screen. "
@@ -256,7 +259,7 @@ public final class PropertyInputSpec {
 
             case TermuxPropertyConstants.KEY_GESTURE_COMMAND_CONTEXT:
                 return "Where commands assigned to taps, extra-key swipes, and extra-key buttons run. "
-                    + "session follows nix-session, nix always enters the managed guest, and outer uses the native Termux prefix. "
+                    + "session follows sessions.nix.enabled, nix always enters the managed guest, and outer uses the native Termux prefix. "
                     + "Default: session.";
             case TermuxPropertyConstants.KEY_TERMINAL_SINGLE_TAP_COMMAND:
                 return commandHelp("a single tap");
@@ -265,13 +268,13 @@ public final class PropertyInputSpec {
             case TermuxPropertyConstants.KEY_TERMINAL_TRIPLE_TAP_COMMAND:
                 return commandHelp("a triple tap");
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_SWIPE_LEFT_COMMAND:
-                return commandHelp("a left swipe on the extra keys row");
+                return commandHelp("a swipe on the extra keys with the finger moving to the right");
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_SWIPE_RIGHT_COMMAND:
-                return commandHelp("a right swipe on the extra keys row");
+                return commandHelp("a swipe on the extra keys with the finger moving to the left");
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_LONG_SWIPE_LEFT_COMMAND:
-                return commandHelp("a long left swipe on the extra keys row");
+                return commandHelp("a long swipe on the extra keys with the finger moving to the right");
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_LONG_SWIPE_RIGHT_COMMAND:
-                return commandHelp("a long right swipe on the extra keys row");
+                return commandHelp("a long swipe on the extra keys with the finger moving to the left");
 
             /* Volume key action */
             case TermuxPropertyConstants.KEY_VOLUME_UP_ACTION:
@@ -287,13 +290,13 @@ public final class PropertyInputSpec {
             case TermuxPropertyConstants.KEY_TERMINAL_TRIPLE_TAP_KEYS:
                 return keySequence("a triple tap on the terminal", TermuxPropertyConstants.KEY_TERMINAL_TRIPLE_TAP_ACTION);
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_SWIPE_LEFT_KEYS:
-                return keySequence("a swipe to the left on the extra keys", TermuxPropertyConstants.KEY_EXTRA_KEYS_SWIPE_LEFT_ACTION);
+                return keySequence("a swipe on the extra keys with the finger moving to the right", TermuxPropertyConstants.KEY_EXTRA_KEYS_SWIPE_LEFT_ACTION);
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_SWIPE_RIGHT_KEYS:
-                return keySequence("a swipe to the right on the extra keys", TermuxPropertyConstants.KEY_EXTRA_KEYS_SWIPE_RIGHT_ACTION);
+                return keySequence("a swipe on the extra keys with the finger moving to the left", TermuxPropertyConstants.KEY_EXTRA_KEYS_SWIPE_RIGHT_ACTION);
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_LONG_SWIPE_LEFT_KEYS:
-                return keySequence("a long swipe to the left on the extra keys", TermuxPropertyConstants.KEY_EXTRA_KEYS_LONG_SWIPE_LEFT_ACTION);
+                return keySequence("a long swipe on the extra keys with the finger moving to the right", TermuxPropertyConstants.KEY_EXTRA_KEYS_LONG_SWIPE_LEFT_ACTION);
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_LONG_SWIPE_RIGHT_KEYS:
-                return keySequence("a long swipe to the right on the extra keys", TermuxPropertyConstants.KEY_EXTRA_KEYS_LONG_SWIPE_RIGHT_ACTION);
+                return keySequence("a long swipe on the extra keys with the finger moving to the left", TermuxPropertyConstants.KEY_EXTRA_KEYS_LONG_SWIPE_RIGHT_ACTION);
             case TermuxPropertyConstants.KEY_VOLUME_UP_KEYS:
                 return keySequence("the volume up button", TermuxPropertyConstants.KEY_VOLUME_UP_ACTION);
             case TermuxPropertyConstants.KEY_VOLUME_DOWN_KEYS:
@@ -346,6 +349,15 @@ public final class PropertyInputSpec {
                 return "How the names of the extra keys are shown, for example whether LEFT is shown as an arrow."
                     + " Values: " + join(EXTRA_KEYS_STYLES) + ". Default: "
                     + TermuxPropertyConstants.DEFAULT_IVALUE_EXTRA_KEYS_STYLE + ".";
+            case TermuxPropertyConstants.KEY_APP_ACCENT:
+                return "The accent color of the app interface. Values: " + join(TermuxPropertyConstants.APP_ACCENTS)
+                    + ". Default: " + TermuxPropertyConstants.DEFAULT_APP_ACCENT + ". Set it on the Display screen.";
+            case TermuxPropertyConstants.KEY_TERMINAL_COLOR_SCHEME:
+                return "The terminal colors: config reads colors.properties, default uses the built-in colors, or the"
+                    + " name of a preset. Default: config. Set it on the Display screen.";
+            case TermuxPropertyConstants.KEY_TERMINAL_FONT:
+                return "The terminal font: config reads font.ttf and its variants, default uses the built-in font, or"
+                    + " the name of a preset. Default: config. Set it on the Display screen.";
             case TermuxPropertyConstants.KEY_NIGHT_MODE:
                 return "Whether the app uses the dark theme: true always, false never, system follows the setting of"
                     + " the device. Values: " + keys(TermuxPropertyConstants.MAP_NIGHT_MODE) + ". Default: "
@@ -356,8 +368,8 @@ public final class PropertyInputSpec {
                     + " never pops up. Values: " + keys(TermuxPropertyConstants.MAP_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR)
                     + ". Default: " + TermuxPropertyConstants.DEFAULT_IVALUE_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR + ".";
             case TermuxPropertyConstants.KEY_VOLUME_KEYS_BEHAVIOUR:
-                return "What the volume buttons do in the terminal: virtual uses them as virtual keys (see the volume"
-                    + " up and down actions), volume changes the volume of the device. Values: "
+                return "What the volume buttons do in the terminal: virtual uses them as virtual keys (see"
+                    + " keyboard.volume.up and keyboard.volume.down), volume changes the volume of the device. Values: "
                     + keys(TermuxPropertyConstants.MAP_VOLUME_KEYS_BEHAVIOUR) + ". Default: "
                     + TermuxPropertyConstants.DEFAULT_IVALUE_VOLUME_KEYS_BEHAVIOUR + ".";
             default:
@@ -425,6 +437,15 @@ public final class PropertyInputSpec {
                 return inMap(TermuxPropertyConstants.MAP_TERMINAL_CURSOR_STYLE, value);
             case TermuxPropertyConstants.KEY_BACK_KEY_BEHAVIOUR:
                 return inMap(TermuxPropertyConstants.MAP_BACK_KEY_BEHAVIOUR, value);
+            case TermuxPropertyConstants.KEY_APP_ACCENT:
+                return "The accent color of the app interface. Values: " + join(TermuxPropertyConstants.APP_ACCENTS)
+                    + ". Default: " + TermuxPropertyConstants.DEFAULT_APP_ACCENT + ". Set it on the Display screen.";
+            case TermuxPropertyConstants.KEY_TERMINAL_COLOR_SCHEME:
+                return "The terminal colors: config reads colors.properties, default uses the built-in colors, or the"
+                    + " name of a preset. Default: config. Set it on the Display screen.";
+            case TermuxPropertyConstants.KEY_TERMINAL_FONT:
+                return "The terminal font: config reads font.ttf and its variants, default uses the built-in font, or"
+                    + " the name of a preset. Default: config. Set it on the Display screen.";
             case TermuxPropertyConstants.KEY_NIGHT_MODE:
                 return inMap(TermuxPropertyConstants.MAP_NIGHT_MODE, value);
             case TermuxPropertyConstants.KEY_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR:
@@ -628,7 +649,7 @@ public final class PropertyInputSpec {
     private static String commandHelp(String gesture) {
         return "Shell command run in a new visible terminal session when " + gesture + " occurs. "
             + "The command is interpreted by the selected shell context; it is trusted shell code. "
-            + "Command text is stored in termux.properties and is not written to command logs. Leave empty to unset.";
+            + "Command text is stored in config.yaml and is not written to command logs. Leave empty to unset.";
     }
 
     private static boolean isBoolean(String key) {
@@ -718,26 +739,34 @@ public final class PropertyInputSpec {
         }
     }
 
+    /** The default as it is written in config.yaml, where inverted settings are the positive way round. */
     private static String bool(String key, String purpose) {
-        boolean defaultTrue = TermuxPropertyConstants.TERMUX_DEFAULT_TRUE_BOOLEAN_BEHAVIOUR_PROPERTIES_LIST.contains(key);
+        boolean defaultTrue = TermuxPropertyConstants.TERMUX_DEFAULT_TRUE_BOOLEAN_BEHAVIOUR_PROPERTIES_LIST.contains(key)
+            != TermuxConfigSchema.isInverted(key);
         return purpose + " Values: true or false. Default: " + defaultTrue + ".";
+    }
+
+    /** How a setting is named in config.yaml. */
+    private static String name(String key) {
+        String path = TermuxConfigSchema.pathFor(key);
+        return path == null ? key : path;
     }
 
     private static String gesture(String trigger, String keysKey, TerminalGestureAction defaultAction) {
         return "What " + trigger + " does. Values: " + TerminalGestureAction.getValidValues()
-            + ". With send-keys, the keys of " + keysKey + " are sent to the terminal. Default: "
+            + ". With send-keys, the keys of " + name(keysKey) + " are sent to the terminal. Default: "
             + defaultAction.getValue() + ".";
     }
 
     private static String volume(String button, String modifier, String keysKey) {
         return "What the " + button + " button does when the volume keys are virtual keys. modifier is "
             + modifier + ". Values: " + TermuxPropertyConstants.VOLUME_KEY_ACTION_MODIFIER + ", "
-            + TerminalGestureAction.getValidValues() + ". With send-keys, the keys of " + keysKey
+            + TerminalGestureAction.getValidValues() + ". With send-keys, the keys of " + name(keysKey)
             + " are sent to the terminal. Default: " + TermuxPropertyConstants.VOLUME_KEY_ACTION_MODIFIER + ".";
     }
 
     private static String keySequence(String trigger, String actionKey) {
-        return "The keys to send to the terminal for " + trigger + ", used when " + actionKey
+        return "The keys to send to the terminal for " + trigger + ", used when " + name(actionKey)
             + " is send-keys. Format: keys separated by spaces, like the macro of an extra key: names like ESC, TAB,"
             + " ENTER or UP, characters like l, and the modifiers CTRL, ALT, SHIFT and FN that apply to the next"
             + " key. For example ESC or CTRL l. At most " + TerminalKeySequence.MAX_TOKENS

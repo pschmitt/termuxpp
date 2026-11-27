@@ -62,6 +62,8 @@ public class TermuxApplication extends Application {
 
         // Init app wide SharedProperties loaded from termux.properties
         TermuxAppSharedProperties properties = TermuxAppSharedProperties.init(context);
+        // The accent, color scheme and font moved from the Android preferences to config.yaml.
+        com.termux.app.settings.ConfigSettings.migrateFromPreferences(context);
 
         // Init app wide shell manager
         TermuxShellManager shellManager = TermuxShellManager.init(context);

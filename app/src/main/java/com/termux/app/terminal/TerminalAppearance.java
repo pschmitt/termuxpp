@@ -1,10 +1,7 @@
 package com.termux.app.terminal;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.graphics.Typeface;
-
-import androidx.preference.PreferenceManager;
 
 import com.termux.terminal.TerminalColorScheme;
 
@@ -19,6 +16,9 @@ import dev.pschmitt.termux.shared.logger.Logger;
 import dev.pschmitt.termux.shared.termux.TermuxConfigDirs;
 import dev.pschmitt.termux.shared.termux.TermuxConstants;
 import dev.pschmitt.termux.shared.termux.nix.TermuxNix;
+import dev.pschmitt.termux.shared.termux.settings.properties.TermuxPropertyConstants;
+
+import com.termux.app.settings.ConfigSettings;
 
 public final class TerminalAppearance {
 
@@ -26,27 +26,32 @@ public final class TerminalAppearance {
     public static final String DEFAULT = "default";
 
     public enum Setting {
-        COLORS("terminal_color_scheme", "colors", ".properties", "colors.properties"),
-        FONT("terminal_font", "fonts", ".ttf", "font.ttf");
+        COLORS("terminal_color_scheme", TermuxPropertyConstants.KEY_TERMINAL_COLOR_SCHEME, "colors", ".properties", "colors.properties"),
+        FONT("terminal_font", TermuxPropertyConstants.KEY_TERMINAL_FONT, "fonts", ".ttf", "font.ttf");
 
+        /** The key of the preference on the Display screen. */
         public final String key;
+        /** The setting in config.yaml. */
+        public final String propertyKey;
         public final String assetDirectory;
         public final String extension;
         public final String configFile;
 
-        Setting(String key, String assetDirectory, String extension, String configFile) {
+        Setting(String key, String propertyKey, String assetDirectory, String extension, String configFile) {
             this.key = key;
+            this.propertyKey = propertyKey;
             this.assetDirectory = assetDirectory;
             this.extension = extension;
             this.configFile = configFile;
         }
 
+        /** The choice in config.yaml ({@code appearance.color-scheme} or {@code appearance.font}). */
         public String selection(Context context) {
-            return preferences(context).getString(key, CONFIG);
+            return ConfigSettings.get(context, propertyKey, CONFIG);
         }
 
         public void select(Context context, String choice) {
-            preferences(context).edit().putString(key, choice).apply();
+            ConfigSettings.set(context, propertyKey, CONFIG.equals(choice) ? null : choice);
         }
 
         private String assetPath(String choice) {
@@ -57,10 +62,6 @@ public final class TerminalAppearance {
     private static final String LOG_TAG = "TerminalAppearance";
 
     private TerminalAppearance() {}
-
-    private static SharedPreferences preferences(Context context) {
-        return PreferenceManager.getDefaultSharedPreferences(context);
-    }
 
     public static List<String> configPaths() {
         return TermuxNix.configPaths(TermuxConstants.TERMUX_CONFIG_DIR_PATHS_LIST);

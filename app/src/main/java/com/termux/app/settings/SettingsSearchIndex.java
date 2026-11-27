@@ -23,7 +23,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-import dev.pschmitt.termux.shared.termux.settings.properties.TermuxPropertyConstants;
+import dev.pschmitt.termux.shared.termux.settings.properties.TermuxConfigSchema;
 
 /** Static index of preferences reachable from the Settings root. Values are never indexed. */
 public final class SettingsSearchIndex {
@@ -118,12 +118,13 @@ public final class SettingsSearchIndex {
     }
 
     private static void indexProperties(Context context, List<Result> results, List<String> path, String breadcrumb) {
-        List<String> keys = new ArrayList<>(TermuxPropertyConstants.TERMUX_APP_PROPERTIES_LIST);
-        Collections.sort(keys);
-        for (String key : keys) {
+        for (String key : TermuxConfigSchema.paths().values()) {
+            if (TermuxConfigSchema.isDisplayKey(key)) continue;
             String parent = "extra-keys".equals(key) ? breadcrumb
                 : join(breadcrumb, context.getString(PropertiesPreferencesFragment.categoryFor(key)));
-            results.add(new Result(propertyTitle(key), parent, path, key, PropertyInputSpec.help(key)));
+            // The path in config.yaml is searchable too, besides the title and the former key.
+            results.add(new Result(propertyTitle(key), parent, path, key,
+                TermuxConfigSchema.pathFor(key) + " " + PropertyInputSpec.help(key)));
         }
     }
 
@@ -193,8 +194,25 @@ public final class SettingsSearchIndex {
         return screens;
     }
 
+    /**
+     * The title of a setting, like "Triple tap: action" for {@code gestures.tap.triple.action}. A setting
+     * without a written title is named by its path without the group; a key without a path is spelled out.
+     */
     public static String propertyTitle(String key) {
-        String words = key.replace('-', ' ').replace('_', ' ');
+        String path = TermuxConfigSchema.pathFor(key);
+        if (path == null) return capitalize(key.replace('-', ' ').replace('_', ' '));
+        String written = SettingTitles.forPath(path);
+        if (written != null) return written;
+        String[] parts = path.split("\\.");
+        StringBuilder title = new StringBuilder();
+        for (int i = 1; i < parts.length; i++) {
+            if (title.length() > 0) title.append(" › ");
+            title.append(capitalize(parts[i].replace('-', ' ')));
+        }
+        return title.toString();
+    }
+
+    private static String capitalize(String words) {
         if (words.isEmpty()) return words;
         return Character.toUpperCase(words.charAt(0)) + words.substring(1);
     }

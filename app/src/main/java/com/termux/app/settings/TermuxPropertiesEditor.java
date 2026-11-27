@@ -23,9 +23,12 @@ import java.util.List;
 import java.util.Properties;
 
 /**
- * Reads and changes single settings in {@code config.yaml}, for the settings screens. A change rewrites the
- * whole file in the grouped layout, so comments in it do not survive. A legacy properties file is migrated
- * first, as the app does on start.
+ * Reads and changes single settings in {@code config.yaml}, for the settings screens. A change edits only
+ * that setting and keeps the rest of the file, comments included; a former path of the setting is replaced
+ * by the current one. A legacy properties file is migrated first, as the app does on start.
+ *
+ * <p>The file may be a symlink (dotfile managers link it) for reading. A change refuses to replace a symlink,
+ * so that it does not silently cut the file loose from the dotfiles it is managed in.
  */
 public final class TermuxPropertiesEditor {
     private final File target;
@@ -46,8 +49,13 @@ public final class TermuxPropertiesEditor {
     }
 
     private static FileType fileType(String path) throws IOException {
+        return fileType(path, false);
+    }
+
+    private static FileType fileType(String path, boolean follow) throws IOException {
         try {
-            int mode = Os.lstat(path).st_mode;
+            int mode = (follow ? Os.stat(path) : Os.lstat(path)).st_mode;
+            if (!follow && OsConstants.S_ISLNK(mode)) return FileType.SYMLINK;
             if (OsConstants.S_ISREG(mode)) return FileType.REGULAR;
             return FileType.UNKNOWN;
         } catch (ErrnoException e) {
@@ -60,6 +68,8 @@ public final class TermuxPropertiesEditor {
     private void validateTargets() throws IOException {
         for (String suffix : new String[] {"", ".bak", ".new"}) {
             FileType type = fileType(target + suffix);
+            if (type == FileType.SYMLINK && suffix.isEmpty())
+                throw new IOException("config.yaml is a symlink: change the file it links to instead");
             if (type != FileType.NO_EXIST && type != FileType.REGULAR)
                 throw new IOException("Settings file is not a regular file");
         }
@@ -70,9 +80,9 @@ public final class TermuxPropertiesEditor {
         legacy.remove(target.getPath());
         TermuxConfigMigration.migrate(target, legacy);
         if (!target.exists() && !new File(target + ".bak").exists()) return new Properties();
-        if (target.exists() && fileType(target.getPath()) != FileType.REGULAR)
+        if (target.exists() && fileType(target.getPath(), true) != FileType.REGULAR)
             throw new IOException("Settings file is not a regular file");
-        String text = new String(new AtomicFile(target).readFully(), StandardCharsets.UTF_8);
+        String text = readText();
         try {
             return TermuxYamlConfig.read(text, null);
         } catch (IllegalArgumentException e) {
@@ -80,13 +90,31 @@ public final class TermuxPropertiesEditor {
         }
     }
 
-    /** Set a setting by its key, or remove it with a null value. */
+    /** The text of the settings file, or an empty text when there is none. */
+    private String readText() throws IOException {
+        if (!target.exists() && !new File(target + ".bak").exists()) return "";
+        if (fileType(target.getPath(), false) == FileType.SYMLINK) {
+            // AtomicFile would read a leftover .bak instead; a link is read as it is.
+            java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+            try (java.io.FileInputStream in = new java.io.FileInputStream(target)) {
+                byte[] buffer = new byte[8192];
+                for (int count; (count = in.read(buffer)) != -1; ) bytes.write(buffer, 0, count);
+            }
+            return new String(bytes.toByteArray(), StandardCharsets.UTF_8);
+        }
+        return new String(new AtomicFile(target).readFully(), StandardCharsets.UTF_8);
+    }
+
+    /** Set a setting by its internal key, or remove it with a null value. */
     public synchronized void set(@NonNull String key, @Nullable String value) throws IOException {
         validateTargets();
-        Properties properties = read();
-        if (value == null) properties.remove(key);
-        else properties.setProperty(key, value);
-        byte[] document = TermuxYamlConfig.write(properties, null).getBytes(StandardCharsets.UTF_8);
+        read();
+        byte[] document;
+        try {
+            document = TermuxYamlConfig.update(readText(), key, value).getBytes(StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException e) {
+            throw new IOException(e.getMessage(), e);
+        }
 
         File parent = target.getParentFile();
         if (parent != null && !parent.isDirectory() && !parent.mkdirs())

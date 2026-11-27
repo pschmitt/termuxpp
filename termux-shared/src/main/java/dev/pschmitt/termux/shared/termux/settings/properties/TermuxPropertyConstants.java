@@ -583,6 +583,20 @@ public final class TermuxPropertyConstants {
 
 
     /** Defines the key for {@link NightMode}. */
+    /** The accent color of the app interface: default, adaptive, blue, teal or rose. */
+    public static final String KEY_APP_ACCENT = "app-accent";
+    public static final String DEFAULT_APP_ACCENT = "default";
+    public static final String[] APP_ACCENTS = {"default", "adaptive", "blue", "teal", "rose"};
+
+    /** The terminal color scheme: "config" for colors.properties, "default", or a bundled preset. */
+    public static final String KEY_TERMINAL_COLOR_SCHEME = "terminal-color-scheme";
+
+    /** The terminal font: "config" for font.ttf, "default", or a bundled preset. */
+    public static final String KEY_TERMINAL_FONT = "terminal-font";
+
+    /** The value of {@link #KEY_TERMINAL_COLOR_SCHEME} and {@link #KEY_TERMINAL_FONT} that reads the files. */
+    public static final String TERMINAL_APPEARANCE_CONFIG = "config";
+
     public static final String KEY_NIGHT_MODE = "night-mode"; // Default: "night-mode"
 
     public static final String IVALUE_NIGHT_MODE_TRUE = NightMode.TRUE.getName();
@@ -768,6 +782,9 @@ public final class TermuxPropertyConstants {
         KEY_EXTRA_KEYS,
         KEY_EXTRA_KEYS_STYLE,
         KEY_NIGHT_MODE,
+        KEY_APP_ACCENT,
+        KEY_TERMINAL_COLOR_SCHEME,
+        KEY_TERMINAL_FONT,
         KEY_SOFT_KEYBOARD_TOGGLE_BEHAVIOUR,
         KEY_VOLUME_KEYS_BEHAVIOUR
     ));

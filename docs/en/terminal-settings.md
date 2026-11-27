@@ -107,18 +107,18 @@ terminal.
 
 ## Settings file
 
-The settings live in `~/.config/termuxpp/config.yaml`, grouped by topic.
-This page names each setting by its key, as the settings screens do; the
-table below gives its place in the file. For example:
+The settings live in `~/.config/termuxpp/config.yaml`, grouped by topic. The
+[config.yaml reference](config-yaml.md) lists every setting with its type,
+default and accepted values, and the former names that are still read. For
+example:
 
 ```yaml
 appearance:
   night-mode: true
 sessions:
   picker-position: terminal
-tmux:
-  sidebar:
-    style: rounded
+sidebar:
+  style: rounded
 extra-keys:
   keys:
     - [ESC, {key: /, popup: BACKSLASH}, HOME, UP, END, PGUP]
@@ -129,113 +129,11 @@ gestures:
       action: open-sidebar
 ```
 
-`extra-keys.keys` is a list of rows, each a list of keys; the same layout
-in the former JSON string still works. Unknown paths are ignored and logged.
-When you change a setting in the app, it rewrites the whole file in this
-layout, without comments.
-
-The app migrates the former `termuxpp.properties` once: if there is no
-`config.yaml`, it converts the first of `~/.config/termuxpp/termuxpp.properties`,
-`~/.config/termuxpp/termux.properties`, `~/.config/termux/termux.properties`
-and `~/.termux/termux.properties` it finds, renames that file with a
-`.migrated` suffix and does not read properties files afterwards.
-`use-black-ui` becomes `appearance.night-mode`; keys the layout does not know
-are left out and logged.
-
-| YAML path | Setting (former properties key) |
-| --- | --- |
-| `appearance.fullscreen` | `fullscreen` |
-| `appearance.fullscreen-workaround` | `use-fullscreen-workaround` |
-| `appearance.night-mode` | `night-mode` |
-| `appearance.toast-position` | `terminal-toast-position` |
-| `appearance.disable-session-change-toast` | `disable-terminal-session-change-toast` |
-| `terminal.engine` | `terminal-engine` |
-| `terminal.margin.horizontal` | `terminal-margin-horizontal` |
-| `terminal.margin.vertical` | `terminal-margin-vertical` |
-| `terminal.cursor.style` | `terminal-cursor-style` |
-| `terminal.cursor.blink-rate` | `terminal-cursor-blink-rate` |
-| `terminal.transcript-rows` | `terminal-transcript-rows` |
-| `terminal.toolbar-height` | `terminal-toolbar-height` |
-| `terminal.bell` | `bell-character` |
-| `terminal.open-url-on-click` | `terminal-onclick-url-open` |
-| `terminal.default-working-directory` | `default-working-directory` |
-| `sessions.picker-position` | `terminal-picker-position` |
-| `sessions.create-on-single-session-switch` | `create-session-on-single-session-switch` |
-| `sessions.tmpdir-max-age-days` | `delete-tmpdir-files-older-than-x-days-on-exit` |
-| `sessions.nix.session` | `nix-session` |
-| `sessions.nix.user` | `nix-user` |
-| `tmux.sidebar.layout` | `terminal-tmux-sidebar-layout` |
-| `tmux.sidebar.style` | `terminal-tmux-sidebar-style` |
-| `tmux.sidebar.right` | `tmux-right-sidebar` |
-| `sidebar.left.show-sessions` | `sidebar-left-show-sessions` |
-| `sidebar.left.show-tmux-windows` | `sidebar-left-show-tmux-windows` |
-| `sidebar.left.show-new-session` | `sidebar-left-show-new-session` |
-| `sidebar.left.show-keyboard-button` | `sidebar-left-show-keyboard-button` |
-| `sidebar.right.show-sessions` | `sidebar-right-show-sessions` |
-| `sidebar.right.show-tmux-windows` | `sidebar-right-show-tmux-windows` |
-| `sidebar.right.show-new-session` | `sidebar-right-show-new-session` |
-| `sidebar.right.show-keyboard-button` | `sidebar-right-show-keyboard-button` |
-| `keyboard.back-key` | `back-key` |
-| `keyboard.hide-on-startup` | `hide-soft-keyboard-on-startup` |
-| `keyboard.hide-on-sidebar` | `hide-soft-keyboard-on-sidebar` |
-| `keyboard.toggle-behaviour` | `soft-keyboard-toggle-behaviour` |
-| `keyboard.char-based-input` | `enforce-char-based-input` |
-| `keyboard.ctrl-space-workaround` | `ctrl-space-workaround` |
-| `keyboard.disable-hardware-shortcuts` | `disable-hardware-keyboard-shortcuts` |
-| `keyboard.shortcuts.create-session` | `shortcut.create-session` |
-| `keyboard.shortcuts.next-session` | `shortcut.next-session` |
-| `keyboard.shortcuts.previous-session` | `shortcut.previous-session` |
-| `keyboard.shortcuts.rename-session` | `shortcut.rename-session` |
-| `keyboard.volume-keys` | `volume-keys` |
-| `keyboard.volume.up.action` | `volume-up-action` |
-| `keyboard.volume.up.keys` | `volume-up-keys` |
-| `keyboard.volume.down.action` | `volume-down-action` |
-| `keyboard.volume.down.keys` | `volume-down-keys` |
-| `extra-keys.keys` | `extra-keys` |
-| `extra-keys.style` | `extra-keys-style` |
-| `extra-keys.theme` | `extra-keys-theme` |
-| `extra-keys.background-color` | `extra-keys-row-background-color` |
-| `extra-keys.font` | `extra-keys-font` |
-| `extra-keys.animation` | `extra-keys-animation` |
-| `extra-keys.all-caps` | `extra-keys-text-all-caps` |
-| `extra-keys.compact` | `extra-keys-compact` |
-| `extra-keys.corner-radius` | `extra-keys-button-corner-radius` |
-| `extra-keys.active.text-color` | `extra-keys-button-active-text-color` |
-| `extra-keys.active.background-color` | `extra-keys-button-active-background-color` |
-| `extra-keys.swipe.left.action` | `extra-keys-swipe-left-action` |
-| `extra-keys.swipe.left.keys` | `extra-keys-swipe-left-keys` |
-| `extra-keys.swipe.left.command` | `extra-keys-swipe-left-command` |
-| `extra-keys.swipe.right.action` | `extra-keys-swipe-right-action` |
-| `extra-keys.swipe.right.keys` | `extra-keys-swipe-right-keys` |
-| `extra-keys.swipe.right.command` | `extra-keys-swipe-right-command` |
-| `extra-keys.swipe.long-left.action` | `extra-keys-long-swipe-left-action` |
-| `extra-keys.swipe.long-left.keys` | `extra-keys-long-swipe-left-keys` |
-| `extra-keys.swipe.long-left.command` | `extra-keys-long-swipe-left-command` |
-| `extra-keys.swipe.long-right.action` | `extra-keys-long-swipe-right-action` |
-| `extra-keys.swipe.long-right.keys` | `extra-keys-long-swipe-right-keys` |
-| `extra-keys.swipe.long-right.command` | `extra-keys-long-swipe-right-command` |
-| `gestures.animations` | `gesture-animations` |
-| `gestures.command-context` | `gesture-command-context` |
-| `gestures.feedback.style` | `gesture-feedback-style` |
-| `gestures.feedback.position` | `gesture-feedback-position` |
-| `gestures.tap.single.action` | `terminal-single-tap-action` |
-| `gestures.tap.single.keys` | `terminal-single-tap-keys` |
-| `gestures.tap.single.command` | `terminal-single-tap-command` |
-| `gestures.tap.double.action` | `terminal-double-tap-action` |
-| `gestures.tap.double.keys` | `terminal-double-tap-keys` |
-| `gestures.tap.double.command` | `terminal-double-tap-command` |
-| `gestures.tap.triple.action` | `terminal-triple-tap-action` |
-| `gestures.tap.triple.keys` | `terminal-triple-tap-keys` |
-| `gestures.tap.triple.command` | `terminal-triple-tap-command` |
-| `gestures.tap.triple.focus-title` | `terminal-triple-tap-focus-title` |
-| `gestures.swipe.{two,three}-finger.{up,down,left,right}.{action,keys,command}` | `terminal-{2,3}-finger-swipe-DIRECTION-TYPE` |
-| `integrations.allow-external-apps` | `allow-external-apps` |
-| `integrations.am-socket-server` | `run-termux-am-socket-server` |
-| `integrations.disable-file-share-receiver` | `disable-file-share-receiver` |
-| `integrations.disable-file-view-receiver` | `disable-file-view-receiver` |
-| `integrations.adb-shell.allowed-ssids` | `adb-shell-allowed-ssids` |
-| `power.wake-lock.timeout` | `wake-lock-timeout` |
-| `power.wake-lock.wifi` | `wake-lock-wifi` |
+The **Properties** screen groups the settings like the file, and the search
+in Settings finds a setting by its title or its path. When you change a setting there, the app edits only that
+setting and keeps the rest of the file, comments included. Unknown paths are
+ignored, logged and listed on screen. This page names settings by their path
+in `config.yaml`.
 
 ## Configuration files
 
@@ -263,8 +161,8 @@ button. Changes take effect after you save.
 
 ## tmux sidebar layout
 
-Open **Settings → Properties → Sidebars → Terminal tmux sidebar layout**
-or set `tmux.sidebar.layout` in `config.yaml`. The layout applies when a sidebar
+Open **Settings → Properties → Sidebar → tmux window layout**
+or set `sidebar.layout` in `config.yaml`. The layout applies when a sidebar
 shows both terminal sessions and tmux windows.
 
 - `nested` (default) shows tmux windows below their terminal. Hold the terminal
@@ -277,10 +175,10 @@ After editing the file, run `tpp settings reload`. Open the sidebar while a
 tmux attachment is active to see its windows. The highlight follows the active
 tmux window, including when you switch with a keyboard shortcut.
 
-**Terminal tmux sidebar style** marks the active tmux window and the
+**Highlight style** marks the active tmux window and the
 current terminal session with either a subtle outline (plus an accent dot
 or number badge) or a filled rounded accent pill. Set
-`tmux.sidebar.style: rounded` (default) or `subtle`.
+`sidebar.style: rounded` (default) or `subtle`.
 
 Under **Sidebars**, choose whether each drawer shows terminal sessions,
 tmux windows, the **New session** button, and the **Keyboard** button.
@@ -289,7 +187,7 @@ for the current terminal session.
 
 The left drawer defaults to all four items on. The right drawer defaults
 to tmux windows only and opens with a right-edge swipe after you enable
-**Tmux right sidebar** (`tmux.sidebar.right` in YAML).
+**Right sidebar** (`sidebar.right.enabled` in YAML).
 
 Both the layout and style dialogs show a preview before you save.
 
@@ -301,7 +199,7 @@ that opens the window picker. The window picker uses the configured style.
 
 ## Picker position
 
-**Settings → Properties → Appearance → terminal-picker-position** decides where
+**Settings → Properties → Sessions → Picker position** decides where
 the session picker and the tmux window picker open:
 
 - `top` (default) at the top of the screen,
@@ -314,7 +212,7 @@ You can also write `sessions.picker-position: terminal` in
 
 ## Terminal feedback position
 
-Use **Settings → Properties → Appearance → terminal-toast-position** to move
+Use **Settings → Properties → Appearance → Message position** to move
 short terminal messages such as the session number. The default is
 `top-center`. The nine values are `top-left`, `top-center`, `top-right`,
 `center-left`, `center`, `center-right`, `bottom-left`, `bottom-center`, and
@@ -344,36 +242,38 @@ gestures:
         action: open-sidebar
 ```
 
-Use the corresponding `-keys` or `-command` property for `send-keys` or
+Use the corresponding `keys` or `command` setting for `send-keys` or
 `run-command`, just as for taps and extra-key swipes.
 
 Custom taps, extra-key swipes, and volume-button actions show visual feedback
-by default. Turn **gesture-animations** off in **Settings → Properties →
+by default. Turn **Gesture feedback** off in **Settings → Properties →
 Gestures**, or set `gestures.animations: false` in `config.yaml`.
-The assigned actions still run. Choose **gesture-feedback-style** in the same
+The assigned actions still run. Choose **Feedback effect** in the same
 settings group to select `soft-flash` (default), `touch-ripples`, `edge-glow`,
 `light-sweep`, `touch-bloom`, or `corner-brackets`. You can also set, for
 example, `gestures.feedback.style: touch-ripples` in `config.yaml`.
 Ripples and bloom start at the tap location; other actions use the terminal center.
-Choose **gesture-feedback-position** to place the gesture action pill at any of
+Choose **Feedback position** to place the gesture action pill at any of
 the nine terminal positions. Its default is `bottom-center`; it is independent
-of `terminal-toast-position`. For example, set
+of `appearance.toast-position`. For example, set
 `gestures.feedback.position: top-right` in `config.yaml`.
 When Android animations are disabled, the action label remains visible briefly
 without an animated effect.
 
 
-| Key | Gesture | Default |
+| Setting (under `gestures`) | Gesture | Default |
 | --- | --- | --- |
-| `terminal-single-tap-action` | One finger tap on the terminal | `show-keyboard` |
-| `terminal-double-tap-action` | Two quick taps in a row | `none` |
-| `terminal-triple-tap-action` | Three quick taps in a row | `none` |
-| `terminal-triple-tap-focus-title` | Regular expression for a running session to focus before trying the triple-tap action | unset |
-| `extra-keys-swipe-left-action` | Swipe on the normal extra keys row, finger moving left to right (see below) | `none` |
-| `extra-keys-swipe-right-action` | Swipe on the normal extra keys row, finger moving right to left (see below) | `next-session` |
-| `extra-keys-long-swipe-left-action` | Longer swipe in the direction of `extra-keys-swipe-left-action` | `none` |
-| `extra-keys-long-swipe-right-action` | Longer swipe in the direction of `extra-keys-swipe-right-action` | `none` |
-| `gesture-command-context` | Shell environment for configured command actions | `session` |
+| `tap.single.action` | One finger tap on the terminal | `show-keyboard` |
+| `tap.double.action` | Two quick taps in a row | `none` |
+| `tap.triple.action` | Three quick taps in a row | `none` |
+| `tap.triple.focus-title` | Regular expression for a running session to focus before trying the triple-tap action | unset |
+| `extra-keys.swipe.right.action` | Swipe on the normal extra keys row, finger moving to the right (see below) | `none` |
+| `extra-keys.swipe.left.action` | Swipe on the normal extra keys row, finger moving to the left (see below) | `next-session` |
+| `extra-keys.long-swipe.right.action` | Longer swipe to the right | `none` |
+| `extra-keys.long-swipe.left.action` | Longer swipe to the left | `none` |
+
+`sessions.command-context` selects the shell environment of command actions
+(default `session`, see [Running commands](#running-commands)).
 
 The gesture keys are independent and active at the same time. Valid values, case-insensitive:
 
@@ -404,7 +304,7 @@ A missing or empty key uses its default. A value that is not listed is logged an
 used. The soft keyboard flags that disable the keyboard always win: `show-keyboard`,
 `toggle-keyboard` and `hide-keyboard` do nothing while it is disabled, the other actions still work.
 
-When a triple-tap action is configured, `terminal-triple-tap-focus-title` can
+When a triple-tap action is configured, `gestures.tap.triple.focus-title` can
 match the title reported by a program such as tmux. A match focuses that
 session. If the current session matches, it stays selected. If no active
 session matches, the configured action runs. For example, combine a title
@@ -418,31 +318,13 @@ scale.
 ## Sending keys
 
 The action `send-keys` sends keys to the current terminal session, as if they were typed. Every
-gesture has its own key that says which keys to send:
-
-| Gesture | Action key | Keys key |
-| --- | --- | --- |
-| Single tap | `terminal-single-tap-action` | `terminal-single-tap-keys` |
-| Double tap | `terminal-double-tap-action` | `terminal-double-tap-keys` |
-| Triple tap | `terminal-triple-tap-action` | `terminal-triple-tap-keys` |
-| Extra keys swipe left | `extra-keys-swipe-left-action` | `extra-keys-swipe-left-keys` |
-| Extra keys swipe right | `extra-keys-swipe-right-action` | `extra-keys-swipe-right-keys` |
-| Extra keys long swipe left | `extra-keys-long-swipe-left-action` | `extra-keys-long-swipe-left-keys` |
-| Extra keys long swipe right | `extra-keys-long-swipe-right-action` | `extra-keys-long-swipe-right-keys` |
+gesture binding has a `keys` setting next to its `action` that says which keys to send, for example
+`gestures.tap.double.keys` or `gestures.extra-keys.swipe.left.keys`.
 
 ## Running commands
 
-Select `run-command` for a tap or extra-keys swipe, then set its matching command property:
-
-| Gesture | Command property |
-| --- | --- |
-| Single tap | `terminal-single-tap-command` |
-| Double tap | `terminal-double-tap-command` |
-| Triple tap | `terminal-triple-tap-command` |
-| Extra keys swipe left | `extra-keys-swipe-left-command` |
-| Extra keys swipe right | `extra-keys-swipe-right-command` |
-| Extra keys long swipe left | `extra-keys-long-swipe-left-command` |
-| Extra keys long swipe right | `extra-keys-long-swipe-right-command` |
+Select `run-command` for a tap or swipe, then set the `command` next to its `action`, for example
+`gestures.tap.triple.command` or `gestures.extra-keys.swipe.right.command`.
 
 Commands open a new visible terminal session and leave the current program alone. The command is
 interpreted by the selected shell, then the session stays open at a shell prompt so you can inspect
@@ -450,9 +332,9 @@ output and continue working. Arguments are passed as separate process arguments 
 the command text itself is one shell `-c` argument, so quoted spaces and shell syntax are kept
 intact.
 
-`gesture-command-context` selects the shell environment:
+`sessions.command-context` selects the shell environment:
 
-* `session` follows `nix-session`, the setting used by ordinary new terminal sessions.
+* `session` follows `sessions.nix.enabled`, the setting used by ordinary new terminal sessions.
 * `nix` always enters the managed Nix guest. If it is not provisioned, the app reports that and
   does not silently run the command in the outer shell.
 * `outer` runs in the native Termux prefix.
@@ -470,7 +352,7 @@ extra-keys:
   keys: [["ESC", {"command": "nix develop", "display": "DEV"}]]
 ```
 
-The same `gesture-command-context` applies. A command button cannot also send a key or macro; it
+The same `sessions.command-context` applies. A command button cannot also send a key or macro; it
 can be used as a popup button in the same way as a regular key.
 
 In the extra-keys editor, **Long-press key** assigns an alternate key to a hold.
@@ -528,13 +410,13 @@ at once, as before, in addition to the configured action.
 
 ## Extra keys swipe
 
-Deliberate swipes over the normal extra keys row run actions in both directions. The directions are
-named after the toolbar page the swipe would go to: the text input is the page to the right.
+Deliberate swipes over the normal extra keys row run actions in both directions. They are named by
+the direction the finger moves, like the terminal swipes.
 
-| Key | Finger moves | Default |
+| Setting | Finger moves | Default |
 | --- | --- | --- |
-| `extra-keys-swipe-left-action` | left to right | `none` |
-| `extra-keys-swipe-right-action` | right to left | `next-session` |
+| `gestures.extra-keys.swipe.right.action` | left to right | `none` |
+| `gestures.extra-keys.swipe.left.action` | right to left | `next-session` |
 
 Once a horizontal swipe is detected, the row follows it slightly and a pill above the keys names
 the pending action. The pill highlights when the swipe reaches the activation distance (a fifth
@@ -544,32 +426,33 @@ and repeating keys, the swipe-up popup and vertical scrolling of the row keep wo
 
 ### Long swipes
 
-`extra-keys-long-swipe-left-action` and `extra-keys-long-swipe-right-action` add a second action to
+`gestures.extra-keys.long-swipe.right.action` and `gestures.extra-keys.long-swipe.left.action` add a second action to
 a direction, run by a swipe further than the long swipe distance: half of the row's width, and at
 least twice the swipe distance. Both are unset by default. The pill changes to the long-swipe
 action and gives a tick when it reaches that threshold.
 
-The preview is available with `gesture-animations` off. The row stays still and successful
+The preview is available with `gestures.animations` off. The row stays still and successful
 gestures skip confirmation in that mode. Example:
 
 ```yaml
-extra-keys:
-  swipe:
-    long-left:
-      action: new-session
+gestures:
+  extra-keys:
+    long-swipe:
+      right:
+        action: new-session
 ```
 
 ## Volume buttons
 
-The two volume buttons can run the same actions. They are configured with their own keys in the
-same file:
+The two volume buttons can run the same actions. They are configured under `keyboard.volume` in
+the same file:
 
-| Key | Button | Default |
+| Setting | Button | Default |
 | --- | --- | --- |
-| `volume-up-action` | Volume up | `modifier` |
-| `volume-down-action` | Volume down | `modifier` |
-| `volume-up-keys` | The keys that volume up sends with `send-keys` | none |
-| `volume-down-keys` | The keys that volume down sends with `send-keys` | none |
+| `keyboard.volume.up.action` | Volume up | `modifier` |
+| `keyboard.volume.down.action` | Volume down | `modifier` |
+| `keyboard.volume.up.keys` | The keys that volume up sends with `send-keys` | none |
+| `keyboard.volume.down.keys` | The keys that volume down sends with `send-keys` | none |
 
 The two buttons are independent. Valid values of the action keys, case-insensitive, are `modifier`
 and every action of the table above except `run-command` (`none`, `show-keyboard`, `toggle-keyboard`,
@@ -593,14 +476,14 @@ The `*-keys` keys are written as described in "Sending keys".
   keys) runs once however long the button is held.
 * The soft keyboard flags that disable the keyboard win as for every other gesture: `show-keyboard`,
   `toggle-keyboard` and `hide-keyboard` do nothing while it is disabled, the other actions still work.
-* `send-keys` without a usable `volume-up-keys` or `volume-down-keys` is logged and does nothing,
+* `send-keys` without a usable `keyboard.volume.up.keys` or `keyboard.volume.down.keys` is logged and does nothing,
   as if the action were `none`, which gives the button back to the system volume.
 * A value that is not listed is logged and `modifier` is used.
-* `keyboard.volume-keys: volume` (the existing key) still wins over everything: both buttons then always
+* `keyboard.volume.mode: volume` still wins over everything: both buttons then always
   change the system volume and these keys are ignored.
 * Volume buttons of a full external (alphabetic) keyboard are never taken over, they stay with
   the system.
-* A change takes effect after `termux-reload-settings`. A button that is held at that moment is not
+* A change takes effect after `tpp settings reload`. A button that is held at that moment is not
   left stuck as a modifier.
 
 ## Locking a modifier
@@ -634,11 +517,11 @@ gestures:
     # the one that a long press opens.
     triple:
       action: open-sidebar
-extra-keys:
-  swipe:
-    # Optional: swipe the extra keys row to the right to go to the previous session
-    left:
-      action: previous-session
+  extra-keys:
+    swipe:
+      # Optional: swipe the extra keys row to the right to go to the previous session
+      right:
+        action: previous-session
 ```
 
 Sending keys:
@@ -652,11 +535,11 @@ gestures:
     triple:
       action: send-keys
       keys: CTRL l
-extra-keys:
-  swipe:
-    left:
-      action: send-keys
-      keys: ESC :q ENTER
+  extra-keys:
+    swipe:
+      right:
+        action: send-keys
+        keys: ESC :q ENTER
 ```
 
 Volume buttons:
@@ -674,16 +557,16 @@ keyboard:
     # system volume.
 ```
 
-Run `termux-reload-settings` after editing the file. Stock Termux reads
+Run `tpp settings reload` after editing the file. Stock Termux reads
 `termux.properties` and does not understand `config.yaml`.
 
 ## Extra-key appearance
 
-**Extra keys font** under **Settings → Properties → Extra keys** sets the font used
+**Font** under **Settings → Properties → Extra keys** sets the font used
 for the toolbar and its key previews. In YAML, set `extra-keys.font` to `system`
 (default), `terminal` (match the terminal font), `monospace`, or `serif`.
 
-In **Extra keys layout**, tap a key to edit its optional display label. Custom
+In **Extra keys → Layout**, tap a key to edit its optional display label. Custom
 labels preserve their case. In YAML, use `display` for the main key,
 `hold-display` for a long-press key, or `popup.display` for a swipe-up key.
 Each key also accepts `text-color` and `background-color` in hexadecimal.
@@ -696,7 +579,7 @@ extra-keys:
   keys: [[{key: CTRL, display: Ctrl, hold: SHIFT, hold-display: "⇧"}, TAB]]
 ```
 
-`terminal.toolbar-height` scales the height of every extra keys row, from 0.4 to 3 times the
+`extra-keys.height` scales the height of every extra keys row, from 0.4 to 3 times the
 normal height. `extra-keys.compact: true` lowers the rows further to three quarters of that, for a
 denser toolbar. It is off by default.
 
@@ -705,27 +588,27 @@ extra-keys:
   compact: true
 ```
 
-Choose **Extra keys animation** in **Settings → Properties → Extra keys** and
+Choose **Press animation** in **Settings → Properties → Extra keys** and
 tap a preview key to try it. In YAML, set `extra-keys.animation` to
 `key-preview` (default), `key-bubble`, `press-in`, `pop`, `lift`, or `off`. Key preview shows
 an enlarged label above the pressed key. Key bubble uses a compact round preview close to the key.
 Off keeps the pressed-key color.
 
-| Key | Applies to | Theme default |
+| Setting | Applies to | Theme default |
 | --- | --- | --- |
-| `extra-keys-button-active-text-color` | Text of an active (tapped, or locked by a long press) special button: `CTRL`, `ALT`, `SHIFT`, `FN` | `#FF0000` (red) |
-| `extra-keys-button-active-background-color` | Background of any extra key while it is pressed, of the swipe-up popup key and, when this key is set, of an active (latched or locked) special button | `#9E9E9E` (grey) while pressed; no fill for latched keys |
-| `extra-keys-button-corner-radius` | Corner radius in dp of the backgrounds of all extra keys (pressed, latched and popup) | `0` / theme (square) |
+| `extra-keys.active.text-color` | Text of an active (tapped, or locked by a long press) special button: `CTRL`, `ALT`, `SHIFT`, `FN` | `#FF0000` (red) |
+| `extra-keys.active.background-color` | Background of any extra key while it is pressed, of the swipe-up popup key and, when this key is set, of an active (latched or locked) special button | `#9E9E9E` (grey) while pressed; no fill for latched keys |
+| `extra-keys.corner-radius` | Corner radius in dp of the backgrounds of all extra keys (pressed, latched and popup) | `0` / theme (square) |
 
 The value is `#RGB`, `#RRGGBB` or `#AARRGGBB` (alpha first, like Android), case-insensitive. A
 value that is present but invalid is logged and ignored.
 Inactive buttons follow the theme unless the key defines its own text or background color.
 
-Without `extra-keys-button-active-background-color` a latched `CTRL`/`ALT` only changes its text
+Without `extra-keys.active.background-color` a latched `CTRL`/`ALT` only changes its text
 color, as before. With it, the latched key also gets that background, which stays filled until the
 key is unlatched (it is not reset when the finger is lifted).
 
-`extra-keys-button-corner-radius` is a plain decimal number of dp from `0` to `32`, for example
+`extra-keys.corner-radius` is a plain decimal number of dp from `0` to `32`, for example
 `8` or `6.5`. Signs, units, exponents, `NaN` and values above `32` are invalid, logged and ignored
 (the theme shape is used). Only the drawn background is rounded: the touch area of every key stays
 the full grid cell. A radius above half the key height makes a pill.
@@ -733,8 +616,8 @@ the full grid cell. A radius above half the key height makes a pill.
 ```yaml
 extra-keys:
   active:
-    text-color: #D8B4FE
-    background-color: #3B1D6A
+    text-color: '#D8B4FE'
+    background-color: '#3B1D6A'
   corner-radius: 8
 ```
 

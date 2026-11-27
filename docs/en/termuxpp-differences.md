@@ -355,17 +355,20 @@ unchanged. Source: [editor](../../app/src/main/java/com/termux/app/fragments/set
 and [key inspector](../../app/src/main/java/com/termux/app/fragments/settings/termux/ExtraKeyInspector.java).
 
 These controls edit the settings file itself, not a competing Android preference
-store. Clear a text field or select **App default** to remove an override; the layout
+store; the Display screen's accent, color scheme and font are in the same file. Clear a text field or select **App default** to remove an override; the layout
 editor has **Restore default layout** followed by **Save**. Settings such as
 transcript size may require a new session or an app restart.
 
 The settings file is **`~/.config/termuxpp/config.yaml`**, grouped by topic
-(`appearance`, `terminal`, `sessions`, `tmux`, `keyboard`, `extra-keys`,
+(`appearance`, `terminal`, `sessions`, `sidebar`, `keyboard`, `extra-keys`,
 `gestures`, `integrations`, `power`), with real booleans, numbers and the extra
-keys as a list of rows. The app keeps the former key names internally and in its
-settings screens; [the settings file reference](terminal-settings.md#settings-file)
-maps each one to its path. A change in the app rewrites the whole file in that
-layout, without comments, with an atomic write.
+keys as a list of rows. The Properties screen is grouped and titled the same
+way; the [config.yaml reference](config-yaml.md) lists every setting and the
+former names that are still read. A change in the app edits only that setting,
+keeps the comments of the file and writes it atomically. A symlinked
+`config.yaml` (from dotfiles) is read but not changed by the app. Unknown paths
+are shown in a message. Sources: [schema](../../termux-shared/src/main/java/dev/pschmitt/termux/shared/termux/settings/properties/TermuxConfigSchema.java)
+and [YAML reader and writer](../../termux-shared/src/main/java/dev/pschmitt/termux/shared/termux/settings/properties/TermuxYamlConfig.java).
 
 TermuxPP no longer reads Java properties settings files. When there is no
 `config.yaml`, the app converts the first of these it finds once and renames
@@ -532,14 +535,14 @@ The helper sends the command with each window; an older helper sends none,
 and the rows then have no icon.
 [Program icons](../../app/src/main/java/com/termux/app/terminal/TmuxProgramIcon.java).
 
-The `terminal-tmux-sidebar-layout` property selects nested windows, a
+The `sidebar.layout` setting selects nested windows, a
 second sidebar level, or separate session and tmux views.
 [Sidebar settings](terminal-settings.md#tmux-sidebar-layout).
 
 Each sidebar independently controls whether it shows terminal sessions,
 tmux windows, the New session button, and the Keyboard button. A sidebar
 that shows tmux windows alone lists them for the current terminal session.
-Enable the optional right sidebar with `tmux.sidebar.right` and swipe inward
+Enable the optional right sidebar with `sidebar.right.enabled` and swipe inward
 from the right edge. [Sidebar settings](terminal-settings.md#tmux-sidebar-layout).
 Gesture bindings can open either drawer with `open-left-sidebar` and
 `open-right-sidebar`. Existing `open-sidebar` bindings open the left drawer.
@@ -614,8 +617,8 @@ ask the binary for the candidates.
 The TermuxPP Properties editor can assign `run-command` to single, double or triple taps and to
 the extra-keys row swipes. It can also run commands from individual extra-key JSON objects using a
 `command` field. Each action opens a new visible terminal session and runs the configured text as
-one shell `-c` argument, preserving the current session. `gesture-command-context` selects the
-normal `nix-session` behavior, always enters the managed Nix guest, or uses the outer Termux prefix.
+one shell `-c` argument, preserving the current session. `sessions.command-context` follows the
+normal `sessions.nix.enabled` behavior, always enters the managed Nix guest, or uses the outer Termux prefix.
 Command strings are redacted from property and execution logs. Sources: [gesture dispatcher](../../app/src/main/java/com/termux/app/terminal/GestureActionDispatcher.java),
 [extra-key parser](../../termux-shared/src/main/java/dev/pschmitt/termux/shared/termux/extrakeys/ExtraKeyButton.java),
 [properties editor](../../app/src/main/java/com/termux/app/fragments/settings/termux/PropertiesPreferencesFragment.java),
@@ -641,7 +644,7 @@ Individual keys can override their text and background colors, add spacing aroun
 the keycap, and show an automatic or custom corner hint. The layout editor can resize each row and
 leave blank slots for unassigned keys.
 `extra-keys.compact` lowers every row to three quarters of the height that
-`terminal.toolbar-height` gives, off by default.
+`extra-keys.height` gives, off by default.
 [Extra-key appearance](terminal-settings.md#extra-key-appearance).
 
 TermuxPP adds optional extra-key press and release motion. Key preview is the
@@ -649,15 +652,15 @@ default, and Key bubble, Press in, Pop, Lift, and Off are available in `extra-ke
 
 Configured tap, volume-button and extra-key swipe actions briefly confirm the
 chosen action in a pill above the keys. Motion respects Android's animation
-setting. Six selectable confirmation effects are available through `gesture-feedback-style`,
-with soft flash as the default. `gesture-feedback-position` independently places the gesture pill
+setting. Six selectable confirmation effects are available through `gestures.feedback.style`,
+with soft flash as the default. `gestures.feedback.position` independently places the gesture pill
 at any of nine positions, with bottom center as the default. [Gesture feedback implementation](../../app/src/main/java/com/termux/app/terminal/GestureFeedback.java).
 
 Upstream Termux opens the toolbar's text input by dragging the extra keys row
 from right to left. In TermuxPP both swipe directions over the extra keys row
 are configurable actions, and the right-to-left swipe switches to the next
 session by default. Opening the text input is the `toggle-text-input` action,
-which any gesture can run. Set `extra-keys-swipe-right-action = toggle-text-input`
+which any gesture can run. Set `gestures.extra-keys.swipe.left.action: toggle-text-input`
 for the upstream behavior. Any gesture, volume button or action key can also run
 `show-extra-keys`, `hide-extra-keys` or `toggle-extra-keys` to show or hide the toolbar,
 and `hide-keyboard` to hide the soft keyboard; upstream only toggles the toolbar

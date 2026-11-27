@@ -50,6 +50,7 @@ public class SettingsIconsTest {
         PropertiesPreferencesFragment fragment = new PropertiesPreferencesFragment();
         activity.getSupportFragmentManager().beginTransaction().replace(R.id.settings, fragment).commitNow();
         for (String key : dev.pschmitt.termux.shared.termux.settings.properties.TermuxPropertyConstants.TERMUX_APP_PROPERTIES_LIST) {
+            if (dev.pschmitt.termux.shared.termux.settings.properties.TermuxConfigSchema.isDisplayKey(key)) continue;
             Preference preference = fragment.findPreference(key);
             assertNotNull(key, preference);
             assertNotNull(key, preference.getIcon());
