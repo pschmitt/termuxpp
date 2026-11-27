@@ -4,6 +4,8 @@ page_ref: /docs/apps/termux/index.html
 
 # TermuxPP documentation
 
+- [Quick start](quickstart.md)
+- [tpp command line](tpp-cli.md)
 - [Terminal settings](terminal-settings.md)
 - [tmux plugin](tmux-plugin.md)
 - [Built-in integrations](integrations.md)

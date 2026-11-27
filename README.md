@@ -27,21 +27,25 @@ update, use a build signed by the same certificate as your installed app.
 
 ## Quick start
 
-Open TermuxPP. In the native terminal, use `pkg` to install command-line tools.
+Open TermuxPP. Install packages with `pkg`, and control Android with `tpp`:
 
 ```sh
-pkg update                 # Refresh package metadata
-pkg install git            # Install Git
-git --version              # Check that Git is available
+pkg update && pkg install git    # Termux packages, as usual
+tpp battery                      # Talk to Android
+tpp help                         # Every tpp command
 ```
 
-See the [Termux package management guide][package-management] for APT usage.
+The [Quick start](docs/en/quickstart.md) covers switching from Termux,
+settings, updates, and the optional Nix guest.
 
 ## Documentation
 
 | Topic | Description |
 | --- | --- |
+| [Quick start](docs/en/quickstart.md) | Install, first commands, settings, and updates. |
+| [tpp command line](docs/en/tpp-cli.md) | Control Android and the app from the shell. |
 | [Terminal settings](docs/en/terminal-settings.md) | Properties, fonts, colors, touch gestures, extra keys, and links. |
+| [tmux plugin](docs/en/tmux-plugin.md) | Show remote tmux windows in the session sidebar. |
 | [Built-in integrations](docs/en/integrations.md) | Use API, Tasker, Boot, Styling, and Widget. Migrate standalone installations. |
 | [Self-update over Shizuku](docs/en/self-update.md) | Configure and use the in-app APK updater. |
 | [Custom AArch64 bootstrap](docs/en/aarch64-bootstrap.md) | Build a verified bootstrap. |
@@ -56,4 +60,3 @@ The core is [GPL-3.0-only](LICENSE.md). See the linked library licenses for
 third-party code and license exceptions.
 
 [core-releases]: https://github.com/pschmitt/termuxpp/releases
-[package-management]: https://github.com/termux/termux-packages/wiki/Package-Management
