@@ -1,0 +1,26 @@
+--- a/stub.S	2026-11-27 13:44:24.331862615 +0100
++++ b/stub.S	2026-11-27 13:44:24.351520950 +0100
+@@ -6,7 +6,12 @@
+ // a non-PIE static binary linked at a fixed address, this range is identical
+ // in every process the kernel starts from this binary, so one seccomp filter
+ // (which survives execve and cannot be removed) keeps exempting it forever.
+-	.text
++// The range is an ABI between launcher versions: the filter of every
++// running process exempts exactly these addresses, and a newer launcher
++// exec'd from such a process runs under that filter. So it lives in its own
++// section, linked at a fixed address (see bootstrap-seed.nix), and must not
++// change size or layout.
++	.section .launcher_stub, "ax", %progbits
+ 	.balign 16
+ 	.globl allow_start, allow_end, raw_syscall6, sig_restorer, jump_to
+ allow_start:
+@@ -27,6 +32,9 @@
+ 	nop			// the PC after the svc is still inside the range
+ allow_end:
+ 
++	.text
++	.balign 16
++
+ // void jump_to(void *entry, void *sp) -- never returns.
+ // Sets the stack pointer and branches to entry with x0 = 0 (rtld_fini) and a
+ // cleared frame, as the kernel does at process start. No syscall here, so it

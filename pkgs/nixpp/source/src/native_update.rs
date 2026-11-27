@@ -52,7 +52,7 @@ pub(crate) fn launcher_pending(runtime: &Path, checked: &mut Option<String>) -> 
 /// the guest, so it is refused and the current one stays.
 pub(crate) fn install_launcher(runtime: &Path, source: &Path) -> Result<()> {
     let busybox = bootstrap_busybox(runtime).context("the bootstrap busybox is missing")?;
-    smoke_test(source, &busybox)?;
+    smoke_test(&runtime.join("launcher"), source, &busybox, runtime)?;
     crate::bootstrap::replace_with(runtime, "launcher", 0o700, |file| {
         std::io::copy(&mut fs::File::open(source)?, file).map(|_| ())
     })
@@ -72,10 +72,24 @@ fn bootstrap_busybox(runtime: &Path) -> Option<PathBuf> {
         .find(|path| path.is_file())
 }
 
-/// Run `busybox true` through `launcher`, with no binds and an empty
-/// environment; it must exit 0 within [`SMOKE_TIMEOUT`].
-fn smoke_test(launcher: &Path, busybox: &Path) -> Result<()> {
-    let mut child = Command::new(launcher)
+/// Check that `candidate` can take over from `current`, the launcher every
+/// running guest process was started by:
+///
+/// - on its own, as a new session starts it: it runs `busybox true`;
+/// - exec'd from a process under `current`'s seccomp filter, which survives
+///   execve: `current` starts busybox's shell from a scratch copy, the copy is
+///   replaced by `candidate`, and the shell's `exec busybox true` re-execs
+///   that path. A candidate whose exempt syscall stub moved dies there with
+///   SIGSYS, as it would on every exec of a running guest.
+///
+/// `scratch_parent` holds the scratch copy; it must allow exec.
+fn smoke_test(
+    current: &Path,
+    candidate: &Path,
+    busybox: &Path,
+    scratch_parent: &Path,
+) -> Result<()> {
+    let alone = Command::new(candidate)
         .arg(busybox)
         .args(["busybox", "true"])
         .env_clear()
@@ -83,22 +97,89 @@ fn smoke_test(launcher: &Path, busybox: &Path) -> Result<()> {
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
-        .with_context(|| format!("cannot run {}", launcher.display()))?;
+        .with_context(|| format!("cannot run {}", candidate.display()))?;
+    wait_ok(alone).context("the new launcher failed to run busybox")?;
+
+    let scratch = Scratch::new(scratch_parent)?;
+    let probe = scratch.0.join("launcher");
+    copy_executable(current, &probe)?;
+    let mut shell = Command::new(&probe)
+        .arg(busybox)
+        .args(["busybox", "sh", "-c", "read line && exec \"$0\" true"])
+        .arg(busybox)
+        .env_clear()
+        .stdin(Stdio::piped())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .with_context(|| format!("cannot run {}", probe.display()))?;
+    let staged = scratch.0.join("launcher.new");
+    let swapped = copy_executable(candidate, &staged)
+        .and_then(|()| fs::rename(&staged, &probe).context("cannot swap in the new launcher"));
+    // Release the shell either way, so it never outlives the check.
+    let released = shell
+        .stdin
+        .take()
+        .map(|mut stdin| std::io::Write::write_all(&mut stdin, b"go\n"));
+    swapped?;
+    if let Some(Err(error)) = released {
+        let _ = shell.kill();
+        let _ = shell.wait();
+        return Err(error).context("cannot release the probe shell");
+    }
+    wait_ok(shell)
+        .context("the new launcher failed when exec'd under the current launcher's seccomp filter")
+}
+
+/// Wait up to [`SMOKE_TIMEOUT`] for `child`; it must exit 0.
+fn wait_ok(mut child: std::process::Child) -> Result<()> {
     let deadline = Instant::now() + SMOKE_TIMEOUT;
     loop {
         if let Some(status) = child.try_wait()? {
-            anyhow::ensure!(
-                status.success(),
-                "the new launcher failed to run busybox: {status}"
-            );
+            anyhow::ensure!(status.success(), "exit status {status}");
             return Ok(());
         }
         if Instant::now() >= deadline {
             let _ = child.kill();
             let _ = child.wait();
-            anyhow::bail!("the new launcher did not run busybox within {SMOKE_TIMEOUT:?}");
+            anyhow::bail!("no exit within {SMOKE_TIMEOUT:?}");
         }
         std::thread::sleep(Duration::from_millis(50));
+    }
+}
+
+fn copy_executable(source: &Path, target: &Path) -> Result<()> {
+    use std::os::unix::fs::OpenOptionsExt;
+    let mut output = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o700)
+        .open(target)
+        .with_context(|| format!("cannot create {}", target.display()))?;
+    std::io::copy(&mut fs::File::open(source)?, &mut output)?;
+    output.sync_all()?;
+    Ok(())
+}
+
+/// A private scratch directory, removed on drop.
+struct Scratch(PathBuf);
+
+impl Scratch {
+    fn new(parent: &Path) -> Result<Self> {
+        use std::os::unix::fs::DirBuilderExt;
+        let path = parent.join(format!(".launcher-check.{}", std::process::id()));
+        let _ = fs::remove_dir_all(&path);
+        fs::DirBuilder::new()
+            .mode(0o700)
+            .create(&path)
+            .with_context(|| format!("cannot create {}", path.display()))?;
+        Ok(Self(path))
+    }
+}
+
+impl Drop for Scratch {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.0);
     }
 }
 
@@ -198,57 +279,120 @@ mod tests {
     }
 
     /// A generation shipping `launcher` (as native/launcher), a runtime with
-    /// `current` as its launcher and a bootstrap busybox root.
-    fn launcher_fixture(launcher: &str, current: &[u8]) -> (tempfile::TempDir, PathBuf) {
+    /// `current` as its launcher and a bootstrap busybox root. The launchers
+    /// and busybox are shell scripts that emulate the re-exec: `current`
+    /// records its own path, and busybox's `true` re-execs through it with
+    /// `--reexec`, as a real launcher re-execs /proc/self/exe.
+    fn launcher_fixture(launcher: &str, current: &str) -> (tempfile::TempDir, PathBuf) {
         use std::os::unix::fs::PermissionsExt;
+        let executable = |path: &Path, content: &str| {
+            fs::write(path, content).unwrap();
+            fs::set_permissions(path, fs::Permissions::from_mode(0o755)).unwrap();
+        };
         let (directory, runtime, name) = fixture(b"nixpp");
         let store = runtime.join("root/nix/store");
         let package = format!("{}-launcher", "c".repeat(32));
         fs::create_dir_all(store.join(&package).join("bin")).unwrap();
-        let file = store.join(&package).join("bin/launcher");
-        fs::write(&file, launcher).unwrap();
-        fs::set_permissions(&file, fs::Permissions::from_mode(0o755)).unwrap();
+        executable(&store.join(&package).join("bin/launcher"), launcher);
         symlink(
             format!("/nix/store/{package}/bin/launcher"),
             store.join(&name).join("native/launcher"),
         )
         .unwrap();
-        fs::write(runtime.join("launcher"), current).unwrap();
+        executable(&runtime.join("launcher"), current);
         let busybox = format!("{}-busybox-static-1.36", "d".repeat(32));
         fs::create_dir_all(store.join(&busybox).join("bin")).unwrap();
-        fs::write(store.join(&busybox).join("bin/busybox"), b"").unwrap();
+        executable(&store.join(&busybox).join("bin/busybox"), BUSYBOX);
         let roots = runtime.join("root/nix/var/nix/gcroots/termuxpp-bootstrap");
         fs::create_dir_all(&roots).unwrap();
         symlink(format!("/nix/store/{busybox}"), roots.join(&busybox)).unwrap();
         (directory, runtime)
     }
 
-    // Runs busybox's `true` the way the launcher is called: TARGET ARGV0 ARGS.
-    const GOOD: &str = "#!/bin/sh\n[ -f \"$1\" ] && [ \"$2 $3\" = \"busybox true\" ]\n";
+    const BUSYBOX: &str = "#!/bin/sh\ncase \"$1\" in\n\
+        sh) shift; exec /bin/sh \"$@\" ;;\n\
+        true) [ -n \"$LAUNCHER\" ] && exec \"$LAUNCHER\" --reexec; exit 0 ;;\n\
+        esac\nexit 2\n";
+    // TARGET ARGV0 ARGS, recording its own path for busybox's re-exec.
+    const CURRENT: &str = "#!/bin/sh\nt=$1; shift 2; LAUNCHER=$0 exec \"$t\" \"$@\"\n";
+    const GOOD: &str =
+        "#!/bin/sh\n# new\n[ \"$1\" = --reexec ] && exit 0\nt=$1; shift 2; exec \"$t\" \"$@\"\n";
+    // Works on its own, dies like a moved syscall stub when re-exec'd.
+    const MOVED: &str =
+        "#!/bin/sh\n[ \"$1\" = --reexec ] && kill -SYS $$\nt=$1; shift 2; exec \"$t\" \"$@\"\n";
 
     #[test]
     fn a_working_launcher_replaces_the_runtime_launcher_once() {
-        let (_directory, runtime) = launcher_fixture(GOOD, b"old");
+        let (_directory, runtime) = launcher_fixture(GOOD, CURRENT);
         let mut checked = None;
         let source = launcher_pending(&runtime, &mut checked).unwrap();
         assert_eq!(launcher_pending(&runtime, &mut checked), None);
         install_launcher(&runtime, &source).unwrap();
         assert_eq!(fs::read(runtime.join("launcher")).unwrap(), GOOD.as_bytes());
         assert_eq!(launcher_pending(&runtime, &mut None), None);
+        let leftovers: Vec<_> = fs::read_dir(&runtime)
+            .unwrap()
+            .flatten()
+            .filter(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with(".launcher-check")
+            })
+            .collect();
+        assert!(leftovers.is_empty());
     }
 
     #[test]
     fn a_launcher_that_cannot_run_busybox_is_refused() {
-        let (_directory, runtime) = launcher_fixture("#!/bin/sh\nexit 1\n", b"old");
+        let (_directory, runtime) = launcher_fixture("#!/bin/sh\nexit 1\n", CURRENT);
         let source = launcher_pending(&runtime, &mut None).unwrap();
         assert!(install_launcher(&runtime, &source).is_err());
-        assert_eq!(fs::read(runtime.join("launcher")).unwrap(), b"old");
+        assert_eq!(
+            fs::read(runtime.join("launcher")).unwrap(),
+            CURRENT.as_bytes()
+        );
+    }
+
+    #[test]
+    fn a_launcher_that_dies_under_the_current_filter_is_refused() {
+        let (_directory, runtime) = launcher_fixture(MOVED, CURRENT);
+        let source = launcher_pending(&runtime, &mut None).unwrap();
+        let error = install_launcher(&runtime, &source).unwrap_err();
+        assert!(format!("{error:#}").contains("seccomp filter"), "{error:#}");
+        assert_eq!(
+            fs::read(runtime.join("launcher")).unwrap(),
+            CURRENT.as_bytes()
+        );
     }
 
     #[test]
     fn the_same_launcher_is_no_update() {
-        let (_directory, runtime) = launcher_fixture(GOOD, GOOD.as_bytes());
+        let (_directory, runtime) = launcher_fixture(GOOD, GOOD);
         assert_eq!(launcher_pending(&runtime, &mut None), None);
+    }
+
+    /// The real thing, on aarch64 Linux: NIXPP_LAUNCHER_ABI_DIR holds the
+    /// deployed launcher (`old`), one with a moved stub (`moved`), one with
+    /// the pinned stub (`pinned`) and a static `busybox`.
+    #[test]
+    #[ignore = "needs real launchers: set NIXPP_LAUNCHER_ABI_DIR"]
+    fn real_launchers_across_versions() {
+        let dir = PathBuf::from(std::env::var_os("NIXPP_LAUNCHER_ABI_DIR").unwrap());
+        let scratch = tempfile::tempdir().unwrap();
+        let busybox = dir.join("busybox");
+        let check = |candidate: &str| {
+            smoke_test(
+                &dir.join("old"),
+                &dir.join(candidate),
+                &busybox,
+                scratch.path(),
+            )
+        };
+        check("old").unwrap();
+        check("pinned").unwrap();
+        let error = check("moved").unwrap_err();
+        assert!(format!("{error:#}").contains("seccomp filter"), "{error:#}");
     }
 
     #[test]

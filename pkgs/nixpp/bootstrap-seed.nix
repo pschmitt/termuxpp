@@ -36,16 +36,52 @@ let
     )).nix-cli;
   inherit (static) busybox;
 
+  # The exempt stub of the deployed launchers (d6919c2c): start, the
+  # rt_sigreturn trampoline and end.
+  stubAddress = "0x1000005690";
+  stubRestorer = "0x10000056b4";
+  stubEnd = "0x10000056c0";
+
   # Android's app seccomp filter traps openat2 (Android 15); the upstream
   # handler re-translated its own reissue until the stack overflowed.
   # The SIGSYS handler runs on the signal stack with asynchronous signals
   # blocked: on goroutine stacks, with Go's handlers nesting into it, it
   # corrupted Go's heap (sops-install-secrets on zf10).
+  #
+  # The exempt syscall stub (allow_start..allow_end) is an ABI between
+  # launcher versions: every running guest process carries a seccomp filter
+  # that exempts exactly its addresses, and a newer launcher exec'd from such
+  # a process runs under that filter. It stays where the first deployed
+  # launchers have it, in its own section, with the C code after it; the
+  # build fails if it ever moves. A moved stub killed every exec on zf10.
   launcher = (static.callPackage "${src}/bootstrap/launcher" { }).overrideAttrs (old: {
     patches = old.patches or [ ] ++ [
       ./launcher-foreign-trap.patch
       ./launcher-sigsys-onstack.patch
+      ./launcher-stub-pinned.patch
     ];
+    buildPhase = ''
+      ${static.stdenv.cc.targetPrefix}cc -O2 -Wall -static -no-pie -fno-pie \
+        -Wl,-Ttext-segment=0x1000000000 \
+        -Wl,--section-start=.launcher_stub=${stubAddress} \
+        -Wl,-Ttext=0x1000006000 \
+        -o launcher launcher.c stub.S
+    '';
+    # The check is part of the install: nixpkgs skips installCheck when
+    # cross-compiling, and upstream's installPhase runs no hooks.
+    installPhase = ''
+      install -D -m 0755 launcher $out/bin/launcher
+      symbols=$(${static.stdenv.cc.targetPrefix}nm "$out/bin/launcher")
+      for expected in "allow_start ${stubAddress}" "sig_restorer ${stubRestorer}" "allow_end ${stubEnd}"; do
+        name=''${expected% *}
+        want=''${expected#* }
+        got=$(printf '%s\n' "$symbols" | awk -v n="$name" '$3 == n { print "0x" $1 }')
+        if [ "$((got))" != "$((want))" ]; then
+          echo "launcher: $name is at ''${got:-nowhere}, the deployed ABI needs $want" >&2
+          exit 1
+        fi
+      done
+    '';
   });
 
   guestNixpp = pkgs.pkgsCross.aarch64-multiplatform.callPackage ./. { };
