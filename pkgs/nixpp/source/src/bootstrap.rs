@@ -65,7 +65,7 @@ pub const SCRIPTS: [(&str, &str); 4] = [
 ];
 
 const GCROOT_DIR: &str = "nix/var/nix/gcroots/termuxpp-session";
-const BOOTSTRAP_GCROOT_DIR: &str = "nix/var/nix/gcroots/termuxpp-bootstrap";
+pub(crate) const BOOTSTRAP_GCROOT_DIR: &str = "nix/var/nix/gcroots/termuxpp-bootstrap";
 const MAX_BOOTSTRAP_ARCHIVE_BYTES: u64 = 1 << 30;
 const MAX_EXTRACTED_BYTES: u64 = 512 << 20;
 const MAX_ENTRIES: usize = 100_000;

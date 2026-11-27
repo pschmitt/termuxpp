@@ -1,13 +1,15 @@
-//! Install the native nixpp and launcher that the selected generation ships.
+//! Install the native nixpp, the launcher and the bootstrap tools that the
+//! selected generation ships.
 //!
-//! Both came only with the APK's bootstrap, so existing installs never
-//! received newer ones. A generation now carries them as `native/nixpp` and
-//! `native/launcher`. After a switch the daemon installs the nixpp when it
-//! differs from its own executable and restarts through the start script.
-//! The launcher is replaced in place once it has run the bootstrap busybox:
+//! All of them came only with the APK's bootstrap, so existing installs never
+//! received newer ones. A generation now carries them as `native/nixpp`,
+//! `native/launcher` and `bootstrap/{busybox,nix}`. After a switch the daemon
+//! installs the nixpp when it differs from its own executable and restarts
+//! through the start script. The launcher is replaced in place once it has
+//! run the bootstrap busybox, also when exec'd under the current launcher:
 //! guest processes keep the launcher they started with, and new ones (and
-//! every re-exec) use the new file.
-
+//! every re-exec) use the new file. The bootstrap tools (session.env, /bin/sh,
+//! /usr/bin/env) move once both ran through the launcher.
 use anyhow::{Context, Result};
 use sha2::{Digest, Sha256};
 use std::fs;
@@ -57,6 +59,130 @@ pub(crate) fn install_launcher(runtime: &Path, source: &Path) -> Result<()> {
         std::io::copy(&mut fs::File::open(source)?, file).map(|_| ())
     })
     .context("failed to replace the runtime launcher")
+}
+
+/// The bootstrap tools the selected generation ships (`bootstrap/busybox`,
+/// `bootstrap/nix`: store roots), when they differ from the runtime's
+/// (`BOOTSTRAP_BUSYBOX`, `BOOTSTRAP_NIX` in session.env). `checked` works as
+/// for [`pending`].
+pub(crate) fn tools_pending(runtime: &Path, checked: &mut Option<String>) -> Option<Tools> {
+    let name = selected(runtime)?;
+    if checked.as_deref() == Some(name.as_str()) {
+        return None;
+    }
+    *checked = Some(name.clone());
+    let generation = runtime.join("root/nix/store").join(&name);
+    let shipped = |tool: &str| {
+        let target = fs::read_link(generation.join("bootstrap").join(tool)).ok()?;
+        let target = target.to_str()?.to_owned();
+        crate::store::is_store_root(&target).then_some(target)
+    };
+    let tools = Tools {
+        busybox: shipped("busybox")?,
+        nix: shipped("nix")?,
+    };
+    let environment = fs::read_to_string(runtime.join("session.env")).ok()?;
+    let current = |key: &str| {
+        environment
+            .lines()
+            .find_map(|line| line.strip_prefix(key)?.strip_prefix('='))
+            .map(str::to_owned)
+    };
+    (current("BOOTSTRAP_BUSYBOX").as_deref() != Some(tools.busybox.as_str())
+        || current("BOOTSTRAP_NIX").as_deref() != Some(tools.nix.as_str()))
+    .then_some(tools)
+}
+
+/// Store roots of the guest's bootstrap busybox and Nix.
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct Tools {
+    pub busybox: String,
+    pub nix: String,
+}
+
+/// Make `tools` the runtime's bootstrap tools once both ran through the
+/// launcher: point session.env at them (read by every new session), root
+/// them, move /bin/sh and /usr/bin/env from the old busybox to the new one
+/// (links pointing elsewhere were changed on purpose and stay), and drop the
+/// roots of the old tools.
+pub(crate) fn install_tools(runtime: &Path, tools: &Tools) -> Result<()> {
+    let root = runtime.join("root");
+    let host = |store: &str, file: &str| root.join(store.trim_start_matches('/')).join(file);
+    let launcher = runtime.join("launcher");
+    for (binary, args) in [
+        (host(&tools.busybox, "bin/busybox"), ["busybox", "true"]),
+        (host(&tools.nix, "bin/nix"), ["nix", "--version"]),
+    ] {
+        let child = Command::new(&launcher)
+            .arg(&binary)
+            .args(args)
+            .env_clear()
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .with_context(|| format!("cannot run {}", launcher.display()))?;
+        wait_ok(child).with_context(|| format!("{} does not run", binary.display()))?;
+    }
+
+    let path = runtime.join("session.env");
+    let environment = fs::read_to_string(&path)?;
+    let mut old = Vec::new();
+    let mut lines = Vec::new();
+    for line in environment.lines() {
+        let (key, value) = line.split_once('=').unwrap_or((line, ""));
+        let new = match key {
+            "BOOTSTRAP_BUSYBOX" => &tools.busybox,
+            "BOOTSTRAP_NIX" => &tools.nix,
+            _ => {
+                lines.push(line.to_owned());
+                continue;
+            }
+        };
+        old.push(value.to_owned());
+        lines.push(format!("{key}={new}"));
+    }
+    anyhow::ensure!(old.len() == 2, "session.env lacks the bootstrap tools");
+    let mut content = lines.join("\n");
+    content.push('\n');
+    crate::bootstrap::replace_with(runtime, "session.env", 0o600, |file| {
+        std::io::Write::write_all(file, content.as_bytes())
+    })?;
+    crate::bootstrap::root_bootstrap_tools(runtime)?;
+
+    let old_busybox = old
+        .iter()
+        .find(|path| path.contains("-busybox-static-"))
+        .cloned()
+        .unwrap_or_default();
+    for (link, file) in [("bin/sh", "bin/sh"), ("usr/bin/env", "bin/env")] {
+        let link = root.join(link);
+        let current = fs::read_link(&link).ok();
+        if current.as_deref() == Some(Path::new(&format!("{old_busybox}/{file}"))) {
+            replace_link(&link, &format!("{}/{file}", tools.busybox))?;
+        }
+    }
+
+    // What still needs a root: the new tools and any changed shell link.
+    let keep = crate::bootstrap::root_bootstrap_tools(runtime)?;
+    let roots = root.join(crate::bootstrap::BOOTSTRAP_GCROOT_DIR);
+    for path in old {
+        if !keep.contains(&path)
+            && let Some(name) = path.strip_prefix("/nix/store/")
+        {
+            let _ = fs::remove_file(roots.join(name));
+        }
+    }
+    Ok(())
+}
+
+/// Point the symlink `link` at `target`, atomically.
+fn replace_link(link: &Path, target: &str) -> Result<()> {
+    let staged = link.with_extension(format!("nixpp-{}", std::process::id()));
+    let _ = fs::remove_file(&staged);
+    std::os::unix::fs::symlink(target, &staged)
+        .with_context(|| format!("cannot create {}", staged.display()))?;
+    fs::rename(&staged, link).with_context(|| format!("cannot replace {}", link.display()))
 }
 
 /// The static busybox of the bootstrap seed, rooted under
@@ -314,7 +440,7 @@ mod tests {
         true) [ -n \"$LAUNCHER\" ] && exec \"$LAUNCHER\" --reexec; exit 0 ;;\n\
         esac\nexit 2\n";
     // TARGET ARGV0 ARGS, recording its own path for busybox's re-exec.
-    const CURRENT: &str = "#!/bin/sh\nt=$1; shift 2; LAUNCHER=$0 exec \"$t\" \"$@\"\n";
+    const CURRENT: &str = "#!/bin/sh\n[ \"$1\" = --reexec ] && exit 0\nt=$1; shift 2; LAUNCHER=$0 exec \"$t\" \"$@\"\n";
     const GOOD: &str =
         "#!/bin/sh\n# new\n[ \"$1\" = --reexec ] && exit 0\nt=$1; shift 2; exec \"$t\" \"$@\"\n";
     // Works on its own, dies like a moved syscall stub when re-exec'd.
@@ -370,6 +496,110 @@ mod tests {
     fn the_same_launcher_is_no_update() {
         let (_directory, runtime) = launcher_fixture(GOOD, GOOD);
         assert_eq!(launcher_pending(&runtime, &mut None), None);
+    }
+
+    /// A runtime whose bootstrap tools are `old-*`, a generation shipping
+    /// `new-*` ones, and pass-through launcher, busybox and nix scripts;
+    /// `nix_ok` decides whether the new nix runs.
+    fn tools_fixture(nix_ok: bool) -> (tempfile::TempDir, PathBuf, Tools) {
+        use std::os::unix::fs::PermissionsExt;
+        let executable = |path: &Path, content: &str| {
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, content).unwrap();
+            fs::set_permissions(path, fs::Permissions::from_mode(0o755)).unwrap();
+        };
+        let (directory, runtime, name) = fixture(b"nixpp");
+        let root = runtime.join("root");
+        let store =
+            |id: char, what: &str| format!("/nix/store/{}-{what}", id.to_string().repeat(32));
+        let (old_busybox, old_nix) = (
+            store('e', "busybox-static-1.36"),
+            store('f', "nix-static-2.24"),
+        );
+        let tools = Tools {
+            busybox: store('g', "busybox-static-1.37"),
+            nix: store('h', "nix-static-2.35"),
+        };
+        for path in [&old_busybox, &tools.busybox] {
+            executable(&root.join(&path[1..]).join("bin/busybox"), BUSYBOX);
+        }
+        executable(
+            &root.join(&old_nix[1..]).join("bin/nix"),
+            "#!/bin/sh\nexit 0\n",
+        );
+        executable(
+            &root.join(&tools.nix[1..]).join("bin/nix"),
+            if nix_ok {
+                "#!/bin/sh\n[ \"$1\" = --version ]\n"
+            } else {
+                "#!/bin/sh\nexit 1\n"
+            },
+        );
+        executable(&runtime.join("launcher"), CURRENT);
+        let generation = root.join("nix/store").join(&name).join("bootstrap");
+        fs::create_dir_all(&generation).unwrap();
+        symlink(&tools.busybox, generation.join("busybox")).unwrap();
+        symlink(&tools.nix, generation.join("nix")).unwrap();
+        fs::write(
+            runtime.join("session.env"),
+            format!("SESSION_USER=nix\nBOOTSTRAP_NIX={old_nix}\nBOOTSTRAP_BUSYBOX={old_busybox}\nSESSION_SHELL=/bin/sh\n"),
+        )
+        .unwrap();
+        fs::create_dir_all(root.join("bin")).unwrap();
+        fs::create_dir_all(root.join("usr/bin")).unwrap();
+        symlink(format!("{old_busybox}/bin/sh"), root.join("bin/sh")).unwrap();
+        // Changed on purpose: stays.
+        symlink("/run/current-system/sw/bin/env", root.join("usr/bin/env")).unwrap();
+        crate::bootstrap::root_bootstrap_tools(&runtime).unwrap();
+        (directory, runtime, tools)
+    }
+
+    #[test]
+    fn new_bootstrap_tools_replace_the_old_ones() {
+        let (_directory, runtime, tools) = tools_fixture(true);
+        let mut checked = None;
+        assert_eq!(tools_pending(&runtime, &mut checked).as_ref(), Some(&tools));
+        assert_eq!(tools_pending(&runtime, &mut checked), None);
+        install_tools(&runtime, &tools).unwrap();
+        let environment = fs::read_to_string(runtime.join("session.env")).unwrap();
+        assert!(environment.contains(&format!("BOOTSTRAP_NIX={}\n", tools.nix)));
+        assert!(environment.contains(&format!("BOOTSTRAP_BUSYBOX={}\n", tools.busybox)));
+        assert!(
+            environment.starts_with("SESSION_USER=nix\n")
+                && environment.ends_with("SESSION_SHELL=/bin/sh\n")
+        );
+        let root = runtime.join("root");
+        assert_eq!(
+            fs::read_link(root.join("bin/sh")).unwrap(),
+            Path::new(&format!("{}/bin/sh", tools.busybox))
+        );
+        assert_eq!(
+            fs::read_link(root.join("usr/bin/env")).unwrap(),
+            Path::new("/run/current-system/sw/bin/env")
+        );
+        let mut roots: Vec<_> = fs::read_dir(root.join(crate::bootstrap::BOOTSTRAP_GCROOT_DIR))
+            .unwrap()
+            .flatten()
+            .map(|entry| entry.file_name().into_string().unwrap())
+            .collect();
+        roots.sort();
+        let mut expected = vec![
+            tools.busybox.trim_start_matches("/nix/store/").to_owned(),
+            tools.nix.trim_start_matches("/nix/store/").to_owned(),
+        ];
+        expected.sort();
+        assert_eq!(roots, expected);
+        assert_eq!(tools_pending(&runtime, &mut None), None);
+    }
+
+    #[test]
+    fn bootstrap_tools_that_do_not_run_change_nothing() {
+        let (_directory, runtime, tools) = tools_fixture(false);
+        let before = fs::read(runtime.join("session.env")).unwrap();
+        let link = fs::read_link(runtime.join("root/bin/sh")).unwrap();
+        assert!(install_tools(&runtime, &tools).is_err());
+        assert_eq!(fs::read(runtime.join("session.env")).unwrap(), before);
+        assert_eq!(fs::read_link(runtime.join("root/bin/sh")).unwrap(), link);
     }
 
     /// The real thing, on aarch64 Linux: NIXPP_LAUNCHER_ABI_DIR holds the

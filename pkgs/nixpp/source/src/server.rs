@@ -119,6 +119,7 @@ impl Server {
         let prefix = std::env::var_os("PREFIX").map(PathBuf::from);
         let mut checked = None;
         let mut launcher_checked = None;
+        let mut tools_checked = None;
         // Wake on a new selected generation (a native update may come with it)
         // and a replaced APK, instead of polling for them.
         let mut watch = crate::watch::Watch::new(
@@ -127,6 +128,16 @@ impl Server {
         );
         while !stop.load(Ordering::SeqCst) && !crate::runtime_apk::replaced(&self.runtime) {
             // Before the nixpp, which returns to restart.
+            if let Some(tools) =
+                crate::native_update::tools_pending(&self.runtime, &mut tools_checked)
+            {
+                match crate::native_update::install_tools(&self.runtime, &tools) {
+                    Ok(()) => eprintln!(
+                        "nixpp: switched to the bootstrap tools of the selected generation"
+                    ),
+                    Err(error) => eprintln!("nixpp: kept the current bootstrap tools: {error:#}"),
+                }
+            }
             if let Some(source) =
                 crate::native_update::launcher_pending(&self.runtime, &mut launcher_checked)
             {
