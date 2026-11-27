@@ -1,8 +1,6 @@
 package com.termux.app.terminal;
 
 import android.app.Activity;
-import android.content.ClipData;
-import android.content.ClipDescription;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.net.Uri;
@@ -15,6 +13,7 @@ import com.termux.terminal.TerminalSession;
 
 import dev.pschmitt.termux.shared.logger.Logger;
 import dev.pschmitt.termux.shared.termux.TermuxConstants;
+import dev.pschmitt.termux.shared.termux.clipboard.ClipboardImage;
 import dev.pschmitt.termux.shared.termux.nix.TermuxNix;
 import dev.pschmitt.termux.shared.termux.shell.command.environment.TermuxShellEnvironment;
 
@@ -45,7 +44,7 @@ final class TerminalImagePaste {
     static final String HELPER = "termuxpp-image-paste";
     /** Read by the guest's wl-paste, see pkgs/nixpp/clipboard.nix. */
     static final File HANDOVER_DIR = new File(TermuxConstants.TERMUX_HOME_DIR_PATH, ".cache/termuxpp-clipboard");
-    static final long MAX_BYTES = 32L * 1024 * 1024;
+    static final long MAX_BYTES = ClipboardImage.MAX_BYTES;
     private static final long HELPER_TIMEOUT_SECONDS = 60;
     private static final int OUTPUT_LIMIT = 16 * 1024;
     private static final String CTRL_V = "\u0016";
@@ -72,18 +71,11 @@ final class TerminalImagePaste {
     @Nullable
     static Uri clipboardImage(@NonNull Context context, @NonNull String[] mimeType) {
         ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
-        ClipData clip = clipboard == null ? null : clipboard.getPrimaryClip();
-        if (clip == null || clip.getItemCount() == 0) return null;
-        Uri uri = clip.getItemAt(0).getUri();
-        if (uri == null) return null;
-        String type = context.getContentResolver().getType(uri);
-        ClipDescription description = clip.getDescription();
-        for (int i = 0; type == null && description != null && i < description.getMimeTypeCount(); i++) {
-            if (description.getMimeType(i).startsWith("image/")) type = description.getMimeType(i);
-        }
-        if (type == null || !type.startsWith("image/")) return null;
-        mimeType[0] = type;
-        return uri;
+        ClipboardImage image = ClipboardImage.find(
+            clipboard == null ? null : clipboard.getPrimaryClip(), context.getContentResolver());
+        if (image == null) return null;
+        mimeType[0] = image.mimeType;
+        return image.uri;
     }
 
     /**
@@ -140,17 +132,8 @@ final class TerminalImagePaste {
         dir.setExecutable(true, true);
         File partial = new File(dir, ".image.partial");
         File image = new File(dir, "image");
-        try (InputStream in = context.getContentResolver().openInputStream(uri);
-             OutputStream out = new FileOutputStream(partial)) {
-            if (in == null) throw new IOException("No content at " + uri);
-            byte[] buffer = new byte[64 * 1024];
-            long total = 0;
-            int read;
-            while ((read = in.read(buffer)) != -1) {
-                total += read;
-                if (total > MAX_BYTES) throw new IOException("The image is larger than " + (MAX_BYTES >> 20) + " MiB");
-                out.write(buffer, 0, read);
-            }
+        try (OutputStream out = new FileOutputStream(partial)) {
+            ClipboardImage.copy(context.getContentResolver(), uri, out);
         } catch (IOException e) {
             //noinspection ResultOfMethodCallIgnored
             partial.delete();

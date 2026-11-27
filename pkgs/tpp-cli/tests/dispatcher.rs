@@ -472,6 +472,21 @@ fn text_is_passed_through_and_wrapped_for_json() {
 }
 
 #[test]
+fn clipboard_images_use_raw_output_through_the_dispatcher() {
+    let fx = Fixture::new("clipboard-image");
+    let args = ["clipboard", "get", "--image-with-mime"];
+    let (output, call) = fx.app(&args, b"\0TPPIMG1\nimage/png\n4\n\xff\0\r\n");
+    assert_eq!(code(&output), 0, "{}", err(&output));
+    assert_eq!(output.stdout, b"image/png\n\xff\0\r\n");
+    assert_eq!(call.extra("api_version"), Some("3"));
+
+    let rejected = fx.run(&["--json", "clipboard", "get", "--image"]);
+    assert_eq!(code(&rejected), 2);
+    assert!(rejected.stdout.is_empty());
+    assert!(err(&rejected).contains("--json is not supported"));
+}
+
+#[test]
 fn binary_output_is_not_altered_and_refused_for_json() {
     let fx = Fixture::new("binary");
     let (o, _) = fx.app(&["toast", "hi"], b"ab\0cd");

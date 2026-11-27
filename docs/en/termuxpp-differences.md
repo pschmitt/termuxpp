@@ -479,6 +479,22 @@ the Android clipboard for text. Sources:
 [delivery](../../app/src/main/java/com/termux/app/terminal/TerminalImagePaste.java)
 and [guest tools](../../pkgs/nixpp/clipboard.nix).
 
+### Reading clipboard images with tpp
+
+Upstream `termux-clipboard-get` reads text. TermuxPP preserves that behavior
+for `tpp clipboard get` and adds two image modes. Use
+`tpp clipboard get --image > clipboard-image` for the original image bytes,
+or `tpp clipboard get --image-with-mime` for the MIME type on the first line
+followed by the same bytes. The latter reads the type and image from one
+clipboard item.
+
+Both modes need the updated app and CLI and Android clipboard access while
+TermuxPP has input focus. They fail without writing an image when the clip
+is unavailable, marked sensitive, or larger than 32 MiB.
+Sources:
+[Android clipboard API](../../android/components/termux-api/app/src/main/java/dev/pschmitt/termux/api/apis/ClipboardAPI.java)
+and [CLI](../../pkgs/tpp-api/src/cmd/clipboard_get.rs).
+
 ## Multi-finger terminal swipes
 
 TermuxPP can bind a two- or three-finger swipe to a terminal gesture action.

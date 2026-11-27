@@ -12,6 +12,14 @@ fn help_and_illegal_option_match_the_scripts() {
     };
     for imp in tpp_api::IMPLS {
         for args in [&["-h"][..], &["-Z"], &["--help"]] {
+            if *imp == "clipboard-get" && args == ["-h"] {
+                // The public help documents the integrated app's image modes.
+                let (outcome, calls) = h.rust(imp, args, b"", &[]);
+                assert_eq!(outcome.status, 0);
+                assert_eq!(outcome.stdout_str(), tpp_api::usage(imp).unwrap());
+                assert!(calls.is_empty());
+                continue;
+            }
             // wifi-enable takes the keyword first in the dispatcher's table, but
             // the script itself sees only the user arguments, as we do
             if *imp == "microphone-record" {
@@ -43,7 +51,11 @@ fn usage_text_is_the_captured_help() {
     };
     for imp in tpp_api::IMPLS {
         let (o, _) = h.oracle(imp, &["-h"], b"", &["0\n"]);
-        if o.status == 0 {
+        if *imp == "clipboard-get" {
+            let usage = tpp_api::usage(imp).unwrap();
+            assert!(usage.contains("-i  Write the original clipboard image bytes"));
+            assert!(usage.contains("-m  Write the image MIME type"));
+        } else if o.status == 0 {
             assert_eq!(
                 tpp_api::usage(imp).unwrap(),
                 o.stdout_str(),

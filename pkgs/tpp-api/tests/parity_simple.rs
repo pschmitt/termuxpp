@@ -39,6 +39,10 @@ fn simple_commands() {
             &["-x", "-h"],
             &["--"],
         ] {
+            if *imp == "clipboard-get" && args.first() == Some(&"-h") {
+                // TermuxPP's help also describes the two image modes.
+                continue;
+            }
             parity(&h, Case::new(imp, args).replies(&reply));
         }
     }
