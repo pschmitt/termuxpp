@@ -277,8 +277,9 @@ After editing the file, run `tpp settings reload`. Open the sidebar while a
 tmux attachment is active to see its windows. The highlight follows the active
 tmux window, including when you switch with a keyboard shortcut.
 
-**Terminal tmux sidebar style** previews the active window with either a
-subtle outline and accent dot or a filled rounded accent pill. Set
+**Terminal tmux sidebar style** marks the active tmux window and the
+current terminal session with either a subtle outline (plus an accent dot
+or number badge) or a filled rounded accent pill. Set
 `tmux.sidebar.style: rounded` (default) or `subtle`.
 
 Under **Sidebars**, choose whether each drawer shows terminal sessions,

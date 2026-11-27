@@ -1019,7 +1019,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             TerminalSession session = termuxSession == null ? null : termuxSession.getTerminalSession();
             if (session == null) continue;
             View row = getLayoutInflater().inflate(R.layout.item_terminal_sessions_list, list, false);
-            TermuxSessionsListViewController.bindSessionSummary(this, row, session, index + 1);
+            TermuxSessionsListViewController.bindSessionSummary(this, row, session, index + 1, isTmuxSidebarRounded());
             if (session == getCurrentSession()) {
                 row.setActivated(true);
                 currentRow = row;
@@ -1140,6 +1140,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         });
     }
 
+    /** Whether the sidebars mark the current session and tmux window with a filled accent pill rather than an outline. */
+    public boolean isTmuxSidebarRounded() {
+        return TermuxPropertyConstants.TMUX_SIDEBAR_ROUNDED.equals(mProperties.getInternalPropertyValue(
+            TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_STYLE, true));
+    }
+
     private String tmuxSidebarLayout() {
         return (String) mProperties.getInternalPropertyValue(
             TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_LAYOUT, true);
@@ -1213,8 +1219,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     @Nullable
     private View addTmuxWindows(LinearLayout container, TerminalSession session, JSONArray windows,
                                 boolean guide, @Nullable PickerReference picker) {
-        boolean rounded = TermuxPropertyConstants.TMUX_SIDEBAR_ROUNDED.equals(mProperties.getInternalPropertyValue(
-            TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_STYLE, true));
+        boolean rounded = isTmuxSidebarRounded();
         int foreground = ContextCompat.getColor(this, R.color.ui_on_surface);
         int muted = ContextCompat.getColor(this, R.color.ui_on_surface_variant);
         int accent = MaterialColors.getColor(container, R.attr.termuxUiPrimary);

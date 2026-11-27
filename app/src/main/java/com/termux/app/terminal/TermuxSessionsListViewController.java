@@ -60,7 +60,7 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
         TerminalSession sessionAtRow = getItem(position).getTerminalSession();
         LinearLayout tmux = sessionRowView.findViewById(R.id.session_tmux_windows);
         mActivity.bindTmuxWindows(tmux, sessionAtRow, rightSidebar);
-        bindSessionSummary(mActivity, sessionRowView, sessionAtRow, position + 1);
+        bindSessionSummary(mActivity, sessionRowView, sessionAtRow, position + 1, mActivity.isTmuxSidebarRounded());
         return sessionRowView;
     }
 
@@ -70,17 +70,19 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
      */
     @SuppressLint("SetTextI18n")
     public static void bindSessionSummary(@NonNull Context context, @NonNull View sessionRowView,
-                                          @Nullable TerminalSession sessionAtRow, int number) {
+                                          @Nullable TerminalSession sessionAtRow, int number, boolean rounded) {
         TextView sessionIndexView = sessionRowView.findViewById(R.id.session_index);
         TextView sessionTitleView = sessionRowView.findViewById(R.id.session_title);
         TextView sessionSubtitleView = sessionRowView.findViewById(R.id.session_subtitle);
         sessionIndexView.setText(String.valueOf(number));
 
         View header = sessionRowView.findViewById(R.id.session_header);
+        applyRowStyle(context, header, sessionIndexView, sessionSubtitleView, rounded);
+        int rowText = rounded ? R.color.ui_session_row_text : R.color.ui_on_surface;
         if (sessionAtRow == null) {
             sessionTitleView.setText(R.string.ui_session_null);
             sessionTitleView.setPaintFlags(sessionTitleView.getPaintFlags() & ~Paint.STRIKE_THRU_TEXT_FLAG);
-            sessionTitleView.setTextColor(ContextCompat.getColorStateList(context, R.color.ui_session_row_text));
+            sessionTitleView.setTextColor(ContextCompat.getColorStateList(context, rowText));
             sessionSubtitleView.setVisibility(View.GONE);
             header.setContentDescription(number + ", " + context.getString(R.string.ui_session_null));
             return;
@@ -121,9 +123,27 @@ public class TermuxSessionsListViewController extends ArrayAdapter<TermuxSession
         }
         boolean failed = !sessionRunning && sessionAtRow.getExitStatus() != 0;
         sessionTitleView.setTextColor(ContextCompat.getColorStateList(context,
-            failed ? R.color.ui_session_failed_text : R.color.ui_session_row_text));
+            failed ? rounded ? R.color.ui_session_failed_text : R.color.ui_danger : rowText));
 
         header.setContentDescription(subtitle.isEmpty() ? number + ", " + title : number + ", " + title + ", " + subtitle);
+    }
+
+    /**
+     * Mark the current session like the active tmux window: an accent pill in the rounded sidebar style, a
+     * tinted outline with an accent number badge in the subtle style.
+     */
+    private static void applyRowStyle(@NonNull Context context, @NonNull View header, @NonNull TextView badge,
+                                      @NonNull TextView subtitle, boolean rounded) {
+        // A background with insets sets its insets as the view's padding, so keep the padding of the layout.
+        int start = header.getPaddingStart(), top = header.getPaddingTop();
+        int end = header.getPaddingEnd(), bottom = header.getPaddingBottom();
+        header.setBackgroundResource(rounded ? R.drawable.ui_session_bg : R.drawable.ui_session_bg_subtle);
+        header.setPaddingRelative(start, top, end, bottom);
+        badge.setBackgroundResource(rounded ? R.drawable.ui_session_badge_bg : R.drawable.ui_session_badge_bg_subtle);
+        badge.setTextColor(ContextCompat.getColorStateList(context,
+            rounded ? R.color.ui_session_badge_text : R.color.ui_session_badge_text_subtle));
+        subtitle.setTextColor(ContextCompat.getColorStateList(context,
+            rounded ? R.color.ui_session_row_text : R.color.ui_on_surface));
     }
 
     /**

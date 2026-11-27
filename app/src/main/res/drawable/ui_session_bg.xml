@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Session row: transparent, filled container when it is the current session (activated). -->
+<!-- Session row in the rounded sidebar style: transparent, an accent pill when it is the current session (activated). -->
 <ripple xmlns:android="http://schemas.android.com/apk/res/android"
     android:color="?attr/termuxUiRipple">
     <item android:id="@android:id/mask">
@@ -23,7 +23,7 @@
                     android:insetTop="2dp"
                     android:insetBottom="2dp">
                     <shape android:shape="rectangle">
-                        <solid android:color="?attr/termuxUiGroup" />
+                        <solid android:color="?attr/termuxUiPrimary" />
                         <corners android:radius="28dp" />
                     </shape>
                 </inset>

@@ -21,6 +21,9 @@
     <color name="ui_session_shelf">#291F33</color>
     <color name="ui_settings_search">#403450</color>
     <color name="ui_settings_group">#2B2235</color>
+    <!-- The current session in the subtle sidebar style: the foreground at the tmux rows' tint and outline alpha. -->
+    <color name="ui_session_subtle_fill">#12E8E0EE</color>
+    <color name="ui_session_subtle_stroke">#22E8E0EE</color>
     <color name="ui_sheet_surface">#111218</color>
     <color name="ui_sheet_card">#181921</color>
     <color name="ui_sheet_border">#2A2B36</color>
