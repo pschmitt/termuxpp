@@ -120,6 +120,7 @@ impl Server {
         let mut checked = None;
         let mut launcher_checked = None;
         let mut tools_checked = None;
+        let mut prefix_checked = None;
         // Wake on a new selected generation (a native update may come with it)
         // and a replaced APK, instead of polling for them.
         let mut watch = crate::watch::Watch::new(
@@ -136,6 +137,27 @@ impl Server {
                         "nixpp: switched to the bootstrap tools of the selected generation"
                     ),
                     Err(error) => eprintln!("nixpp: kept the current bootstrap tools: {error:#}"),
+                }
+            }
+            if let Some(prefix) = &prefix
+                && let Some(entries) =
+                    crate::prefix_update::pending(&self.runtime, &mut prefix_checked)
+            {
+                match crate::prefix_update::sync(&self.runtime, prefix, &entries) {
+                    Ok(report) => {
+                        for path in &report.installed {
+                            eprintln!("nixpp: installed {path} into the native prefix");
+                        }
+                        for path in &report.removed {
+                            eprintln!("nixpp: removed {path} from the native prefix");
+                        }
+                        for path in &report.kept {
+                            eprintln!(
+                                "nixpp: kept {path} in the native prefix: changed since nixpp installed it"
+                            );
+                        }
+                    }
+                    Err(error) => eprintln!("nixpp: could not update the native prefix: {error:#}"),
                 }
             }
             if let Some(source) =

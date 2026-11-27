@@ -22,6 +22,7 @@ mod lease;
 pub(crate) mod native_update;
 mod outer;
 mod outer_remote;
+pub(crate) mod prefix_update;
 pub mod progress;
 pub mod provision;
 pub mod runner;
