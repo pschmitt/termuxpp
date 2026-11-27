@@ -385,6 +385,10 @@ pub fn switch_with_backup(
         ));
     }
     let data = candidate_manifest(&runtime, name)?;
+    // The candidate's checks and activation run through runtime/launcher: a
+    // candidate that ships a launcher fix needs it first. It is compatible
+    // with the current generation (same stub ABI, checked by the smoke test).
+    crate::native_update::adopt_candidate_launcher(&runtime, name);
     if !data.activation_supported {
         return Err(Error::invalid(
             "candidate does not support coordinated activation",

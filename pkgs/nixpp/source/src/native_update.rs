@@ -49,6 +49,22 @@ pub(crate) fn launcher_pending(runtime: &Path, checked: &mut Option<String>) -> 
     (digest(&source).ok()? != digest(&runtime.join("launcher")).ok()?).then_some(source)
 }
 
+/// Before switching to `name`: take its launcher if it ships a different
+/// one that passes the smoke test. Never fails the switch; a refused
+/// launcher is reported and the current one stays.
+pub(crate) fn adopt_candidate_launcher(runtime: &Path, name: &str) {
+    let Some(source) = shipped(runtime, name, "launcher") else {
+        return;
+    };
+    if digest(&source).ok() == digest(&runtime.join("launcher")).ok() {
+        return;
+    }
+    match install_launcher(runtime, &source) {
+        Ok(()) => eprintln!("nixpp: installed the candidate's launcher before switching"),
+        Err(error) => eprintln!("nixpp: kept the current launcher for the switch: {error:#}"),
+    }
+}
+
 /// Replace `runtime/launcher` with `source` once `source` has started the
 /// bootstrap busybox. A launcher that cannot would lock every session out of
 /// the guest, so it is refused and the current one stays.
@@ -221,30 +237,32 @@ fn smoke_test(
     busybox: &Path,
     scratch_parent: &Path,
 ) -> Result<()> {
-    let alone = Command::new(candidate)
-        .arg(busybox)
-        .args(["busybox", "true"])
-        .env_clear()
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-        .with_context(|| format!("cannot run {}", candidate.display()))?;
+    let alone = spawn(
+        Command::new(candidate)
+            .arg(busybox)
+            .args(["busybox", "true"])
+            .env_clear()
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null()),
+    )
+    .with_context(|| format!("cannot run {}", candidate.display()))?;
     wait_ok(alone).context("the new launcher failed to run busybox")?;
 
     let scratch = Scratch::new(scratch_parent)?;
     let probe = scratch.0.join("launcher");
     copy_executable(current, &probe)?;
-    let mut shell = Command::new(&probe)
-        .arg(busybox)
-        .args(["busybox", "sh", "-c", "read line && exec \"$0\" true"])
-        .arg(busybox)
-        .env_clear()
-        .stdin(Stdio::piped())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .spawn()
-        .with_context(|| format!("cannot run {}", probe.display()))?;
+    let mut shell = spawn(
+        Command::new(&probe)
+            .arg(busybox)
+            .args(["busybox", "sh", "-c", "read line && exec \"$0\" true"])
+            .arg(busybox)
+            .env_clear()
+            .stdin(Stdio::piped())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null()),
+    )
+    .with_context(|| format!("cannot run {}", probe.display()))?;
     let staged = scratch.0.join("launcher.new");
     let swapped = copy_executable(candidate, &staged)
         .and_then(|()| fs::rename(&staged, &probe).context("cannot swap in the new launcher"));
@@ -261,6 +279,21 @@ fn smoke_test(
     }
     wait_ok(shell)
         .context("the new launcher failed when exec'd under the current launcher's seccomp filter")
+}
+
+/// Spawn `command`, retrying while the kernel reports the file busy: the
+/// daemon is multi-threaded, and a child another thread just forked can still
+/// hold the freshly written copy open for writing (ETXTBSY).
+fn spawn(command: &mut Command) -> std::io::Result<std::process::Child> {
+    for _ in 0..40 {
+        match command.spawn() {
+            Err(error) if error.raw_os_error() == Some(libc::ETXTBSY) => {
+                std::thread::sleep(Duration::from_millis(50));
+            }
+            result => return result,
+        }
+    }
+    command.spawn()
 }
 
 /// Wait up to [`SMOKE_TIMEOUT`] for `child`; it must exit 0.
@@ -473,6 +506,22 @@ mod tests {
             })
             .collect();
         assert!(leftovers.is_empty());
+    }
+
+    #[test]
+    fn a_switch_adopts_a_working_candidate_launcher_and_keeps_a_broken_one_out() {
+        let (_directory, runtime) = launcher_fixture(GOOD, CURRENT);
+        let name = fs::read_to_string(runtime.join("current-system")).unwrap();
+        adopt_candidate_launcher(&runtime, name.trim_end());
+        assert_eq!(fs::read(runtime.join("launcher")).unwrap(), GOOD.as_bytes());
+
+        let (_directory, runtime) = launcher_fixture(MOVED, CURRENT);
+        let name = fs::read_to_string(runtime.join("current-system")).unwrap();
+        adopt_candidate_launcher(&runtime, name.trim_end());
+        assert_eq!(
+            fs::read(runtime.join("launcher")).unwrap(),
+            CURRENT.as_bytes()
+        );
     }
 
     #[test]
