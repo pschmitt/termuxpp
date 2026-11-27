@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Regenerates src/unicode.rs from the Unicode tables of the running Python.
 
-tpp-session reproduces Python's str.isprintable(), str.isspace() and int() for the session list
+tpp session reproduces Python's str.isprintable(), str.isspace() and int() for the session list
 and for argument parsing, so the tables come from Python itself:
 
     python3 -I tools/gen_unicode_tables.py > src/unicode.rs

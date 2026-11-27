@@ -2,8 +2,7 @@
 //! command line behind their name, as opposed to the table commands whose output
 //! the dispatcher renders.
 //!
-//! Today that is `tpp session`, the terminal session control of the app
-//! (`tpp-session`). The same code answers to `tpp-session` as argv[0].
+//! For example `tpp session`, the terminal session control of the app.
 
 use std::ffi::OsString;
 use std::io::Write;
@@ -19,8 +18,6 @@ pub const GROUPS: &[(&str, &str)] = &[
     ("ui", "Open the TermuxPP interface"),
 ];
 
-/// The program name that runs the session group on its own.
-pub const SESSION_PROGRAM: &str = "tpp-session";
 
 pub fn is_native(name: &str) -> bool {
     GROUPS.iter().any(|(n, _)| *n == name)

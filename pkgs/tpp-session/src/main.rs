@@ -1,4 +1,5 @@
-//! The `tpp-session` command: one static binary for the Android prefix and the Nix guest.
+//! A test-only wrapper that runs `tpp session` on its own, for the integration tests. The shipped
+//! program is `tpp`, which links the library.
 
 use std::io::{IsTerminal, Write};
 use std::process::ExitCode;

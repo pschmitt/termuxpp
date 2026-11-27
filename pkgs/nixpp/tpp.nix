@@ -1,5 +1,5 @@
 # The tpp executable for the managed Linux guest: the Rust workspace's `tpp`
-# (crate tpp-cli, with the session control of tpp-session linked in). The
+# (crate tpp-cli, with the session control crate tpp-session linked in). The
 # crates have no third-party dependencies, so Cargo.lock needs no vendoring.
 # The Android build of the same executable is made by app/tpp-native.gradle.
 {
@@ -22,7 +22,6 @@ let
     "/pkgs/tpp-api/src"
     "/pkgs/tpp-api/help"
     "/pkgs/tpp-session/src"
-    "/pkgs/tpp-session/assets"
   ];
   sourceVersion = builtins.hashString "sha256" (
     lib.concatMapStrings (

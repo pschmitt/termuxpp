@@ -18,7 +18,7 @@ DESTDIR="$PWD/staging" cmake --install build-android
 This installs the platform bridge (the C client of the socket protocol,
 `libtermux-api` and `termux-callback`) and the completions; there are no command
 scripts. The `tpp` executable itself is the Rust workspace at the repository root
-(`cargo build --release -p tpp`, crate `tpp-cli`, with the session control `tpp-session`
+(`cargo build --release -p tpp`, crate `tpp-cli`, with the session control crate `tpp-session`
 and the API backends `tpp-api` linked in); its command table is
 `tpp-cli/src/commands.rs`, which a test keeps in step with the commands of
 `tpp-api`. Every command runs in the binary. `tpp-api/tests/oracle` keeps a copy
@@ -42,8 +42,8 @@ packs `termux-callback.in` and the completions into the APK
 assets, builds `termux-api-broadcast` with the NDK as
 `libtermux-api-broadcast.so` and the Rust `tpp` executable (workspace crate
 `tpp-cli`, with the session control and `tpp-api` linked in) as `libtpp.so` (only `lib*.so`
-files are extracted from an APK). `bin/tpp` and `bin/tpp-session` are links to
-that one executable. At app and session start
+files are extracted from an APK). `bin/tpp` is a link to
+that executable. At app and session start
 `NativeCliInstaller` copies the assets into the prefix (replacing
 `@TERMUX_PREFIX@`) and links `libexec/termux-api-broadcast` to the library, so an
 app update updates the CLI. It writes only paths that are absent or that it

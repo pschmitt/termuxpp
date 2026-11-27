@@ -178,7 +178,7 @@ fn write_string(text: &mut String, value: &str) {
     text.push('"');
 }
 
-/// Wraps the tokens of pretty-printed JSON in the colors `tpp-session` has always used:
+/// Wraps the tokens of pretty-printed JSON in the colors `tpp session` has always used:
 /// keys 36, strings 32, `true`/`false`/`null` 35 and numbers 33.
 pub fn colorize(json: &str) -> String {
     let bytes = json.as_bytes();

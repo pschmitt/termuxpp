@@ -5,8 +5,8 @@
 //! the crate `tpp-api` and runs in the binary (`api.rs`); there are no command
 //! scripts. Executables in `$TPP_PLUGIN_DIR` add more commands.
 //!
-//! The binary also contains the session control (`tpp session`, also installed
-//! as `tpp-session`), see `native.rs`.
+//! The binary also contains the session control (`tpp session`), see
+//! `native.rs`.
 //!
 //! Environment:
 //!   TPP_PLUGIN_DIR   colon-separated plugin directories, may be empty
@@ -36,14 +36,12 @@ mod ui;
 
 fn main() {
     let mut args = std::env::args_os();
-    // One binary, several names: tpp-session is the session group of tpp
+    // One binary, two names: tpp-setup-storage runs the storage setup
     let program = args.next().unwrap_or_default();
     let name = std::path::Path::new(&program)
         .file_name()
         .unwrap_or_default();
-    let code = if name == native::SESSION_PROGRAM {
-        cli::run_native("session", args.collect())
-    } else if name == "tpp-setup-storage" {
+    let code = if name == "tpp-setup-storage" {
         storage::run(args.collect())
     } else {
         cli::run(args.collect())

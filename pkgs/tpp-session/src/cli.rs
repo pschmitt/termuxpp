@@ -1,19 +1,14 @@
-//! The `tpp-session` command: parses the command line, asks the app and prints the answer.
+//! The `tpp session` command: parses the command line, asks the app and prints the answer.
 
 use std::io::Write;
 
-use crate::args::{self, Command, Outcome, Parsed, Shell};
+use crate::args::{self, Command, Outcome, Parsed};
 use crate::client::{Exchange, ExchangeError, COMMAND_TIMEOUT};
 use crate::complete;
 use crate::json::{self, Value};
 use crate::printable::is_printable;
 
-const PROGRAM: &str = "tpp-session";
-
-/// The completion scripts, which `tpp-session completions SHELL` prints.
-const BASH_COMPLETIONS: &str = include_str!("../assets/session-completions/bash");
-const FISH_COMPLETIONS: &str = include_str!("../assets/session-completions/fish");
-const ZSH_COMPLETIONS: &str = include_str!("../assets/session-completions/zsh");
+const PROGRAM: &str = "tpp session";
 
 /// What the command needs to know about the terminal it runs in.
 pub struct Environment {
@@ -61,17 +56,6 @@ fn execute(
     environment: &Environment,
     out: &mut dyn Write,
 ) -> Result<(), String> {
-    if let Command::Completions { shell } = &parsed.command {
-        let text = completions(*shell);
-        if parsed.json {
-            let result = Value::Object(vec![("output".to_string(), Value::string(text))]);
-            print_json(out, &result, environment);
-        } else {
-            let _ = out.write_all(text.as_bytes());
-        }
-        return Ok(());
-    }
-
     let reply = request_app(exchange, &request(&parsed.command))?;
 
     if parsed.command == Command::List {
@@ -126,14 +110,6 @@ fn unexpected(reply: &Value) -> String {
     format!("unexpected reply from TermuxPP: {}", reply.to_compact())
 }
 
-fn completions(shell: Shell) -> &'static str {
-    match shell {
-        Shell::Bash => BASH_COMPLETIONS,
-        Shell::Fish => FISH_COMPLETIONS,
-        Shell::Zsh => ZSH_COMPLETIONS,
-    }
-}
-
 /// The request line for the app: `[command, id?, name or position?]`.
 fn request(command: &Command) -> Value {
     let mut items = vec![Value::string(command.name())];
@@ -153,10 +129,7 @@ fn request(command: &Command) -> Value {
             items.push(Value::string(id.as_str()));
             items.push(Value::string(name.as_str()));
         }
-        Command::List
-        | Command::Completions { .. }
-        | Command::ReloadSettings
-        | Command::Switcher => {}
+        Command::List | Command::ReloadSettings | Command::Switcher => {}
     }
     Value::Array(items)
 }
@@ -179,11 +152,7 @@ fn outcome(command: &Command) -> Value {
             entries.push(("id".to_string(), Value::string(id.as_str())));
             entries.push(("name".to_string(), Value::string(name.as_str())));
         }
-        Command::List
-        | Command::New { .. }
-        | Command::Completions { .. }
-        | Command::ReloadSettings
-        | Command::Switcher => {}
+        Command::List | Command::New { .. } | Command::ReloadSettings | Command::Switcher => {}
     }
     Value::Object(entries)
 }
@@ -423,38 +392,20 @@ mod tests {
     }
 
     #[test]
-    fn completions_print_the_script_without_asking_the_app() {
-        let fake = Fake::failing(ExchangeError::Failed("must not be called".into()));
-        for (shell, script) in [
-            ("bash", BASH_COMPLETIONS),
-            ("fish", FISH_COMPLETIONS),
-            ("zsh", ZSH_COMPLETIONS),
-        ] {
-            let result = run_with(&fake, false, &format!("completions {shell}"));
-            assert_eq!((result.status, result.out.as_str()), (0, script), "{shell}");
-            let json = run_with(&fake, false, &format!("--json completions {shell}"));
-            let value = json::parse(&json.out).unwrap();
-            assert_eq!(value.get("output"), Some(&Value::string(script)), "{shell}");
-            assert!(json.out.starts_with("{\n  \"output\": \""));
-        }
-        assert!(fake.requests.borrow().is_empty());
-    }
-
-    #[test]
     fn failures_go_to_standard_error_with_status_one() {
         let result = ran(r#"{"error": "no such session"}"#, "close abc");
         assert_eq!(
             (result.status, result.out.as_str(), result.err.as_str()),
-            (1, "", "tpp-session: no such session\n")
+            (1, "", "tpp session: no such session\n")
         );
         // with or without --json
         let result = ran(r#"{"error": "no such session"}"#, "--json close abc");
         assert_eq!(
             (result.status, result.out.as_str(), result.err.as_str()),
-            (1, "", "tpp-session: no such session\n")
+            (1, "", "tpp session: no such session\n")
         );
         let result = ran(r#"{"error": 5}"#, "list");
-        assert_eq!(result.err, "tpp-session: 5\n");
+        assert_eq!(result.err, "tpp session: 5\n");
     }
 
     #[test]
@@ -464,7 +415,7 @@ mod tests {
         ));
         let result = run_with(&fake, false, "list");
         assert_eq!(result.status, 1);
-        assert_eq!(result.err, "tpp-session: cannot reach TermuxPP; open the app first ([Errno 111] Connection refused)\n");
+        assert_eq!(result.err, "tpp session: cannot reach TermuxPP; open the app first ([Errno 111] Connection refused)\n");
     }
 
     #[test]
@@ -473,7 +424,7 @@ mod tests {
         let result = run_with(&fake, false, "kill abc");
         assert_eq!(
             (result.status, result.err.as_str()),
-            (1, "tpp-session: timed out\n")
+            (1, "tpp session: timed out\n")
         );
     }
 
@@ -496,7 +447,7 @@ mod tests {
             assert!(
                 result
                     .err
-                    .starts_with("tpp-session: unexpected reply from TermuxPP"),
+                    .starts_with("tpp session: unexpected reply from TermuxPP"),
                 "{reply}: {}",
                 result.err
             );
@@ -507,12 +458,12 @@ mod tests {
     fn usage_goes_to_the_right_stream() {
         let help = ran("{}", "--help");
         assert_eq!((help.status, help.err.as_str()), (0, ""));
-        assert!(help.out.starts_with("usage: tpp-session [-h] [--json]\n"));
+        assert!(help.out.starts_with("usage: tpp session [-h] [--json]\n"));
         let usage = ran("{}", "close");
         assert_eq!((usage.status, usage.out.as_str()), (2, ""));
         assert!(usage
             .err
-            .ends_with("tpp-session close: error: the following arguments are required: id\n"));
+            .ends_with("tpp session close: error: the following arguments are required: id\n"));
         assert!(usage.requests.is_empty());
     }
 

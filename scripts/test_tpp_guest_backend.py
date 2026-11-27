@@ -49,8 +49,9 @@ class GuestBackendTests(unittest.TestCase):
         self.assertIn("export TPP_API_AM=${termux-am}/bin/am", NIX)
         self.assertIn("export TPP_API_PATH_CMD=${androidPath}", NIX)
 
-    def test_tpp_session_is_the_same_binary(self):
-        self.assertIn("exec -a tpp-session ${tppCli}/bin/tpp", NIX)
+    def test_sessions_are_a_tpp_command_only(self):
+        self.assertNotIn("tpp-session", NIX)
+        self.assertNotIn("tpp-reload-settings", NIX)
         self.assertNotIn("python3 \"$script\"", NIX)
 
     def test_build_validates_every_command(self):

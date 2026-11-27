@@ -20,26 +20,11 @@ let
     packageName = "dev.pschmitt.termux";
     dataDir = "/android/data/data/dev.pschmitt.termux";
   };
-  # The one tpp executable. tpp-session is the same file under another name
-  # (it picks the session control by its argv[0]); the Android app's session
-  # socket is reached through the abstract socket namespace, so no file of the
-  # app prefix is involved.
+  # The one tpp executable; the Android app's session socket is reached
+  # through the abstract socket namespace, so no file of the app prefix is
+  # involved.
   tppCli = callPackage ./tpp.nix { };
   inherit (callPackage ./default.nix { }) signalStack;
-  session = writeShellApplication {
-    name = "tpp-session";
-    text = ''
-      export LD_PRELOAD=${signalStack}/lib/stack.so''${LD_PRELOAD:+:$LD_PRELOAD}
-      exec -a tpp-session ${tppCli}/bin/tpp "$@"
-    '';
-  };
-  reloadSettings = writeShellApplication {
-    name = "tpp-reload-settings";
-    text = ''
-      export LD_PRELOAD=${signalStack}/lib/stack.so''${LD_PRELOAD:+:$LD_PRELOAD}
-      exec -a tpp-session ${tppCli}/bin/tpp reload-settings "$@"
-    '';
-  };
   notifySend = writeShellApplication {
     name = "notify-send";
     text = ''
@@ -49,14 +34,6 @@ let
       exec ${lib.getExe python3} ${./scripts/notify-send.py} "$@"
     '';
   };
-  sessionCompletions = runCommand "tpp-session-completions" { } ''
-    install -Dm644 ${../../pkgs/tpp-session/assets/session-completions/bash} \
-      "$out/share/bash-completion/completions/tpp-session"
-    install -Dm644 ${../../pkgs/tpp-session/assets/session-completions/fish} \
-      "$out/share/fish/vendor_completions.d/tpp-session.fish"
-    install -Dm644 ${../../pkgs/tpp-session/assets/session-completions/zsh} \
-      "$out/share/zsh/site-functions/_tpp-session"
-  '';
   # TermuxPP already runs the upstream TermuxAm socket server. Droid-nix uses
   # the same protocol but places the socket directly under its files directory.
   termux-am = (callPackage (source + "/termux-am.nix") { inherit androidApp; }).overrideAttrs (old: {
@@ -188,11 +165,8 @@ symlinkJoin {
   paths = [
     tpp
     tppCompletions
-    session
-    reloadSettings
     notifySend
     openTools.xdg_open
-    sessionCompletions
   ];
   postBuild = ''
     ln -s ${openTools.open}/bin/droid-nix-open "$out/bin/tpp-open"

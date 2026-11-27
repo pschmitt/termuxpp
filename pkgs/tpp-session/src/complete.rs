@@ -1,13 +1,13 @@
-//! Shell completion: `tpp-session __complete WORD...` prints the candidates for the last WORD.
+//! Shell completion: `tpp session __complete WORD...` prints the candidates for the last WORD.
 //!
-//! The shell completion scripts call this, so the candidates always match the installed program,
-//! and session IDs and positions come live from the app.
+//! The `tpp` completion completes `tpp session` with this, so the candidates always match the
+//! installed program, and session IDs and positions come live from the app.
 
 use crate::client::{Exchange, COMPLETION_TIMEOUT};
 use crate::json::Value;
 
 /// The commands in the order completion offers them.
-pub const ACTIONS: [&str; 10] = [
+pub const ACTIONS: [&str; 9] = [
     "list",
     "new",
     "close",
@@ -16,13 +16,10 @@ pub const ACTIONS: [&str; 10] = [
     "move",
     "rename",
     "reload-settings",
-    "completions",
     "switcher",
 ];
 /// The commands that take a session ID first.
 const ID_ACTIONS: [&str; 5] = ["close", "focus", "kill", "move", "rename"];
-/// The shells `completions` can print a script for.
-pub const SHELLS: [&str; 3] = ["bash", "fish", "zsh"];
 
 /// The values of one field of every session that start with `prefix`. Nothing when the app is
 /// unreachable, slow or answers something unexpected.
@@ -48,7 +45,7 @@ fn session_values(exchange: &dyn Exchange, key: &str, prefix: &str) -> Vec<Strin
     values
 }
 
-/// Candidates for the last of `words`, the words after `tpp-session`.
+/// Candidates for the last of `words`, the words after `tpp session`.
 pub fn complete(words: &[String], exchange: &dyn Exchange) -> Vec<String> {
     let Some((current, mut before)) = words.split_last().map(|(last, rest)| (last.as_str(), rest))
     else {
@@ -97,16 +94,6 @@ pub fn complete(words: &[String], exchange: &dyn Exchange) -> Vec<String> {
             .collect();
     }
     let positional = rest.iter().filter(|word| !word.starts_with('-')).count();
-    if action == "completions" {
-        if positional > 0 {
-            return Vec::new();
-        }
-        return SHELLS
-            .iter()
-            .filter(|shell| shell.starts_with(current))
-            .map(|shell| shell.to_string())
-            .collect();
-    }
     if ID_ACTIONS.contains(&action) {
         if positional == 0 {
             return session_values(exchange, "id", current);
@@ -163,7 +150,7 @@ mod tests {
     fn offers_commands_and_help_first() {
         assert_eq!(run("li"), ["list"]);
         assert_eq!(run("re"), ["rename", "reload-settings"]);
-        assert_eq!(run("--json c"), ["close", "completions"]);
+        assert_eq!(run("--json c"), ["close"]);
         assert_eq!(run("--json --json --h"), ["--help"]);
         assert_eq!(
             offline(""),
@@ -176,7 +163,6 @@ mod tests {
                 "move",
                 "rename",
                 "reload-settings",
-                "completions",
                 "switcher",
                 "--help"
             ]
@@ -196,15 +182,6 @@ mod tests {
         assert!(offline("bogus --").is_empty());
         assert!(offline("--help list --").is_empty());
         assert!(offline("-h ").is_empty());
-    }
-
-    #[test]
-    fn offers_shells_once() {
-        assert_eq!(offline("completions "), ["bash", "fish", "zsh"]);
-        assert_eq!(offline("completions b"), ["bash"]);
-        assert_eq!(offline("completions --json f"), ["fish"]);
-        assert!(offline("completions bash f").is_empty());
-        assert!(offline("completions bash ").is_empty());
     }
 
     #[test]

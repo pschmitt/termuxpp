@@ -22,23 +22,22 @@ files as fallbacks. Edit the file in the same home to manage it through dotfiles
 
 ## Session commands
 
-`tpp session` and `tpp-session` control the terminal tabs owned by the running TermuxPP
-app. Open TermuxPP before running either command. Both names run the same native code in
-the `tpp` binary, which the app installs under its native prefix together with Bash, Zsh,
-and Fish completions; no Python or other package is needed. Completion suggests commands,
-live IDs and positions, `--json` for every command (once), `--help` for every command, and the
-shells for `completions`. `tpp session` completes the same words through the `tpp` completions.
+`tpp session` controls the terminal tabs owned by the running TermuxPP app. Open
+TermuxPP before running it. It is native code in the `tpp` binary, which the app
+installs under its native prefix together with Bash, Zsh, and Fish completions; no
+Python or other package is needed. Completion suggests commands, live IDs and
+positions, `--json` for every command (once), and `--help` for every command.
 
 ```text
 tpp session new
 tpp session new --name "Build logs" -- tail -f build.log
 tpp session switcher
-tpp-session list --json
-tpp-session focus ID
-tpp-session rename ID "Build logs"
-tpp-session move ID 1
-tpp-session close ID
-tpp-session kill ID
+tpp session list --json
+tpp session focus ID
+tpp session rename ID "Build logs"
+tpp session move ID 1
+tpp session close ID
+tpp session kill ID
 ```
 
 `tpp session new` opens the default shell in a newly selected session. Use
@@ -65,12 +64,12 @@ accepted it:
 ```
 
 For `close` this means that the hangup was requested, not that the shell has
-exited. `completions --json` prints `{"output": SCRIPT}`. Failures behave the
+exited. Failures behave the
 same with and without `--json`: a message on standard error, no output on
 standard output and a non-zero exit status. JSON is colored on a terminal
 (unless `NO_COLOR` is set) and plain when piped.
 
-Copy an ID from `tpp-session list`. IDs stay the same when tabs are
+Copy an ID from `tpp session list`. IDs stay the same when tabs are
 renamed or moved. Positions start at 1. `focus` selects the tab without
 bringing the app to the foreground. `close` requests a hangup for a running
 shell and dismisses the tab when the shell exits. `kill` sends SIGKILL
@@ -249,7 +248,7 @@ Appearance files are looked up in `~/.config/termuxpp`, `~/.config/termux`
 and `~/.termux`, in that order. Lookup is per file. `XDG_CONFIG_HOME` does
 not change these paths. See [Built-in integrations](integrations.md) for script locations.
 
-Run `tpp-session reload-settings` after editing a file. In native sessions, TermuxPP's
+Run `tpp settings reload` after editing a file. In native sessions, TermuxPP's
 adapted `termux-tools` also reads `shell` and `motd.sh` in the same
 directory order. A custom `motd.sh` can override the welcome message.
 
@@ -320,7 +319,7 @@ short terminal messages such as the session number. The default is
 `top-center`. The nine values are `top-left`, `top-center`, `top-right`,
 `center-left`, `center`, `center-right`, `bottom-left`, `bottom-center`, and
 `bottom-right`. You can also write `appearance.toast-position: top-right` in
-`config.yaml` and run `tpp-session reload-settings`.
+`config.yaml` and run `tpp settings reload`.
 
 ## Tap and swipe actions
 

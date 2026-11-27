@@ -1,7 +1,7 @@
 //! Python's `str.isprintable`, `str.isspace` and decimal digits for single characters.
 //!
 //! The standard library has no Unicode category tables, so the tables in [`crate::unicode`] were
-//! generated from Python itself. That keeps `tpp-session` identical to the Python implementation
+//! generated from Python itself. That keeps `tpp session` identical to the Python implementation
 //! it replaced, including for code points that Unicode has assigned recently.
 
 use crate::unicode::{DECIMAL_ZEROS, NON_PRINTABLE, SPACES};

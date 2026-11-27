@@ -5,13 +5,13 @@
 //! unit tests compare with.
 
 pub const MAIN: &str = concat!(
-    "usage: tpp-session [-h] [--json]\n",
-    "                   {list,new,close,focus,kill,move,rename,completions,reload-settings,switcher} ...\n",
+    "usage: tpp session [-h] [--json]\n",
+    "                   {list,new,close,focus,kill,move,rename,reload-settings,switcher} ...\n",
     "\n",
     "Manage TermuxPP terminal sessions.\n",
     "\n",
     "positional arguments:\n",
-    "  {list,new,close,focus,kill,move,rename,completions,reload-settings,switcher}\n",
+    "  {list,new,close,focus,kill,move,rename,reload-settings,switcher}\n",
     "    list                list sessions and their IDs\n",
     "    new                 create and switch to a session\n",
     "    close               hang up a shell or dismiss an exited tab\n",
@@ -19,7 +19,6 @@ pub const MAIN: &str = concat!(
     "    kill                force-kill a session shell\n",
     "    move                move a session to a one-based position\n",
     "    rename              change the session name\n",
-    "    completions         print completion source\n",
     "    reload-settings     reload app properties and styling\n",
     "    switcher            open the session switcher\n",
     "\n",
@@ -30,13 +29,12 @@ pub const MAIN: &str = concat!(
     "Every command accepts --json, also in front of the command (tpp --json session\n",
     "...). list prints the sessions as a JSON array. The other commands print a\n",
     "JSON object that names the action and its arguments, for example {\"ok\": true,\n",
-    "\"action\": \"close\", \"id\": \"ID\"}; completions prints {\"output\": SCRIPT}.\n",
-    "Failures print a message on standard error and exit with a non-zero status,\n",
-    "with or without --json.\n",
+    "\"action\": \"close\", \"id\": \"ID\"}. Failures print a message on standard error\n",
+    "and exit with a non-zero status, with or without --json.\n",
 );
 
 pub const LIST: &str = concat!(
-    "usage: tpp-session list [-h] [--json]\n",
+    "usage: tpp session list [-h] [--json]\n",
     "\n",
     "options:\n",
     "  -h, --help  show this help message and exit\n",
@@ -44,7 +42,7 @@ pub const LIST: &str = concat!(
 );
 
 pub const CLOSE: &str = concat!(
-    "usage: tpp-session close [-h] [--json] id\n",
+    "usage: tpp session close [-h] [--json] id\n",
     "\n",
     "positional arguments:\n",
     "  id\n",
@@ -55,7 +53,7 @@ pub const CLOSE: &str = concat!(
 );
 
 pub const FOCUS: &str = concat!(
-    "usage: tpp-session focus [-h] [--json] id\n",
+    "usage: tpp session focus [-h] [--json] id\n",
     "\n",
     "positional arguments:\n",
     "  id\n",
@@ -66,7 +64,7 @@ pub const FOCUS: &str = concat!(
 );
 
 pub const KILL: &str = concat!(
-    "usage: tpp-session kill [-h] [--json] id\n",
+    "usage: tpp session kill [-h] [--json] id\n",
     "\n",
     "positional arguments:\n",
     "  id\n",
@@ -77,7 +75,7 @@ pub const KILL: &str = concat!(
 );
 
 pub const MOVE: &str = concat!(
-    "usage: tpp-session move [-h] [--json] id position\n",
+    "usage: tpp session move [-h] [--json] id position\n",
     "\n",
     "positional arguments:\n",
     "  id\n",
@@ -89,7 +87,7 @@ pub const MOVE: &str = concat!(
 );
 
 pub const RENAME: &str = concat!(
-    "usage: tpp-session rename [-h] [--json] id name\n",
+    "usage: tpp session rename [-h] [--json] id name\n",
     "\n",
     "positional arguments:\n",
     "  id\n",
@@ -100,19 +98,8 @@ pub const RENAME: &str = concat!(
     "  --json      output JSON\n",
 );
 
-pub const COMPLETIONS: &str = concat!(
-    "usage: tpp-session completions [-h] [--json] {bash,fish,zsh}\n",
-    "\n",
-    "positional arguments:\n",
-    "  {bash,fish,zsh}\n",
-    "\n",
-    "options:\n",
-    "  -h, --help       show this help message and exit\n",
-    "  --json           output JSON\n",
-);
-
 pub const SWITCHER: &str = concat!(
-    "usage: tpp-session switcher [-h] [--json]\n",
+    "usage: tpp session switcher [-h] [--json]\n",
     "\n",
     "Open the session switcher in the visible TermuxPP terminal.\n",
     "\n",
@@ -122,7 +109,7 @@ pub const SWITCHER: &str = concat!(
 );
 
 pub const RELOAD_SETTINGS: &str = concat!(
-    "usage: tpp-session reload-settings [-h] [--json]\n",
+    "usage: tpp session reload-settings [-h] [--json]\n",
     "\n",
     "options:\n",
     "  -h, --help  show this help message and exit\n",
@@ -130,7 +117,7 @@ pub const RELOAD_SETTINGS: &str = concat!(
 );
 
 pub const NEW: &str = concat!(
-    "usage: tpp-session new [-h] [--json] [--name NAME] [-- COMMAND [ARG ...]]\n",
+    "usage: tpp session new [-h] [--json] [--name NAME] [-- COMMAND [ARG ...]]\n",
     "\n",
     "Create and switch to a new terminal session. With no command, open the default shell.\n",
 );

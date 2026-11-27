@@ -781,7 +781,7 @@ fn the_session_group_is_part_of_the_binary() {
     // --help and usage errors come from the session code, status 0 and 2
     let o = fx.run(&["session", "--help"]);
     assert_eq!(code(&o), 0);
-    assert!(out(&o).starts_with("usage: tpp-session "), "{}", out(&o));
+    assert!(out(&o).starts_with("usage: tpp session "), "{}", out(&o));
     assert_eq!(out(&fx.run(&["help", "session"])), out(&o));
     assert_eq!(code(&fx.run(&["session", "--nope"])), 2);
     // it is listed and completed next to the table groups
@@ -801,7 +801,7 @@ fn the_session_group_is_part_of_the_binary() {
     );
     // a plugin of that name does not shadow it
     fx.plugin("session", "echo plugin");
-    assert!(out(&fx.run(&["session", "--help"])).starts_with("usage: tpp-session "));
+    assert!(out(&fx.run(&["session", "--help"])).starts_with("usage: tpp session "));
     assert!(!out(&fx.run(&["--help"])).contains("Plugins:"));
 }
 
@@ -858,29 +858,6 @@ fn ui_commands_send_actions_and_search_to_the_app() {
     assert_eq!(code(&fx.run(&["ui", "sidebar", "--search", "font"])), 2);
     assert_eq!(complete(&fx, &["ui", "settings", "--s"]).1, ["--search"]);
     assert_eq!(complete(&fx, &["ui", "si"]).1, ["sidebar"]);
-}
-
-#[test]
-fn tpp_session_is_the_same_binary() {
-    let fx = Fixture::new("argv0");
-    let bin = fx.dir.join("usr/bin/tpp-session");
-    std::os::unix::fs::symlink(env!("CARGO_BIN_EXE_tpp"), &bin).unwrap();
-    let run = |args: &[&str]| -> Output {
-        Command::new(&bin)
-            .args(args)
-            .env_clear()
-            .env("PATH", "/usr/bin:/bin")
-            .stdin(Stdio::null())
-            .output()
-            .unwrap()
-    };
-    let o = run(&["--help"]);
-    assert_eq!(code(&o), 0);
-    assert!(out(&o).starts_with("usage: tpp-session "));
-    assert_eq!(code(&run(&["--nope"])), 2);
-    assert_eq!(code(&run(&[])), 2);
-    // the other commands are not reachable under this name
-    assert_eq!(code(&run(&["battery"])), 2);
 }
 
 #[test]

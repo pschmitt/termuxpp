@@ -5,8 +5,7 @@ page_ref: /docs/apps/termux/tpp-cli.html
 # tpp command line
 
 `tpp` is one executable for controlling Android and the TermuxPP app from a
-shell. It replaces the upstream `termux-*` API scripts, and `tpp-session` is
-another name for `tpp session`.
+shell. It replaces the upstream `termux-*` API scripts.
 
 - [Where it comes from](#where-it-comes-from)
 - [Usage](#usage)
@@ -17,8 +16,8 @@ another name for `tpp session`.
 
 ## Where it comes from
 
-- **Native shell.** The app installs `bin/tpp` and `bin/tpp-session` into its
-  prefix at app and session start, with Bash, Zsh, and Fish completions. An app
+- **Native shell.** The app installs `bin/tpp` into its prefix at app and
+  session start, with Bash, Zsh, and Fish completions. An app
   update updates the CLI too, so there is no package to install. API commands
   still call `am` from the prefix, so keep the `termux-am` package installed.
 - **Nix guest.** The nixpp guest builds the same `tpp` and converts guest

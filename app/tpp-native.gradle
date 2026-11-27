@@ -5,9 +5,9 @@
 //                        with the files list the installer works from (the binaries come from the tasks
 //                        below; the API commands are in the tpp binary, no command script is packed)
 //   buildTppRust         lib/<abi>/libtpp.so: the one tpp executable (Rust workspace, crate tpp-cli with
-//                        tpp-session linked in), built with cargo and the NDK linker for each ABI. tpp
-//                        carries its command table, help, output rendering, completion and the session
-//                        control; tpp-session is a link to it. Needs cargo with the Android targets on
+//                        the session control crate linked in), built with cargo and the NDK linker for
+//                        each ABI. tpp carries its command table, help, output rendering, completion and
+//                        the session control (tpp session). Needs cargo with the Android targets on
 //                        the PATH (the dev shell has them), or -PtppCargo=/path/to/cargo
 //   buildTppNativeBridge lib/<abi>/libtermux-api-broadcast.so: the native client of the in-app API.
 //                        It is an executable; the lib*.so name makes Android extract it to the native
@@ -33,14 +33,12 @@ def tppVersionSources = rootProject.fileTree(rootProject.projectDir) {
     include "Cargo.toml", "Cargo.lock",
         "pkgs/tpp-cli/Cargo.toml", "pkgs/tpp-api/Cargo.toml", "pkgs/tpp-session/Cargo.toml",
         "pkgs/tpp-cli/src/**", "pkgs/tpp-api/src/**", "pkgs/tpp-api/help/**",
-        "pkgs/tpp-session/src/**", "pkgs/tpp-session/assets/**"
+        "pkgs/tpp-session/src/**"
 }
 
 tasks.register("stageTppNative") {
     inputs.dir(apiPackage).withPropertyName("apiPackage")
         .withPathSensitivity(PathSensitivity.RELATIVE)
-    inputs.dir(rootProject.file("pkgs/tpp-session/assets/session-completions"))
-        .withPropertyName("sessionCompletions").withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.files(tppVersionSources).withPropertyName("tppVersionSources")
         .withPathSensitivity(PathSensitivity.RELATIVE)
     outputs.dir(assetsRoot)
@@ -64,11 +62,6 @@ tasks.register("stageTppNative") {
         asset("share/zsh/site-functions/_tpp", new File(apiPackage, "completions/tpp.zsh"), false, false)
         asset("share/fish/vendor_completions.d/tpp.fish", new File(apiPackage, "completions/tpp.fish"), false, false)
 
-        def sessionCompletions = rootProject.file("pkgs/tpp-session/assets/session-completions")
-        asset("share/bash-completion/completions/tpp-session", new File(sessionCompletions, "bash"), false, false)
-        asset("share/zsh/site-functions/_tpp-session", new File(sessionCompletions, "zsh"), false, false)
-        asset("share/fish/vendor_completions.d/tpp-session.fish", new File(sessionCompletions, "fish"), false, false)
-
         def sha256 = { byte[] bytes -> MessageDigest.getInstance("SHA-256").digest(bytes).encodeHex().toString() }
         def sources = new TreeMap<String, File>()
         tppVersionSources.visit { details ->
@@ -83,7 +76,6 @@ tasks.register("stageTppNative") {
         // One executable for the dispatcher, the API commands and the session control; there
         // are no command scripts
         entries << [path: "bin/tpp", type: "lib", source: "libtpp.so", executable: true]
-        entries << [path: "bin/tpp-session", type: "symlink", target: "tpp"]
         entries << [path: "libexec/termux-api-broadcast", type: "lib", source: "libtermux-api-broadcast.so",
                     executable: true]
         // Kept for compatibility with scripts that call the old client name.

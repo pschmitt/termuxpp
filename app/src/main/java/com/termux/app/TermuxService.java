@@ -860,8 +860,8 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     /**
      * Removes the files that earlier app versions wrote for the Java/Python {@code tpp-session}: the
      * launcher script, the {@code tpp-session} script and its plugin copy, and the completions. The
-     * command is now part of the native {@code tpp} binary, which {@link NativeCliUpdater} installs
-     * (with {@code bin/tpp-session} as a link to it). That installer leaves a path it did not create
+     * command is now {@code tpp session} in the native {@code tpp} binary, which {@link NativeCliUpdater}
+     * installs. That installer leaves a path it did not create
      * alone, so the old files must go first. Only regular files that carry the marks of the old
      * installation are removed; anything the user put there stays.
      */
@@ -1066,7 +1066,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
                 arguments.add("--");
             } else {
                 executable = TermuxConstants.TERMUX_PREFIX_DIR_PATH + "/bin/sh";
-                java.util.Collections.addAll(arguments, "-c", "exec \"$@\"", "tpp-session");
+                java.util.Collections.addAll(arguments, "-c", "exec \"$@\"", "tpp");
             }
             for (int i = 0; i < argv.length(); i++) {
                 String arg = argv.getString(i);

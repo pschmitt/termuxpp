@@ -26,23 +26,6 @@ pub struct Parsed {
     pub command: Command,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Shell {
-    Bash,
-    Fish,
-    Zsh,
-}
-
-impl Shell {
-    pub fn name(self) -> &'static str {
-        match self {
-            Shell::Bash => "bash",
-            Shell::Fish => "fish",
-            Shell::Zsh => "zsh",
-        }
-    }
-}
-
 #[derive(Debug, PartialEq)]
 pub enum Command {
     List,
@@ -68,9 +51,6 @@ pub enum Command {
         id: String,
         name: String,
     },
-    Completions {
-        shell: Shell,
-    },
     ReloadSettings,
     Switcher,
 }
@@ -86,7 +66,6 @@ impl Command {
             Command::Kill { .. } => "kill",
             Command::Move { .. } => "move",
             Command::Rename { .. } => "rename",
-            Command::Completions { .. } => "completions",
             Command::ReloadSettings => "reload-settings",
             Command::Switcher => "switcher",
         }
@@ -127,13 +106,6 @@ pub fn parse(args: &[String]) -> Outcome {
             id: value("id"),
             name: value("name"),
         },
-        Some("completions") => Command::Completions {
-            shell: match namespace.value("shell") {
-                Some("fish") => Shell::Fish,
-                Some("zsh") => Shell::Zsh,
-                _ => Shell::Bash,
-            },
-        },
         Some("switcher") => Command::Switcher,
         _ => Command::ReloadSettings,
     };
@@ -159,7 +131,6 @@ struct Positional {
 enum Kind {
     Text,
     Int,
-    Shell,
     /// The subcommand: it takes the rest of the command line.
     Command,
 }
@@ -176,27 +147,23 @@ const NAME: Positional = Positional {
     name: "name",
     kind: Kind::Text,
 };
-const SHELL: Positional = Positional {
-    name: "shell",
-    kind: Kind::Shell,
-};
 const COMMAND: Positional = Positional {
     name: "command",
     kind: Kind::Command,
 };
 
 static MAIN: Spec = Spec {
-    prog: "tpp-session",
+    prog: "tpp session",
     help: help::MAIN,
     positionals: &[COMMAND],
 };
 
 /// The commands in the order argparse lists them in its error messages.
-static COMMANDS: [(&str, Spec); 10] = [
+static COMMANDS: [(&str, Spec); 9] = [
     (
         "list",
         Spec {
-            prog: "tpp-session list",
+            prog: "tpp session list",
             help: help::LIST,
             positionals: &[],
         },
@@ -205,7 +172,7 @@ static COMMANDS: [(&str, Spec); 10] = [
     (
         "close",
         Spec {
-            prog: "tpp-session close",
+            prog: "tpp session close",
             help: help::CLOSE,
             positionals: &[ID],
         },
@@ -213,7 +180,7 @@ static COMMANDS: [(&str, Spec); 10] = [
     (
         "focus",
         Spec {
-            prog: "tpp-session focus",
+            prog: "tpp session focus",
             help: help::FOCUS,
             positionals: &[ID],
         },
@@ -221,7 +188,7 @@ static COMMANDS: [(&str, Spec); 10] = [
     (
         "kill",
         Spec {
-            prog: "tpp-session kill",
+            prog: "tpp session kill",
             help: help::KILL,
             positionals: &[ID],
         },
@@ -229,7 +196,7 @@ static COMMANDS: [(&str, Spec); 10] = [
     (
         "move",
         Spec {
-            prog: "tpp-session move",
+            prog: "tpp session move",
             help: help::MOVE,
             positionals: &[ID, POSITION],
         },
@@ -237,23 +204,15 @@ static COMMANDS: [(&str, Spec); 10] = [
     (
         "rename",
         Spec {
-            prog: "tpp-session rename",
+            prog: "tpp session rename",
             help: help::RENAME,
             positionals: &[ID, NAME],
         },
     ),
     (
-        "completions",
-        Spec {
-            prog: "tpp-session completions",
-            help: help::COMPLETIONS,
-            positionals: &[SHELL],
-        },
-    ),
-    (
         "reload-settings",
         Spec {
-            prog: "tpp-session reload-settings",
+            prog: "tpp session reload-settings",
             help: help::RELOAD_SETTINGS,
             positionals: &[],
         },
@@ -261,7 +220,7 @@ static COMMANDS: [(&str, Spec); 10] = [
     (
         "switcher",
         Spec {
-            prog: "tpp-session switcher",
+            prog: "tpp session switcher",
             help: help::SWITCHER,
             positionals: &[],
         },
@@ -269,7 +228,7 @@ static COMMANDS: [(&str, Spec); 10] = [
 ];
 
 const NEW: Spec = Spec {
-    prog: "tpp-session new",
+    prog: "tpp session new",
     help: help::NEW,
     positionals: &[],
 };
@@ -318,7 +277,6 @@ fn parse_new(args: &[String]) -> Result<Namespace, Exit> {
     Ok(result)
 }
 
-const SHELLS: [&str; 3] = ["bash", "fish", "zsh"];
 /// Every parser accepts these, in argparse's registration order.
 const OPTION_STRINGS: [&str; 3] = ["-h", "--help", "--json"];
 
@@ -545,16 +503,6 @@ impl State<'_> {
                     )))
                 }
             },
-            Kind::Shell => {
-                if !SHELLS.contains(&first.as_str()) {
-                    return Err(invalid_choice(
-                        positional.name,
-                        first,
-                        SHELLS.iter().copied(),
-                    ));
-                }
-                self.namespace.values.push((positional.name, first.clone()));
-            }
             Kind::Command => {
                 let Some((name, sub)) = COMMANDS.iter().find(|(name, _)| name == first) else {
                     return Err(invalid_choice(
@@ -935,7 +883,7 @@ mod tests {
         text.lines().last().unwrap().to_string()
     }
 
-    const MAIN_USAGE: &str = "usage: tpp-session [-h] [--json]\n                   {list,new,close,focus,kill,move,rename,completions,reload-settings,switcher} ...\n";
+    const MAIN_USAGE: &str = "usage: tpp session [-h] [--json]\n                   {list,new,close,focus,kill,move,rename,reload-settings,switcher} ...\n";
 
     #[test]
     fn commands_parse() {
@@ -968,10 +916,6 @@ mod tests {
                 id: "abc".into(),
                 name: "new".into()
             }
-        );
-        assert_eq!(
-            run("completions zsh").command,
-            Command::Completions { shell: Shell::Zsh }
         );
         assert_eq!(run("reload-settings").command, Command::ReloadSettings);
         assert_eq!(
@@ -1021,32 +965,28 @@ mod tests {
         assert_eq!(
             error(""),
             format!(
-                "{MAIN_USAGE}tpp-session: error: the following arguments are required: command\n"
+                "{MAIN_USAGE}tpp session: error: the following arguments are required: command\n"
             )
         );
         assert_eq!(
             error("close"),
-            "usage: tpp-session close [-h] [--json] id\ntpp-session close: error: the following arguments are required: id\n"
+            "usage: tpp session close [-h] [--json] id\ntpp session close: error: the following arguments are required: id\n"
         );
         assert_eq!(
             message("rename a"),
-            "tpp-session rename: error: the following arguments are required: name"
+            "tpp session rename: error: the following arguments are required: name"
         );
         assert_eq!(
             message("rename"),
-            "tpp-session rename: error: the following arguments are required: id, name"
+            "tpp session rename: error: the following arguments are required: id, name"
         );
         assert_eq!(
             message("move abc x"),
-            "tpp-session move: error: argument position: invalid int value: 'x'"
-        );
-        assert_eq!(
-            message("completions zzz"),
-            "tpp-session completions: error: argument shell: invalid choice: 'zzz' (choose from 'bash', 'fish', 'zsh')"
+            "tpp session move: error: argument position: invalid int value: 'x'"
         );
         assert_eq!(
             message("bogus"),
-            "tpp-session: error: argument command: invalid choice: 'bogus' (choose from 'list', 'new', 'close', 'focus', 'kill', 'move', 'rename', 'completions', 'reload-settings', 'switcher')"
+            "tpp session: error: argument command: invalid choice: 'bogus' (choose from 'list', 'new', 'close', 'focus', 'kill', 'move', 'rename', 'reload-settings', 'switcher')"
         );
     }
 
@@ -1054,44 +994,44 @@ mod tests {
     fn unrecognized_arguments_are_reported_by_the_main_parser() {
         assert_eq!(
             error("close a b"),
-            format!("{MAIN_USAGE}tpp-session: error: unrecognized arguments: b\n")
+            format!("{MAIN_USAGE}tpp session: error: unrecognized arguments: b\n")
         );
         assert_eq!(
             message("list --foo"),
-            "tpp-session: error: unrecognized arguments: --foo"
+            "tpp session: error: unrecognized arguments: --foo"
         );
         assert_eq!(
             message("--foo list"),
-            "tpp-session: error: unrecognized arguments: --foo"
+            "tpp session: error: unrecognized arguments: --foo"
         );
         assert_eq!(
             message("close abc --foo"),
-            "tpp-session: error: unrecognized arguments: --foo"
+            "tpp session: error: unrecognized arguments: --foo"
         );
         assert_eq!(
             message("close -x abc"),
-            "tpp-session: error: unrecognized arguments: -x"
+            "tpp session: error: unrecognized arguments: -x"
         );
         assert_eq!(
             message("list -j"),
-            "tpp-session: error: unrecognized arguments: -j"
+            "tpp session: error: unrecognized arguments: -j"
         );
         assert_eq!(
             message("list -"),
-            "tpp-session: error: unrecognized arguments: -"
+            "tpp session: error: unrecognized arguments: -"
         );
         assert_eq!(
             message("--foo list a"),
-            "tpp-session: error: unrecognized arguments: --foo a"
+            "tpp session: error: unrecognized arguments: --foo a"
         );
         // The main parser's own findings come first, then those of the command
         assert_eq!(
             message("--foo close a b -x"),
-            "tpp-session: error: unrecognized arguments: --foo b -x"
+            "tpp session: error: unrecognized arguments: --foo b -x"
         );
         assert_eq!(
             message("--foo"),
-            "tpp-session: error: the following arguments are required: command"
+            "tpp session: error: the following arguments are required: command"
         );
     }
 
@@ -1099,35 +1039,35 @@ mod tests {
     fn explicit_arguments_to_flags_are_refused() {
         assert_eq!(
             message("list --json=x"),
-            "tpp-session list: error: argument --json: ignored explicit argument 'x'"
+            "tpp session list: error: argument --json: ignored explicit argument 'x'"
         );
         assert_eq!(
             message("list --help=x"),
-            "tpp-session list: error: argument -h/--help: ignored explicit argument 'x'"
+            "tpp session list: error: argument -h/--help: ignored explicit argument 'x'"
         );
         assert_eq!(
             message("--json=1 list"),
-            "tpp-session: error: argument --json: ignored explicit argument '1'"
+            "tpp session: error: argument --json: ignored explicit argument '1'"
         );
         assert_eq!(
             message("close a --json="),
-            "tpp-session close: error: argument --json: ignored explicit argument ''"
+            "tpp session close: error: argument --json: ignored explicit argument ''"
         );
         assert_eq!(
             message("list -h=x"),
-            "tpp-session list: error: argument -h/--help: ignored explicit argument 'x'"
+            "tpp session list: error: argument -h/--help: ignored explicit argument 'x'"
         );
         assert_eq!(
             message("list -h-x"),
-            "tpp-session list: error: argument -h/--help: ignored explicit argument '-x'"
+            "tpp session list: error: argument -h/--help: ignored explicit argument '-x'"
         );
         assert_eq!(
             message("list -hh=x"),
-            "tpp-session list: error: argument -h/--help: ignored explicit argument 'x'"
+            "tpp session list: error: argument -h/--help: ignored explicit argument 'x'"
         );
         assert_eq!(
             message("--=x list"),
-            "tpp-session: error: ambiguous option: --=x could match --help, --json"
+            "tpp session: error: ambiguous option: --=x could match --help, --json"
         );
     }
 
@@ -1171,21 +1111,21 @@ mod tests {
         );
         assert_eq!(
             message("close -- a b"),
-            "tpp-session: error: unrecognized arguments: b"
+            "tpp session: error: unrecognized arguments: b"
         );
         assert_eq!(
             message("close abc -- x"),
-            "tpp-session: error: unrecognized arguments: x"
+            "tpp session: error: unrecognized arguments: x"
         );
         assert_eq!(
             message("list --"),
-            "tpp-session: error: unrecognized arguments: --"
+            "tpp session: error: unrecognized arguments: --"
         );
         assert!(message("-- -- list")
-            .starts_with("tpp-session: error: argument command: invalid choice: '--'"));
+            .starts_with("tpp session: error: argument command: invalid choice: '--'"));
         assert_eq!(
             message("--"),
-            "tpp-session: error: the following arguments are required: command"
+            "tpp session: error: the following arguments are required: command"
         );
     }
 
@@ -1214,15 +1154,15 @@ mod tests {
         );
         assert_eq!(
             message("move a --5"),
-            "tpp-session move: error: the following arguments are required: position"
+            "tpp session move: error: the following arguments are required: position"
         );
         assert_eq!(
             message("move a -5x"),
-            "tpp-session move: error: argument position: invalid int value: '-5x'"
+            "tpp session move: error: argument position: invalid int value: '-5x'"
         );
         assert_eq!(
             message("-"),
-            "tpp-session: error: argument command: invalid choice: '-' (choose from 'list', 'new', 'close', 'focus', 'kill', 'move', 'rename', 'completions', 'reload-settings', 'switcher')"
+            "tpp session: error: argument command: invalid choice: '-' (choose from 'list', 'new', 'close', 'focus', 'kill', 'move', 'rename', 'reload-settings', 'switcher')"
         );
     }
 
@@ -1286,10 +1226,10 @@ mod tests {
         for (name, spec) in &COMMANDS {
             assert!(
                 spec.help
-                    .starts_with(&format!("usage: tpp-session {name} [-h] [--json]")),
+                    .starts_with(&format!("usage: tpp session {name} [-h] [--json]")),
                 "{name}"
             );
         }
-        assert!(MAIN.help.starts_with("usage: tpp-session [-h] [--json]\n"));
+        assert!(MAIN.help.starts_with("usage: tpp session [-h] [--json]\n"));
     }
 }

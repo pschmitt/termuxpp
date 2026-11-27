@@ -156,7 +156,7 @@ fn an_error_reply_fails_with_its_message() {
     let output = app.command(&["kill", "abc"]).output().unwrap();
     assert_eq!(status(&output), 1);
     assert_eq!(text(&output.stdout), "");
-    assert_eq!(text(&output.stderr), "tpp-session: no such session\n");
+    assert_eq!(text(&output.stderr), "tpp session: no such session\n");
 }
 
 #[test]
@@ -168,7 +168,7 @@ fn an_absent_app_is_reported() {
     assert_eq!(status(&output), 1);
     assert_eq!(
         text(&output.stderr),
-        "tpp-session: cannot reach TermuxPP; open the app first ([Errno 111] Connection refused)\n"
+        "tpp session: cannot reach TermuxPP; open the app first ([Errno 111] Connection refused)\n"
     );
 }
 
@@ -178,7 +178,7 @@ fn an_app_that_closes_without_answering_is_reported() {
     let output = app.command(&["list"]).output().unwrap();
     assert_eq!(status(&output), 1);
     assert!(
-        text(&output.stderr).starts_with("tpp-session: "),
+        text(&output.stderr).starts_with("tpp session: "),
         "{}",
         text(&output.stderr)
     );
@@ -194,24 +194,8 @@ fn an_oversized_request_is_refused_without_connecting() {
     assert_eq!(status(&output), 1);
     assert_eq!(
         text(&output.stderr),
-        "tpp-session: session command is too long\n"
+        "tpp session: session command is too long\n"
     );
-}
-
-#[test]
-fn completions_need_no_app() {
-    for shell in ["bash", "fish", "zsh"] {
-        let output = tpp(&["completions", shell]).output().unwrap();
-        assert_eq!(status(&output), 0, "{shell}");
-        let script = text(&output.stdout);
-        assert!(script.contains("tpp-session"), "{shell}");
-        assert!(script.ends_with('\n'), "{shell}");
-        let json = tpp(&["--json", "completions", shell]).output().unwrap();
-        assert!(
-            text(&json.stdout).starts_with("{\n  \"output\": \""),
-            "{shell}"
-        );
-    }
 }
 
 #[test]
@@ -227,7 +211,7 @@ fn usage_errors_exit_with_two() {
         assert_eq!(status(&output), 2, "{args:?}");
         assert_eq!(text(&output.stdout), "", "{args:?}");
         assert!(
-            text(&output.stderr).starts_with("usage: tpp-session"),
+            text(&output.stderr).starts_with("usage: tpp session"),
             "{args:?}"
         );
     }
@@ -245,7 +229,7 @@ fn help_exits_with_zero_on_standard_output() {
         assert_eq!(status(&output), 0, "{args:?}");
         assert_eq!(text(&output.stderr), "", "{args:?}");
         assert!(
-            text(&output.stdout).starts_with("usage: tpp-session"),
+            text(&output.stdout).starts_with("usage: tpp session"),
             "{args:?}"
         );
     }
@@ -272,7 +256,7 @@ fn golden_help() -> Vec<(String, String)> {
 #[test]
 fn help_texts_match_the_python_implementation() {
     let sections = golden_help();
-    assert_eq!(sections.len(), 9);
+    assert_eq!(sections.len(), 8);
     for (name, expected) in sections {
         let args: Vec<&str> = if name.is_empty() {
             vec!["--help"]
@@ -313,79 +297,6 @@ fn shell_completion_asks_the_app() {
         (status(&offline), text(&offline.stdout)),
         (0, String::new())
     );
-}
-
-#[test]
-fn bash_completion_script_works_with_the_binary() {
-    // The bash of a Nix build sandbox has no readline, so no complete/compgen.
-    let has_completion = Command::new("bash")
-        .args(["-c", "type complete compgen"])
-        .output()
-        .is_ok_and(|o| o.status.success());
-    if !has_completion {
-        eprintln!("skipping: bash without programmable completion");
-        return;
-    }
-    let app = FakeApp::start(
-        "{\"result\": [{\"id\": \"aa\", \"position\": 1}, {\"id\": \"ab\", \"position\": 2}]}\n",
-        3,
-    );
-    let script = text(&tpp(&["completions", "bash"]).output().unwrap().stdout);
-    let program = env!("CARGO_BIN_EXE_tpp-session");
-    let driver = format!(
-        r#"tpp-session() {{ "{program}" "$@"; }}
-{script}
-complete_line() {{
-  COMP_WORDS=("$@"); COMP_CWORD=$(( $# - 1 ))
-  _termuxpp_session
-  printf '%s\n' "${{COMPREPLY[@]}}"
-}}
-complete_line tpp-session close a
-echo --
-complete_line tpp-session move aa ''
-echo --
-complete_line tpp-session list --j
-echo --
-complete_line tpp-session completions ''
-"#
-    );
-    let output = Command::new("bash")
-        .args(["-c", &driver])
-        .env("TPP_SESSION_SOCKET", &app.name)
-        .output()
-        .unwrap();
-    assert_eq!(text(&output.stderr), "");
-    assert_eq!(
-        text(&output.stdout),
-        "aa\nab\n--\n1\n2\n--\n--json\n--\nbash\nfish\nzsh\n"
-    );
-}
-
-#[test]
-fn completion_scripts_are_syntactically_valid() {
-    for (shell, flag) in [("bash", "-n"), ("zsh", "-n"), ("fish", "--no-execute")] {
-        let available = std::env::var_os("PATH")
-            .map(|path| std::env::split_paths(&path).any(|dir| dir.join(shell).is_file()))
-            .unwrap_or(false);
-        if !available {
-            eprintln!("skipping {shell}: not installed");
-            continue;
-        }
-        let script = text(&tpp(&["completions", shell]).output().unwrap().stdout);
-        let path =
-            std::env::temp_dir().join(format!("tpp-session-syntax-{}-{shell}", std::process::id()));
-        std::fs::write(&path, script).unwrap();
-        let result = Command::new(shell).arg(flag).arg(&path).output();
-        let _ = std::fs::remove_file(&path);
-        match result {
-            Ok(output) => assert!(output.status.success(), "{shell}: {}", text(&output.stderr)),
-            // The shell is not installed here
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-                eprintln!("skipping {shell}: not installed")
-            }
-            Err(error) => panic!("{shell}: {error}"),
-        }
-    }
 }
 
 #[test]

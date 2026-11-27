@@ -439,7 +439,7 @@ The default is top center.
 
 ## Reloading settings
 
-The `tpp-session reload-settings` command reloads properties from disk and
+The `tpp settings reload` command reloads properties from disk and
 refreshes terminal styling in the app. A reload requested while the terminal is
 in the background or the screen is off is applied when the terminal is shown
 again; upstream's reload broadcast reaches only a visible activity. Sources:
@@ -584,20 +584,20 @@ query), the session picker, and the session sidebar. Upstream Termux's sidebar
 uses numeric prefixes alongside the session name and terminal title.
 [Upstream sidebar source](https://github.com/termux/termux-app/blob/master/app/src/main/java/com/termux/app/terminal/TermuxSessionsListViewController.java).
 
-TermuxPP ships `tpp-session` to list, focus, rename, reorder, close,
+TermuxPP ships `tpp session` to list, focus, rename, reorder, close,
 and kill app terminal sessions. It uses stable session IDs and a local
 socket restricted to the app's Android UID. Every command accepts `--json` (also as `tpp --json session ...`): `list` prints an array and the other commands a JSON object that echoes the accepted request. See [Session commands](terminal-settings.md#session-commands).
 
 The command is Rust, in [`tpp-session`](../../pkgs/tpp-session), a library without third-party
-dependencies that the single `tpp` binary links in: `tpp session ...` and `tpp-session ...` (a link to
-`tpp`, which runs the session group when its program name is `tpp-session`) call the same
+dependencies that the single `tpp` binary links in: `tpp session ...` calls
 [`cli::run`](../../pkgs/tpp-session/src/cli.rs). It replaces a Java class started through `app_process` and
 a Python script for the Nix guest, so the native prefix needs no Python, JVM or other package, and a
-call is one small native process. The app installs `tpp`, the `tpp-session` link and the completions
+call is one small native process. The app installs `tpp` and its completions
 through the [native CLI installer](../../app/src/main/java/com/termux/app/nativecli/NativeCliInstaller.java)
 ([manifest](../../app/tpp-native.gradle)); [`TermuxService`](../../app/src/main/java/com/termux/app/TermuxService.java)
 first removes the launcher, script and completion files that earlier versions wrote, because the installer
-leaves paths it did not create alone.
+leaves paths it did not create alone. Earlier builds also installed `tpp-session` as a second name for
+`tpp session`, with completions of its own; the installer removes that link and those completions on update.
 
 The app retries opening the session socket during service startup if the first
 bind fails. It accepts one JSON array line on the abstract socket `dev.pschmitt.termux.sessions`
@@ -606,8 +606,8 @@ names another abstract socket, which the tests use. Commands, options, abbreviat
 usage errors, the JSON layout and the table behave as the Python implementation did; the differences are
 that help text is wrapped at 80 columns whatever the terminal width, that arguments that are not UTF-8
 are shown with U+FFFD instead of being rejected, and that a reply that is not a JSON object is an
-error message instead of a traceback. The completion scripts are part of the binary
-(`tpp-session completions SHELL` prints them), so the output no longer depends on files in the prefix.
+error message instead of a traceback. `tpp session` is completed by the `tpp` completions, which
+ask the binary for the candidates.
 
 ## Command actions for taps and extra keys
 

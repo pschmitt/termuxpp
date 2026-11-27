@@ -1305,11 +1305,6 @@ fn run_plugin(plugin: &Path, lead_json: bool, mut args: Vec<OsString>) -> i32 {
     exec(plugin, &args)
 }
 
-/// Run a native group as the program, `tpp-session ARGS` for `tpp session ARGS`.
-pub fn run_native(group: &str, args: Vec<OsString>) -> i32 {
-    native::run(group, &args, false)
-}
-
 pub fn run(mut args: Vec<OsString>) -> i32 {
     let ctx = Ctx::from_env();
     let app = App {
