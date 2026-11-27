@@ -118,6 +118,7 @@ impl Server {
         let current = crate::provision::running_executable().ok();
         let prefix = std::env::var_os("PREFIX").map(PathBuf::from);
         let mut checked = None;
+        let mut launcher_checked = None;
         // Wake on a new selected generation (a native update may come with it)
         // and a replaced APK, instead of polling for them.
         let mut watch = crate::watch::Watch::new(
@@ -125,6 +126,15 @@ impl Server {
             vec![b"current-system".to_vec(), b"apk-library".to_vec()],
         );
         while !stop.load(Ordering::SeqCst) && !crate::runtime_apk::replaced(&self.runtime) {
+            // Before the nixpp, which returns to restart.
+            if let Some(source) =
+                crate::native_update::launcher_pending(&self.runtime, &mut launcher_checked)
+            {
+                match crate::native_update::install_launcher(&self.runtime, &source) {
+                    Ok(()) => eprintln!("nixpp: installed the launcher of the selected generation"),
+                    Err(error) => eprintln!("nixpp: kept the current launcher: {error:#}"),
+                }
+            }
             if let Some(current) = &current
                 && let Some(source) =
                     crate::native_update::pending(&self.runtime, current, &mut checked)
