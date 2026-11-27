@@ -33,6 +33,7 @@
           "nixpp-runtime-termux"
           "nixpp-runtime-termux-seed"
           "rbw-termux"
+          "termuxpp-outer-bootstrap"
         ]
         // adbShellFor nixpkgs.legacyPackages.aarch64-linux
         // tmuxPluginFor nixpkgs.legacyPackages.aarch64-linux;

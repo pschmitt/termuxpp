@@ -9,7 +9,7 @@
 let
   termuxpp-api = pkgs.callPackage ./android-api.nix { inherit inputs; };
 in
-{
+rec {
   # The Linux/glibc guest system manager.
   nixpp = pkgs.callPackage ./. { };
   termuxpp-rish = pkgs.callPackage ./rish.nix { };
@@ -36,5 +36,12 @@ in
   nixpp-runtime-termux-seed = import ./bootstrap-seed.nix {
     inherit inputs pkgs;
     inherit (pkgs) lib;
+  };
+  # The slim outer environment as the app's aarch64 bootstrap archive; pass a
+  # private setup.conf with `.override { setupConfig = ...; }`.
+  termuxpp-outer-bootstrap = pkgs.callPackage ./outer-bootstrap.nix {
+    runtime = nixpp-runtime-termux;
+    seed = nixpp-runtime-termux-seed;
+    rbw = rbw-termux;
   };
 }
