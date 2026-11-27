@@ -45,20 +45,32 @@ pub(crate) struct Report {
 }
 
 /// The prefix entries of the selected generation, once per generation
-/// (`checked` as in native_update), or None without `native/prefix.json`.
-pub(crate) fn pending(runtime: &Path, checked: &mut Option<String>) -> Option<Vec<Entry>> {
+/// (`checked` as in native_update): None without `native/prefix.json`, an
+/// error when it cannot be read or parsed.
+pub(crate) fn pending(runtime: &Path, checked: &mut Option<String>) -> Option<Result<Vec<Entry>>> {
     let text = fs::read_to_string(runtime.join("current-system")).ok()?;
     let name = text.strip_suffix('\n')?;
     if !crate::store::is_candidate_name(name) || checked.as_deref() == Some(name) {
         return None;
     }
     *checked = Some(name.to_owned());
-    let manifest = runtime
-        .join("root/nix/store")
-        .join(name)
-        .join("native/prefix.json");
-    let entries: Vec<Entry> = serde_json::from_slice(&fs::read(manifest).ok()?).ok()?;
-    Some(entries)
+    let root = runtime.join("root");
+    let link = root.join("nix/store").join(name).join("native/prefix.json");
+    fs::symlink_metadata(&link).ok()?;
+    Some((|| {
+        // The generation links into the guest's /nix/store, which lives
+        // under runtime/root on the native side.
+        let manifest = match fs::read_link(&link) {
+            Ok(target) => match target.strip_prefix("/") {
+                Ok(relative) => root.join(relative),
+                Err(_) => link.parent().context("invalid link")?.join(target),
+            },
+            Err(_) => link.clone(),
+        };
+        let data =
+            fs::read(&manifest).with_context(|| format!("cannot read {}", manifest.display()))?;
+        serde_json::from_slice(&data).with_context(|| format!("invalid {}", manifest.display()))
+    })())
 }
 
 /// Sync `entries` into `prefix`; sources are guest store paths under
@@ -250,6 +262,33 @@ mod tests {
         fn sync(&self, entries: &[Entry]) -> Report {
             sync(&self.runtime, &self.prefix, entries).unwrap()
         }
+    }
+
+    #[test]
+    fn the_generation_manifest_is_read_through_its_guest_store_link() {
+        let f = fixture();
+        let name = format!("{}-termuxpp-system-test", "c".repeat(32));
+        let store = f.runtime.join("root/nix/store");
+        let json = format!("{}-native-prefix.json", "d".repeat(32));
+        fs::create_dir_all(store.join(&name).join("native")).unwrap();
+        fs::write(
+            store.join(&json),
+            r#"[{"path":"bin/rbw","source":"/nix/store/x/bin/rbw","mode":"0700"}]"#,
+        )
+        .unwrap();
+        std::os::unix::fs::symlink(
+            format!("/nix/store/{json}"),
+            store.join(&name).join("native/prefix.json"),
+        )
+        .unwrap();
+        fs::write(f.runtime.join("current-system"), format!("{name}\n")).unwrap();
+        let mut checked = None;
+        let entries = pending(&f.runtime, &mut checked).unwrap().unwrap();
+        assert_eq!(entries[0].path, "bin/rbw");
+        assert!(pending(&f.runtime, &mut checked).is_none());
+
+        fs::write(store.join(&json), "not json").unwrap();
+        assert!(pending(&f.runtime, &mut None).unwrap().is_err());
     }
 
     #[test]

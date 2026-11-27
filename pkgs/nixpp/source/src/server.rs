@@ -143,7 +143,9 @@ impl Server {
                 && let Some(entries) =
                     crate::prefix_update::pending(&self.runtime, &mut prefix_checked)
             {
-                match crate::prefix_update::sync(&self.runtime, prefix, &entries) {
+                match entries
+                    .and_then(|entries| crate::prefix_update::sync(&self.runtime, prefix, &entries))
+                {
                     Ok(report) => {
                         for path in &report.installed {
                             eprintln!("nixpp: installed {path} into the native prefix");
