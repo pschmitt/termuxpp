@@ -179,7 +179,7 @@ impl Server {
                         eprintln!(
                             "nixpp: installed the native nixpp of the selected generation; restarting"
                         );
-                        return Ok(());
+                        break;
                     }
                     Err(error) => eprintln!("nixpp: could not install the native nixpp: {error:#}"),
                 }
@@ -201,7 +201,24 @@ impl Server {
             };
             self.handle(stream, runner)?;
         }
+        // Restarting closes the listener, and closing it resets every
+        // connection still queued (ECONNRESET): answer those first.
+        if !stop.load(Ordering::SeqCst) {
+            self.drain(runner)?;
+        }
         Ok(())
+    }
+
+    /// Answer the connections already queued on the listener, without waiting
+    /// for new ones.
+    fn drain(&self, runner: &mut dyn Runner) -> Result<()> {
+        loop {
+            match self.listener.accept() {
+                Ok((stream, _)) => self.handle(stream, runner)?,
+                Err(error) if error.kind() == io::ErrorKind::Interrupted => {}
+                Err(_) => return Ok(()),
+            }
+        }
     }
 
     /// Blocks until a client connects, a watched file changes or a stop
@@ -549,6 +566,32 @@ mod tests {
         assert!(runner.calls.is_empty());
         drop(server);
         assert!(!sockets.path().exists());
+    }
+
+    #[test]
+    fn queued_connections_are_answered_before_a_restart() {
+        // A restart closes the listener, which would reset these clients.
+        let fixture = Fixture::new();
+        let sockets = Sockets::new();
+        let server = Server::bind(&fixture.runtime, &sockets.path())
+            .unwrap()
+            .unwrap();
+        let mut clients: Vec<UnixStream> = (0..2)
+            .map(|_| {
+                let mut stream = UnixStream::connect(server.path()).unwrap();
+                stream
+                    .write_all(b"{\"command\":\"list-generations\"}\n")
+                    .unwrap();
+                stream
+            })
+            .collect();
+        server.drain(&mut MockRunner::returning(0)).unwrap();
+        for client in &mut clients {
+            let mut reply = Vec::new();
+            client.read_to_end(&mut reply).unwrap();
+            let reply: Value = serde_json::from_slice(&reply).unwrap();
+            assert_eq!(reply["status"], 0);
+        }
     }
 
     #[test]

@@ -255,14 +255,32 @@ fn smoke_test(
     let mut shell = spawn(
         Command::new(&probe)
             .arg(busybox)
-            .args(["busybox", "sh", "-c", "read line && exec \"$0\" true"])
+            .args([
+                "busybox",
+                "sh",
+                "-c",
+                "echo ready && read line && exec \"$0\" true",
+            ])
             .arg(busybox)
             .env_clear()
             .stdin(Stdio::piped())
-            .stdout(Stdio::null())
+            .stdout(Stdio::piped())
             .stderr(Stdio::null()),
     )
     .with_context(|| format!("cannot run {}", probe.display()))?;
+    // Swap only once the current launcher runs the shell: a launcher that is
+    // a script is read by its interpreter after spawn returns, and would
+    // otherwise run the candidate in its place.
+    let started = shell.stdout.take().map(|stdout| {
+        let mut line = String::new();
+        std::io::BufRead::read_line(&mut std::io::BufReader::new(stdout), &mut line)
+            .map(|_| line == "ready\n")
+    });
+    if !matches!(started, Some(Ok(true))) {
+        let _ = shell.kill();
+        let _ = shell.wait();
+        anyhow::bail!("the current launcher did not start the probe shell");
+    }
     let staged = scratch.0.join("launcher.new");
     let swapped = copy_executable(candidate, &staged)
         .and_then(|()| fs::rename(&staged, &probe).context("cannot swap in the new launcher"));

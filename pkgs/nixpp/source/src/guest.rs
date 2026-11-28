@@ -1140,8 +1140,65 @@ pub fn activate_system(
         prepare(runtime, generation)?;
     }
     on_stage(Stage::Switch);
-    manage_with_backup(socket, "switch", Some(&name), backup)?;
-    Ok(())
+    match manage_with_backup(socket, "switch", Some(&name), backup) {
+        Ok(_) => Ok(()),
+        // The controller restarts when the generation ships a new native
+        // nixpp, and a restart can cut this connection: ask the new controller
+        // whether the switch went through before reporting a failure.
+        Err(error) if lost_connection(&error) => {
+            match wait_for_current(socket, SWITCH_CONFIRM_TIMEOUT, || {
+                std::thread::sleep(Duration::from_secs(2))
+            }) {
+                Some(current) if current == name => {
+                    eprintln!(
+                        "nixpp: the controller restarted after the switch; the switch went through"
+                    );
+                    Ok(())
+                }
+                _ => Err(error),
+            }
+        }
+        Err(error) => Err(error),
+    }
+}
+
+/// How long `activate_system` waits for a restarted controller to answer.
+const SWITCH_CONFIRM_TIMEOUT: Duration = Duration::from_secs(180);
+
+/// Whether `error` means the controller connection broke, as opposed to an
+/// answer from the controller.
+fn lost_connection(error: &Error) -> bool {
+    match error {
+        Error::Io(error) => matches!(
+            error.kind(),
+            io::ErrorKind::ConnectionReset
+                | io::ErrorKind::ConnectionAborted
+                | io::ErrorKind::BrokenPipe
+                | io::ErrorKind::UnexpectedEof
+        ),
+        Error::Invalid(message) => message == "invalid native controller response",
+        _ => false,
+    }
+}
+
+/// The current generation once the controller at `socket` answers again,
+/// asking until `timeout` passes (`pause` between attempts).
+fn wait_for_current(socket: &Path, timeout: Duration, mut pause: impl FnMut()) -> Option<String> {
+    let deadline = std::time::Instant::now() + timeout;
+    loop {
+        if let Ok(list) =
+            manage(socket, "list-generations", None).and_then(|value| generations(&value))
+        {
+            return list
+                .into_iter()
+                .find(|generation| generation.current)
+                .map(|generation| generation.generation);
+        }
+        if std::time::Instant::now() >= deadline {
+            return None;
+        }
+        pause();
+    }
 }
 
 #[cfg(test)]
@@ -2282,5 +2339,54 @@ mod tests {
         );
         assert!(result.is_err());
         assert_eq!(stages, [Stage::Build]);
+    }
+
+    #[test]
+    fn a_lost_controller_connection_is_told_from_an_answer() {
+        for kind in [
+            io::ErrorKind::ConnectionReset,
+            io::ErrorKind::BrokenPipe,
+            io::ErrorKind::UnexpectedEof,
+        ] {
+            assert!(lost_connection(&Error::Io(io::Error::from(kind))));
+        }
+        assert!(lost_connection(&Error::invalid(
+            "invalid native controller response"
+        )));
+        assert!(!lost_connection(&Error::invalid("candidate check failed")));
+        assert!(!lost_connection(&Error::Io(io::Error::from(
+            io::ErrorKind::NotFound
+        ))));
+        assert!(!lost_connection(&Error::Timeout { seconds: 1 }));
+    }
+
+    #[test]
+    fn the_current_generation_is_asked_once_the_controller_answers() {
+        use std::io::{BufRead, BufReader};
+        let dir = tempfile::tempdir().unwrap();
+        let socket = dir.path().join("nixpp.sock");
+        // Nothing listens yet: give up at the deadline.
+        assert_eq!(wait_for_current(&socket, Duration::ZERO, || {}), None);
+
+        let listener = UnixListener::bind(&socket).unwrap();
+        let name = format!("{}-termuxpp-system-test", "a".repeat(32));
+        let reply = json!({"status": 0, "generations": [
+            {"number": 1, "date": null, "generation": "old", "homeManager": "/nix/store/x", "current": false, "previous": true},
+            {"number": 2, "date": null, "generation": name, "homeManager": "/nix/store/y", "current": true, "previous": false},
+        ]});
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut request = String::new();
+            BufReader::new(&stream).read_line(&mut request).unwrap();
+            assert!(request.contains("list-generations"));
+            stream
+                .write_all((reply.to_string() + "\n").as_bytes())
+                .unwrap();
+        });
+        assert_eq!(
+            wait_for_current(&socket, Duration::from_secs(5), || {}),
+            Some(name)
+        );
+        server.join().unwrap();
     }
 }
