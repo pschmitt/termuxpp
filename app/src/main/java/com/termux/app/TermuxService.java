@@ -149,6 +149,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
     private static final String LOG_TAG = "TermuxService";
     private static final int SESSION_COMMAND_SERVER_MAX_ATTEMPTS = 10;
     private static final long SESSION_COMMAND_SERVER_RETRY_DELAY_MS = 1000;
+    private static final long SESSION_COMMAND_SERVER_SLOW_RETRY_DELAY_MS = 10_000;
 
     @Override
     public void onCreate() {
@@ -176,16 +177,23 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         NixppRuntimeRecovery.startWatchdog(this);
     }
 
+    /**
+     * Listen for {@code tpp}. The name may still be taken briefly, by the listener of a service instance that
+     * this process just destroyed: retry every second, then every ten seconds for as long as the service
+     * runs, since without the listener every {@code tpp} command fails.
+     */
     private void startSessionCommandServer() {
         sessionCommandServerAttempts++;
         try {
             sessionCommandServer = new SessionCommandServer(this);
+            if (sessionCommandServerAttempts > 1)
+                Logger.logInfo(LOG_TAG, "Session command listener started after " + sessionCommandServerAttempts + " attempts");
+            sessionCommandServerAttempts = 0;
         } catch (IOException e) {
-            if (sessionCommandServerAttempts < SESSION_COMMAND_SERVER_MAX_ATTEMPTS) {
-                mHandler.postDelayed(retrySessionCommandServer, SESSION_COMMAND_SERVER_RETRY_DELAY_MS);
-            } else {
-                Logger.logWarn(LOG_TAG, "Could not start the session command listener: " + e.getMessage());
-            }
+            if (sessionCommandServerAttempts == SESSION_COMMAND_SERVER_MAX_ATTEMPTS)
+                Logger.logWarn(LOG_TAG, "Could not start the session command listener, still trying: " + e.getMessage());
+            mHandler.postDelayed(retrySessionCommandServer, sessionCommandServerAttempts < SESSION_COMMAND_SERVER_MAX_ATTEMPTS
+                ? SESSION_COMMAND_SERVER_RETRY_DELAY_MS : SESSION_COMMAND_SERVER_SLOW_RETRY_DELAY_MS);
         }
     }
 

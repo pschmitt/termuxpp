@@ -2,6 +2,7 @@ package com.termux.app;
 
 import android.net.LocalServerSocket;
 import android.net.LocalSocket;
+import android.net.LocalSocketAddress;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
@@ -35,8 +36,11 @@ final class SessionCommandServer implements AutoCloseable {
     });
     private volatile boolean closed;
 
+    /** The abstract socket name that {@code tpp} connects to. */
+    static final String NAME = "dev.pschmitt.termux.sessions";
+
     SessionCommandServer(TermuxService service) throws IOException {
-        listener = new LocalServerSocket("dev.pschmitt.termux.sessions");
+        listener = new LocalServerSocket(NAME);
         Handler main = new Handler(Looper.getMainLooper());
         Thread thread = new Thread(() -> {
             while (!closed) {
@@ -44,6 +48,15 @@ final class SessionCommandServer implements AutoCloseable {
                 try {
                     client = listener.accept();
                 } catch (IOException e) {
+                    break;
+                }
+                if (closed) {
+                    // The wake-up connection of close().
+                    try {
+                        client.close();
+                    } catch (IOException ignored) {
+                        // Closing anyway.
+                    }
                     break;
                 }
                 // Each connection gets its own thread, so a helper waiting for a tmux window choice does
@@ -115,10 +128,26 @@ final class SessionCommandServer implements AutoCloseable {
         throw new IOException("Incomplete or oversized session command");
     }
 
+    /**
+     * Stop listening and free the name at once. A thread blocked in {@code accept()} keeps the socket, and so
+     * its abstract name, alive past {@link LocalServerSocket#close()}: a service started again in the same
+     * process then cannot bind ("Address already in use"). Shutting the socket down and connecting to it once
+     * ends that {@code accept()} first.
+     */
     @Override
     public void close() throws IOException {
         closed = true;
         connections.shutdownNow();
+        try {
+            android.system.Os.shutdown(listener.getFileDescriptor(), android.system.OsConstants.SHUT_RDWR);
+        } catch (android.system.ErrnoException | RuntimeException ignored) {
+            // The connection below wakes the accept() as well.
+        }
+        try (LocalSocket wake = new LocalSocket()) {
+            wake.connect(new LocalSocketAddress(NAME));
+        } catch (IOException ignored) {
+            // Nothing is listening any more.
+        }
         listener.close();
     }
 }
