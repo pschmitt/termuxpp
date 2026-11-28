@@ -94,9 +94,43 @@ public final class TerminalAppearance {
             return loadFont(context, Setting.FONT.selection(context), configPaths());
         if ("monospace".equalsIgnoreCase(choice)) return Typeface.MONOSPACE;
         if ("serif".equalsIgnoreCase(choice)) return Typeface.SERIF;
-        // Gboard's font. Pixels ship it as a system family; elsewhere this is the system font.
-        if ("google-sans".equalsIgnoreCase(choice)) return Typeface.create("google-sans-text", Typeface.NORMAL);
+        if ("google-sans".equalsIgnoreCase(choice)) return googleSans(context);
         return null;
+    }
+
+    /** Where Pixels keep Google Sans, which they expose as the {@code google-sans-text} family. */
+    private static final String[] SYSTEM_GOOGLE_SANS = {
+        "/product/fonts/GoogleSans-Regular.ttf", "/system/fonts/GoogleSans-Regular.ttf"};
+    /** Google Sans Flex (SIL OFL 1.1), built by scripts/build-extra-keys-font.sh. */
+    private static final String BUNDLED_GOOGLE_SANS_REGULAR = "extra-keys-fonts/GoogleSansFlex-Regular.ttf";
+    private static final String BUNDLED_GOOGLE_SANS_MEDIUM = "extra-keys-fonts/GoogleSansFlex-Medium.ttf";
+    private static Typeface sBundledGoogleSans;
+
+    /**
+     * Gboard's font: the system's Google Sans on a Pixel, otherwise the bundled Google Sans Flex,
+     * regular and medium in one family so that a medium weight (long-press menus) is the real cut.
+     */
+    static Typeface googleSans(Context context) {
+        for (String path : SYSTEM_GOOGLE_SANS) {
+            if (new File(path).isFile()) return Typeface.create("google-sans-text", Typeface.NORMAL);
+        }
+        if (sBundledGoogleSans != null) return sBundledGoogleSans;
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= 29) {
+                android.content.res.AssetManager assets = context.getAssets();
+                android.graphics.fonts.FontFamily family = new android.graphics.fonts.FontFamily.Builder(
+                    new android.graphics.fonts.Font.Builder(assets, BUNDLED_GOOGLE_SANS_REGULAR).setWeight(400).build())
+                    .addFont(new android.graphics.fonts.Font.Builder(assets, BUNDLED_GOOGLE_SANS_MEDIUM).setWeight(500).build())
+                    .build();
+                sBundledGoogleSans = new Typeface.CustomFallbackBuilder(family).setSystemFallback("sans-serif").build();
+            } else {
+                sBundledGoogleSans = Typeface.createFromAsset(context.getAssets(), BUNDLED_GOOGLE_SANS_REGULAR);
+            }
+        } catch (IOException | RuntimeException e) {
+            Logger.logStackTraceWithMessage(LOG_TAG, "Could not load the bundled Google Sans Flex", e);
+            return null;
+        }
+        return sBundledGoogleSans;
     }
 
     public static Typeface loadFont(Context context, String choice, List<String> paths) {

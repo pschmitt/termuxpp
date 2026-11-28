@@ -643,7 +643,8 @@ Upstream uses long presses to lock modifiers or repeat keys. [Upstream extra-key
 The extra-key toolbar has a separate font preference, appearance themes,
 and a configurable row background. Labels can be edited
 for the main, long-press, and swipe-up keys. Custom labels keep their case.
-The font can be `google-sans`, Gboard's font on Pixels. The `-` key shows a
+The font can be `google-sans`, Gboard's font: the system's Google Sans on a
+Pixel, a bundled Google Sans Flex (SIL OFL) elsewhere. The `-` key shows a
 hyphen-minus; upstream draws it as a horizontal bar (U+2015) in its
 [label table](https://github.com/termux/termux-app/blob/master/termux-shared/src/main/java/com/termux/shared/termux/extrakeys/ExtraKeysConstants.java).
 Individual keys can override their text and background colors, add spacing around

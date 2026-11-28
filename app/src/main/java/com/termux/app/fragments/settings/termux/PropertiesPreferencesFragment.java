@@ -214,7 +214,7 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
 
     private String choiceLabel(String key, String value) {
         if (TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT.equals(key) && "google-sans".equals(value))
-            return "Google Sans (Gboard; system font where missing)";
+            return "Google Sans (Gboard)";
         if (TermuxPropertyConstants.KEY_EXTRA_KEYS_COMPACT.equals(key)) {
             if (TermuxPropertyConstants.EXTRA_KEYS_COMPACT_TRUE.equals(value)) return "Compact (three quarters)";
             if (TermuxPropertyConstants.EXTRA_KEYS_COMPACT_CUSTOM.equals(value)) return "Custom row height";

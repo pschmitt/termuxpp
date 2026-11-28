@@ -596,9 +596,9 @@ Run `tpp settings reload` after editing the file. Stock Termux reads
 
 **Font** under **Settings → Properties → Extra keys** sets the font used
 for the toolbar and its key previews. In YAML, set `extra-keys.font` to `system`
-(default), `google-sans` (Gboard's font, which Pixels ship; the system font elsewhere),
-`terminal` (match the terminal font), `monospace`, or `serif`. Long-press menus draw their
-items at medium weight, like Gboard's.
+(default), `google-sans` (Gboard's font: the system's Google Sans on a Pixel, the bundled
+Google Sans Flex elsewhere), `terminal` (match the terminal font), `monospace`, or `serif`.
+Long-press menus draw their items at medium weight, like Gboard's.
 
 In **Extra keys → Layout**, tap a key to edit its optional display label. Custom
 labels preserve their case. In YAML, use `display` for the main key,
