@@ -18,6 +18,7 @@ import dev.pschmitt.termux.api.TermuxAPIApplication;
 import dev.pschmitt.termux.api.settings.activities.TermuxAPISettingsActivity;
 import dev.pschmitt.termux.api.util.ViewUtils;
 import dev.pschmitt.termux.shared.activity.ActivityUtils;
+import dev.pschmitt.termux.shared.activity.PluginScreen;
 import dev.pschmitt.termux.shared.activity.media.AppCompatActivityUtils;
 import dev.pschmitt.termux.shared.android.PackageUtils;
 import dev.pschmitt.termux.shared.android.PermissionUtils;
@@ -53,16 +54,6 @@ public class TermuxAPIMainActivity extends AppCompatActivity {
 
         AppCompatActivityUtils.setToolbar(this, dev.pschmitt.termux.shared.R.id.toolbar);
         AppCompatActivityUtils.setToolbarTitle(this, dev.pschmitt.termux.shared.R.id.toolbar, TermuxConstants.TERMUX_API_APP_NAME, 0);
-
-        TextView pluginInfo = findViewById(R.id.textview_plugin_info);
-        pluginInfo.setText(getString(R.string.plugin_info,
-                "https://github.com/pschmitt/termuxpp",
-                "https://github.com/pschmitt/termux-api",
-                TermuxConstants.TERMUX_API_APT_PACKAGE_NAME,
-                "https://github.com/pschmitt/termux-api-package",
-                "https://github.com/termux/termux-app",
-                "https://github.com/termux/termux-api",
-                "https://github.com/termux/termux-api-package"));
 
         mBatteryOptimizationNotDisabledWarning = findViewById(R.id.textview_battery_optimization_not_disabled_warning);
         mDisableBatteryOptimization = findViewById(R.id.btn_disable_battery_optimizations);
@@ -127,15 +118,9 @@ public class TermuxAPIMainActivity extends AppCompatActivity {
 
     private void checkIfBatteryOptimizationNotDisabled() {
         if (mBatteryOptimizationNotDisabledWarning == null) return;
-
-        // If battery optimizations not disabled
-        if (!PermissionUtils.checkIfBatteryOptimizationsDisabled(this)) {
-            ViewUtils.setWarningTextViewAndButtonState(this, mBatteryOptimizationNotDisabledWarning,
-                    mDisableBatteryOptimization, true, getString(R.string.action_disable_battery_optimizations));
-        } else {
-            ViewUtils.setWarningTextViewAndButtonState(this, mBatteryOptimizationNotDisabledWarning,
-                    mDisableBatteryOptimization, false, getString(R.string.action_already_disabled));
-        }
+        PluginScreen.setStatus(findViewById(R.id.textview_battery_status), mDisableBatteryOptimization,
+            PermissionUtils.checkIfBatteryOptimizationsDisabled(this),
+            getString(R.string.api_status_allowed), getString(R.string.api_status_needed));
     }
 
     private void requestDisableBatteryOptimizations() {
@@ -147,15 +132,9 @@ public class TermuxAPIMainActivity extends AppCompatActivity {
 
     private void checkIfDisplayOverOtherAppsPermissionNotGranted() {
         if (mDisplayOverOtherAppsPermissionNotGrantedWarning == null) return;
-
-        // If display over other apps permission not granted
-        if (!PermissionUtils.checkDisplayOverOtherAppsPermission(this)) {
-            ViewUtils.setWarningTextViewAndButtonState(this, mDisplayOverOtherAppsPermissionNotGrantedWarning,
-                    mGrantDisplayOverOtherAppsPermission, true, getString(R.string.action_grant_display_over_other_apps_permission));
-        } else {
-            ViewUtils.setWarningTextViewAndButtonState(this, mDisplayOverOtherAppsPermissionNotGrantedWarning,
-                    mGrantDisplayOverOtherAppsPermission, false, getString(R.string.action_already_granted));
-        }
+        PluginScreen.setStatus(findViewById(R.id.textview_overlay_status), mGrantDisplayOverOtherAppsPermission,
+            PermissionUtils.checkDisplayOverOtherAppsPermission(this),
+            getString(R.string.api_status_allowed), getString(R.string.api_status_needed));
     }
 
     private void requestDisplayOverOtherAppsPermission() {
@@ -166,49 +145,8 @@ public class TermuxAPIMainActivity extends AppCompatActivity {
 
 
     private void setChangeLauncherActivityStateViews() {
-        String packageName = TermuxConstants.TERMUX_PACKAGE_NAME;
-        String className = TermuxConstants.TERMUX_API_APP.TERMUX_API_LAUNCHER_ACTIVITY_NAME;
-
-        TextView changeLauncherActivityStateTextView = findViewById(R.id.textview_change_launcher_activity_state_details);
-        changeLauncherActivityStateTextView.setText(MarkdownUtils.getSpannedMarkdownText(this,
-                getString(R.string.msg_change_launcher_activity_state_info, packageName, getClass().getName())));
-
-        Button changeLauncherActivityStateButton = findViewById(R.id.button_change_launcher_activity_state);
-        String stateChangeMessage;
-        boolean newState;
-
-        Boolean currentlyDisabled = PackageUtils.isComponentDisabled(this,
-                packageName, className, false);
-        if (currentlyDisabled == null) {
-            Logger.logError(LOG_TAG, "Failed to check if \"" + packageName + "/" + className + "\" launcher activity is disabled");
-            changeLauncherActivityStateButton.setEnabled(false);
-            changeLauncherActivityStateButton.setAlpha(.5f);
-            changeLauncherActivityStateButton.setText(dev.pschmitt.termux.shared.R.string.action_disable_launcher_icon);
-            changeLauncherActivityStateButton.setOnClickListener(null);
-            return;
-        }
-
-        changeLauncherActivityStateButton.setEnabled(true);
-        changeLauncherActivityStateButton.setAlpha(1f);
-        if (currentlyDisabled) {
-            changeLauncherActivityStateButton.setText(dev.pschmitt.termux.shared.R.string.action_enable_launcher_icon);
-            stateChangeMessage = getString(dev.pschmitt.termux.shared.R.string.msg_enabling_launcher_icon, TermuxConstants.TERMUX_API_APP_NAME);
-            newState = true;
-        } else {
-            changeLauncherActivityStateButton.setText(dev.pschmitt.termux.shared.R.string.action_disable_launcher_icon);
-            stateChangeMessage = getString(dev.pschmitt.termux.shared.R.string.msg_disabling_launcher_icon, TermuxConstants.TERMUX_API_APP_NAME);
-            newState = false;
-        }
-
-        changeLauncherActivityStateButton.setOnClickListener(v -> {
-            Logger.logInfo(LOG_TAG, stateChangeMessage);
-            String errmsg = PackageUtils.setComponentState(this,
-                    packageName, className, newState, stateChangeMessage, true);
-            if (errmsg == null)
-                setChangeLauncherActivityStateViews();
-            else
-                Logger.logError(LOG_TAG, errmsg);
-        });
+        PluginScreen.bindLauncherSwitch(this, findViewById(R.id.switch_launcher_icon),
+            TermuxConstants.TERMUX_API_APP.TERMUX_API_LAUNCHER_ACTIVITY_NAME, TermuxConstants.TERMUX_API_APP_NAME);
     }
 
 

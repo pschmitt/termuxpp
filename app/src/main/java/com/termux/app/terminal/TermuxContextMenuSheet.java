@@ -568,7 +568,7 @@ public class TermuxContextMenuSheet {
             icon.setBackgroundResource(R.drawable.ui_sheet_session_badge);
             icon.getLayoutParams().width = (int) (40 * density);
             icon.getLayoutParams().height = (int) (40 * density);
-            icon.setImageTintList(ColorStateList.valueOf(MaterialColors.getColor(icon, R.attr.termuxUiOnPrimary)));
+            icon.setImageTintList(ColorStateList.valueOf(MaterialColors.getColor(icon, dev.pschmitt.termux.shared.R.attr.termuxUiOnPrimary)));
             TextView title = view.findViewById(R.id.context_header_title);
             title.setTextSize(18);
             TextView subtitle = view.findViewById(R.id.context_header_subtitle);
@@ -797,7 +797,7 @@ public class TermuxContextMenuSheet {
                 detail.setText(action.detail);
                 detail.setVisibility(View.VISIBLE);
             }
-            int tint = action.enabled ? MaterialColors.getColor(icon, R.attr.termuxUiPrimary)
+            int tint = action.enabled ? MaterialColors.getColor(icon, dev.pschmitt.termux.shared.R.attr.termuxUiPrimary)
                 : ContextCompat.getColor(mDialog.getContext(), R.color.ui_outline);
             icon.setImageTintList(ColorStateList.valueOf(tint));
             if (!action.enabled) {
@@ -834,7 +834,7 @@ public class TermuxContextMenuSheet {
                 boolean on = action.checked;
                 state.setText(on ? R.string.ui_menu_state_on : R.string.ui_menu_state_off);
                 state.setBackgroundResource(on ? R.drawable.ui_sheet_pill_on : R.drawable.ui_sheet_pill_off);
-                state.setTextColor(on ? MaterialColors.getColor(state, R.attr.termuxUiOnPrimary)
+                state.setTextColor(on ? MaterialColors.getColor(state, dev.pschmitt.termux.shared.R.attr.termuxUiOnPrimary)
                     : ContextCompat.getColor(mDialog.getContext(), R.color.ui_on_surface_variant));
                 state.setVisibility(View.VISIBLE);
                 markAsSwitch(view, on);

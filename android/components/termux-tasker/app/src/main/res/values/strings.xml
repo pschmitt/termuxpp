@@ -14,15 +14,20 @@
          It's also used by plugin caller app as plugin name like in Tasker in "Select Action Category" > "Plugin" dialog, so keep this one short -->
     <string name="application_name">&TERMUX_TASKER_APP_NAME;</string>
     <string name="shared_user_label">&TERMUX_APP_NAME; user</string>
-    <string name="plugin_info">&TERMUX_TASKER_APP_NAME; is a plugin app for the &TERMUX_APP_NAME; app
+    <string name="tasker_plugin_info">&TERMUX_TASKER_APP_NAME; is a plugin app for the &TERMUX_APP_NAME; app
         that allows &TERMUX_APP_NAME; commands to be executed from Tasker and other plugin host apps.
         Find the TermuxPP app source at %1$s and the Tasker plug-in source at %2$s.
         This fork builds on the original Termux projects: core app %3$s and Tasker plug-in %4$s.</string>
-    <string name="plugin_api_help">Visit %1$s for more info on plugin usage.</string>
+    <string name="tasker_plugin_api_help">Visit %1$s for more info on plugin usage.</string>
 
     <!-- TermuxTaskerMainActivity -->
-    <string name="main_activity_heading">Run commands from Tasker</string>
-    <string name="msg_change_launcher_activity_state_info">The &TERMUX_TASKER_APP_NAME; app does not
+    <string name="tasker_main_activity_heading">Run commands from Tasker</string>
+    <string name="tasker_main_intro">Run your scripts from Tasker and other automation apps, in the background or in a new terminal session.</string>
+    <string name="tasker_title_usage">How to use it</string>
+    <string name="tasker_usage">1. Put your scripts in %1$s and make them executable.\n2. In Tasker, add the action Plugin › &TERMUX_APP_NAME;.\n3. Pick a script, add arguments if needed, and choose whether it runs in a terminal session.</string>
+    <string name="tasker_title_launcher_icon">Launcher icon</string>
+    <string name="tasker_launcher_icon_info">Show &TERMUX_TASKER_APP_NAME; in the app drawer. The plugin works without it; this screen also opens from the &TERMUX_APP_NAME; settings.</string>
+    <string name="tasker_msg_change_launcher_activity_state_info">The &TERMUX_TASKER_APP_NAME; app does not
         require a require launcher activity/icon to function. You can optionally disable the launcher
         activity if you want and enable it again from the main activity if required.
         \n\nThe launcher activity is an alias for the current main activity of the app which can
@@ -46,11 +51,11 @@
     <string name="title_execute_in_terminal">Execute in a terminal session</string>
     <string name="title_wait_for_result">Wait for result for commands (Requires timeout > 0)</string>
 
-    <string name="msg_executable_absolute_path">Executable Absolute Path:\n\"%1$s\"</string>
+    <string name="tasker_msg_executable_absolute_path">Executable Absolute Path:\n\"%1$s\"</string>
     <string name="msg_absolute_path">Absolute Path:\n\"%1$s\"</string>
 
     <string name="error_executable_required">Executable required.</string>
-    <string name="error_null_or_empty_executable">The executable is null or empty.</string>
+    <string name="tasker_error_null_or_empty_executable">The executable is null or empty.</string>
     <string name="error_int_not_in_range">Value must be in between %1$d and %2$d.</string>
 
     <string name="error_unknown_app">(unknown)</string>

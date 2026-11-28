@@ -139,7 +139,7 @@ public final class FireReceiver extends BroadcastReceiver {
 
         // If executable is null or empty, then exit here instead of getting canonical path which would expand to "/"
         if (executionCommand.executable == null || executionCommand.executable.isEmpty()) {
-            errmsg  = context.getString(R.string.error_null_or_empty_executable);
+            errmsg  = context.getString(R.string.tasker_error_null_or_empty_executable);
             Logger.logError(LOG_TAG, errmsg);
             PluginUtils.sendImmediateResultToPluginHostApp(this, intent, TaskerPlugin.Setting.RESULT_CODE_FAILED, errmsg);
             return;
@@ -154,8 +154,8 @@ public final class FireReceiver extends BroadcastReceiver {
         // "allow-external-apps" property to not set to "true", then return RESULT_CODE_FAILED to plugin host app
         errmsg = PluginUtils.checkIfTermuxTaskerAllowExternalAppsPolicyIsViolated(context, executionCommand.executable);
         if (errmsg != null) {
-            errmsg  += "\n" + context.getString(R.string.msg_executable_absolute_path, executionCommand.executable) +
-                    "\n" + context.getString(R.string.plugin_api_help, TermuxConstants.TERMUX_TASKER_GITHUB_REPO_URL);
+            errmsg  += "\n" + context.getString(R.string.tasker_msg_executable_absolute_path, executionCommand.executable) +
+                    "\n" + context.getString(R.string.tasker_plugin_api_help, TermuxConstants.TERMUX_TASKER_GITHUB_REPO_URL);
             executionCommand.setStateFailed(Errno.ERRNO_FAILED.getCode(), errmsg);
             PluginUtils.processPluginExecutionCommandError(context, this, intent, LOG_TAG, executionCommand, TaskerPlugin.Setting.RESULT_CODE_FAILED);
             return;
@@ -242,7 +242,7 @@ public final class FireReceiver extends BroadcastReceiver {
         executionIntent.putExtra(TERMUX_SERVICE.EXTRA_BACKGROUND_CUSTOM_LOG_LEVEL, DataUtils.getStringFromInteger(executionCommand.backgroundCustomLogLevel, null));
         executionIntent.putExtra(TERMUX_SERVICE.EXTRA_RUNNER, executionCommand.runner); // Runner extra will be prioritized over background extra.
         executionIntent.putExtra(TERMUX_SERVICE.EXTRA_BACKGROUND, ExecutionCommand.Runner.APP_SHELL.getName().equals(executionCommand.runner)); // Backward compatibility for runner.
-        executionIntent.putExtra(TERMUX_SERVICE.EXTRA_PLUGIN_API_HELP, context.getString(R.string.plugin_api_help, TermuxConstants.TERMUX_TASKER_GITHUB_REPO_URL));
+        executionIntent.putExtra(TERMUX_SERVICE.EXTRA_PLUGIN_API_HELP, context.getString(R.string.tasker_plugin_api_help, TermuxConstants.TERMUX_TASKER_GITHUB_REPO_URL));
 
         // Send execution intent to TERMUX_SERVICE
         PluginUtils.sendExecuteIntentToExecuteService(context, this, intent, executionIntent, waitForResult);

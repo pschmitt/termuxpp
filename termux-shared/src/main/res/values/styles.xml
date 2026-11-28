@@ -1,6 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
+    <!-- Plugin screens (widget, API, Tasker): sections as rounded cards in the app's colors.
+         They need the app theme, which sets the termuxUi attributes. -->
+    <style name="Widget.TermuxPP.Plugin.Card" parent="Widget.MaterialComponents.CardView">
+        <item name="cardBackgroundColor">?attr/termuxUiGroup</item>
+        <item name="cardCornerRadius">24dp</item>
+        <item name="cardElevation">0dp</item>
+        <item name="strokeWidth">0dp</item>
+        <item name="contentPadding">20dp</item>
+        <item name="android:layout_marginBottom">12dp</item>
+    </style>
+    <style name="TextAppearance.TermuxPP.Plugin.Headline" parent="TextAppearance.MaterialComponents.Headline5">
+        <item name="android:textColor">?android:attr/textColorPrimary</item>
+    </style>
+    <style name="TextAppearance.TermuxPP.Plugin.CardTitle" parent="TextAppearance.MaterialComponents.Subtitle1">
+        <item name="android:textColor">?android:attr/textColorPrimary</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+    <style name="TextAppearance.TermuxPP.Plugin.Body" parent="TextAppearance.MaterialComponents.Body2">
+        <item name="android:textColor">?android:attr/textColorSecondary</item>
+        <item name="android:lineSpacingMultiplier">1.15</item>
+    </style>
+    <style name="TextAppearance.TermuxPP.Plugin.Note" parent="TextAppearance.MaterialComponents.Caption">
+        <item name="android:textColor">?android:attr/textColorSecondary</item>
+    </style>
+    <style name="Widget.TermuxPP.Plugin.Button.Filled" parent="Widget.MaterialComponents.Button.UnelevatedButton">
+        <item name="backgroundTint">?attr/termuxUiPrimary</item>
+        <item name="android:textColor">?attr/termuxUiOnPrimary</item>
+        <item name="iconTint">?attr/termuxUiOnPrimary</item>
+        <item name="rippleColor">?attr/termuxUiRipple</item>
+        <item name="cornerRadius">20dp</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:letterSpacing">0</item>
+    </style>
+    <style name="Widget.TermuxPP.Plugin.Button.Tonal" parent="Widget.MaterialComponents.Button.UnelevatedButton">
+        <item name="backgroundTint">?attr/termuxUiContainer</item>
+        <item name="android:textColor">?attr/termuxUiOnContainer</item>
+        <item name="iconTint">?attr/termuxUiOnContainer</item>
+        <item name="rippleColor">?attr/termuxUiRipple</item>
+        <item name="cornerRadius">20dp</item>
+        <item name="android:minHeight">48dp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:letterSpacing">0</item>
+    </style>
+
     <!-- BaseToolbar Title text appearance. -->
     <style name="TextAppearance.Widget.BaseToolbar.Title" parent="TextAppearance.Widget.AppCompat.Toolbar.Title">
         <item name="android:textSize">14sp</item>

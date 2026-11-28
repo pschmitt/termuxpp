@@ -57,10 +57,10 @@ public final class SettingsNavigationPreference extends Preference {
         float top = first ? radius : 0;
         float bottom = last ? radius : 0;
         GradientDrawable surface = new GradientDrawable();
-        surface.setColor(MaterialColors.getColor(context, R.attr.termuxUiGroup,
+        surface.setColor(MaterialColors.getColor(context, dev.pschmitt.termux.shared.R.attr.termuxUiGroup,
             ContextCompat.getColor(context, R.color.ui_settings_group)));
         surface.setCornerRadii(new float[] {top, top, top, top, bottom, bottom, bottom, bottom});
-        ColorStateList ripple = ColorStateList.valueOf(MaterialColors.getColor(context, R.attr.termuxUiRipple,
+        ColorStateList ripple = ColorStateList.valueOf(MaterialColors.getColor(context, dev.pschmitt.termux.shared.R.attr.termuxUiRipple,
             ContextCompat.getColor(context, R.color.ui_ripple)));
         holder.itemView.setBackground(new RippleDrawable(ripple, surface, null));
         holder.findViewById(R.id.settings_row_divider).setVisibility(last ? View.GONE : View.VISIBLE);

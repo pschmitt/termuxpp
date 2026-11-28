@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Plugin screens: a switch in the app accent when on. -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_enabled="false" android:color="?android:attr/textColorSecondary" android:alpha="0.12" />
+    <item android:state_checked="true" android:color="?attr/termuxUiContainer" />
+    <item android:color="?android:attr/textColorSecondary" android:alpha="0.24" />
+</selector>

@@ -1,5 +1,11 @@
 package com.termux.app;
 
+import android.app.Activity;
+import android.os.Build;
+import android.os.Bundle;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import com.termux.app.settings.AppAccent;
 import android.app.Application;
 import android.content.Context;
 
@@ -36,6 +42,23 @@ public class TermuxApplication extends Application {
 
         // Set log config for the app
         setLogConfig(context);
+
+        // The app accent also for the plugin screens (widget, API, Tasker), which cannot apply it
+        // themselves. The app's own activities apply it again; that is harmless.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            registerActivityLifecycleCallbacks(new ActivityLifecycleCallbacks() {
+                @Override public void onActivityPreCreated(@NonNull Activity activity, @Nullable Bundle state) {
+                    AppAccent.apply(activity, AppAccent.get(activity));
+                }
+                @Override public void onActivityCreated(@NonNull Activity activity, @Nullable Bundle state) {}
+                @Override public void onActivityStarted(@NonNull Activity activity) {}
+                @Override public void onActivityResumed(@NonNull Activity activity) {}
+                @Override public void onActivityPaused(@NonNull Activity activity) {}
+                @Override public void onActivityStopped(@NonNull Activity activity) {}
+                @Override public void onActivitySaveInstanceState(@NonNull Activity activity, @NonNull Bundle state) {}
+                @Override public void onActivityDestroyed(@NonNull Activity activity) {}
+            });
+        }
 
         TermuxAPIApplication.initialize(context);
         TermuxTaskerApplication.initialize(context);

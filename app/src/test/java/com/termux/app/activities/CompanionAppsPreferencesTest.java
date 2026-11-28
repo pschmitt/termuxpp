@@ -112,11 +112,18 @@ public class CompanionAppsPreferencesTest {
         Assert.assertNull(fragment.findPreference("termux_styling"));
         Assert.assertNotNull(fragment.findPreference("termux_widget"));
 
-        for (String key : new String[]{"termux_api", "termux_tasker", "termux_widget"}) {
-            Preference companion = fragment.findPreference(key);
+        String[][] screens = {
+            {"termux_api", "dev.pschmitt.termux.api.activities.TermuxAPIMainActivity"},
+            {"termux_tasker", "dev.pschmitt.termux.tasker.activities.TermuxTaskerMainActivity"},
+            {"termux_widget", "com.termux.widget.activities.TermuxWidgetMainActivity"}};
+        for (String[] screen : screens) {
+            Preference companion = fragment.findPreference(screen[0]);
             Assert.assertNotNull(companion.getIcon());
             Assert.assertTrue(companion.isVisible());
-            Assert.assertFalse(companion.isSelectable());
+            // Each entry opens its screen, also with its launcher icon turned off.
+            Assert.assertTrue(companion.isSelectable());
+            Assert.assertNotNull(companion.getIntent());
+            Assert.assertEquals(screen[1], companion.getIntent().getComponent().getClassName());
         }
     }
 }

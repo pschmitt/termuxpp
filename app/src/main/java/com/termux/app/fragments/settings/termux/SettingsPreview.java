@@ -226,8 +226,8 @@ final class SettingsPreview extends FrameLayout {
         boolean modes = TermuxPropertyConstants.TMUX_SIDEBAR_MODES.equalsIgnoreCase(layout);
         int foreground = ContextCompat.getColor(getContext(), R.color.ui_on_surface);
         int muted = ContextCompat.getColor(getContext(), R.color.ui_on_surface_variant);
-        int accent = MaterialColors.getColor(getContext(), R.attr.termuxUiPrimary, foreground);
-        int onAccent = MaterialColors.getColor(getContext(), R.attr.termuxUiOnPrimary, Color.BLACK);
+        int accent = MaterialColors.getColor(getContext(), dev.pschmitt.termux.shared.R.attr.termuxUiPrimary, foreground);
+        int onAccent = MaterialColors.getColor(getContext(), dev.pschmitt.termux.shared.R.attr.termuxUiOnPrimary, Color.BLACK);
         float right = getWidth() - dp(12);
         float left = dp(nested ? 36 : 18);
         float rowsTop = dp(57);
@@ -287,9 +287,9 @@ final class SettingsPreview extends FrameLayout {
         AppAccent.apply(themed, key.equals(AppAccent.KEY) ? value(key, "default") : AppAccent.get(getContext()));
         int surface = MaterialColors.getColor(themed, com.google.android.material.R.attr.colorSurface, Color.BLACK);
         int foreground = MaterialColors.getColor(themed, com.google.android.material.R.attr.colorOnSurface, Color.WHITE);
-        int group = MaterialColors.getColor(themed, R.attr.termuxUiGroup, surface);
-        int accent = MaterialColors.getColor(themed, R.attr.termuxUiPrimary, foreground);
-        int onAccent = MaterialColors.getColor(themed, R.attr.termuxUiOnPrimary, surface);
+        int group = MaterialColors.getColor(themed, dev.pschmitt.termux.shared.R.attr.termuxUiGroup, surface);
+        int accent = MaterialColors.getColor(themed, dev.pschmitt.termux.shared.R.attr.termuxUiPrimary, foreground);
+        int onAccent = MaterialColors.getColor(themed, dev.pschmitt.termux.shared.R.attr.termuxUiOnPrimary, surface);
         canvas.drawColor(surface);
         paint.setColor(group);
         canvas.drawRoundRect(dp(10), dp(12), getWidth() - dp(10), getHeight() - dp(12), dp(12), dp(12), paint);
@@ -345,8 +345,8 @@ final class SettingsPreview extends FrameLayout {
         String title = actionTitle(parsed);
         float left = dp(12), right = getWidth() - left, top = dp(45), bottom = getHeight() - dp(10);
         int foreground = ContextCompat.getColor(getContext(), R.color.ui_on_surface);
-        int surface = MaterialColors.getColor(getContext(), R.attr.termuxUiShelf, Color.rgb(42, 35, 58));
-        int accent = MaterialColors.getColor(getContext(), R.attr.termuxUiPrimary, Color.rgb(216, 180, 254));
+        int surface = MaterialColors.getColor(getContext(), dev.pschmitt.termux.shared.R.attr.termuxUiShelf, Color.rgb(42, 35, 58));
+        int accent = MaterialColors.getColor(getContext(), dev.pschmitt.termux.shared.R.attr.termuxUiPrimary, Color.rgb(216, 180, 254));
 
         previewText(canvas, title, left, dp(27), right - left, 14, Color.rgb(230, 220, 247), Typeface.DEFAULT_BOLD);
         paint.setColor(Color.rgb(23, 22, 32));
@@ -426,9 +426,9 @@ final class SettingsPreview extends FrameLayout {
         float width = Math.min(dp(100), w - dp(12)), height = dp(27), inset = dp(6);
         float left = position.endsWith("left") ? inset : position.endsWith("right") ? w - width - inset : (w - width) / 2;
         float top = position.startsWith("top") ? inset : position.startsWith("bottom") ? h - height - inset : (h - height) / 2;
-        paint.setColor(MaterialColors.getColor(this, R.attr.termuxUiPrimary));
+        paint.setColor(MaterialColors.getColor(this, dev.pschmitt.termux.shared.R.attr.termuxUiPrimary));
         canvas.drawRoundRect(left, top, left + width, top + height, dp(13), dp(13), paint);
-        paint.setColor(MaterialColors.getColor(this, R.attr.termuxUiOnPrimary));
+        paint.setColor(MaterialColors.getColor(this, dev.pschmitt.termux.shared.R.attr.termuxUiOnPrimary));
         paint.setTypeface(Typeface.DEFAULT_BOLD);
         paint.setTextSize(dp(12));
         String text = gesture ? "✓  " + getContext().getString(R.string.gesture_feedback_preview_label)

@@ -88,7 +88,7 @@ public class ServicesPreferencesFragment extends GroupedPreferencesFragment {
                              @Nullable Bundle savedInstanceState) {
         View preferences = super.onCreateView(inflater, container, savedInstanceState);
         SwipeRefreshLayout refresh = new SwipeRefreshLayout(requireContext());
-        refresh.setColorSchemeColors(MaterialColors.getColor(requireContext(), R.attr.termuxUiPrimary,
+        refresh.setColorSchemeColors(MaterialColors.getColor(requireContext(), dev.pschmitt.termux.shared.R.attr.termuxUiPrimary,
             ContextCompat.getColor(requireContext(), R.color.ui_primary)));
         refresh.addView(preferences);
         refresh.setOnChildScrollUpCallback((layout, child) -> getListView().canScrollVertically(-1));

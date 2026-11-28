@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="termuxpp_ui_primary">#D8B4FE</color>
+    <color name="termuxpp_ui_on_primary">#3B1D6A</color>
+    <color name="termuxpp_ui_container">#4A2C80</color>
+    <color name="termuxpp_ui_on_container">#EBDDFF</color>
+    <color name="termuxpp_ui_ripple">#33D8B4FE</color>
+    <color name="termuxpp_ui_shelf">#291F33</color>
+    <color name="termuxpp_ui_search">#403450</color>
+    <color name="termuxpp_ui_group">#2B2235</color>
+</resources>

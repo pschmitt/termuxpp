@@ -1267,8 +1267,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         boolean rounded = isTmuxSidebarRounded();
         int foreground = ContextCompat.getColor(this, R.color.ui_on_surface);
         int muted = ContextCompat.getColor(this, R.color.ui_on_surface_variant);
-        int accent = MaterialColors.getColor(container, R.attr.termuxUiPrimary);
-        int onAccent = MaterialColors.getColor(container, R.attr.termuxUiOnPrimary);
+        int accent = MaterialColors.getColor(container, dev.pschmitt.termux.shared.R.attr.termuxUiPrimary);
+        int onAccent = MaterialColors.getColor(container, dev.pschmitt.termux.shared.R.attr.termuxUiOnPrimary);
         int shelf = ContextCompat.getColor(this, R.color.ui_session_shelf);
 
         LinearLayout group = new LinearLayout(this);
@@ -1302,7 +1302,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 fill.setColor(rounded ? accent : ColorUtils.setAlphaComponent(foreground, 18));
                 if (!rounded) fill.setStroke(sidebarDp(1), ColorUtils.setAlphaComponent(foreground, 34));
                 row.setBackground(new RippleDrawable(ColorStateList.valueOf(
-                    MaterialColors.getColor(row, R.attr.termuxUiRipple)), fill, null));
+                    MaterialColors.getColor(row, dev.pschmitt.termux.shared.R.attr.termuxUiRipple)), fill, null));
             }
             if (parts.length == 2) {
                 TextView number = tmuxWindowText(parts[0], active && !rounded ? accent : textColor, active);

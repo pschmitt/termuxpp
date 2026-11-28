@@ -514,7 +514,7 @@ public class PluginUtils {
      * @return Returns the {@code errmsg} if policy is violated, otherwise {@code null}.
      */
     public static String checkIfTermuxTaskerAllowExternalAppsPolicyIsViolated(final Context context, final String executable) {
-        if (executable == null || executable.isEmpty()) return context.getString(R.string.error_null_or_empty_executable);
+        if (executable == null || executable.isEmpty()) return context.getString(R.string.tasker_error_null_or_empty_executable);
 
         String errmsg = null;
 

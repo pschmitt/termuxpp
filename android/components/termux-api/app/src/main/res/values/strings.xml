@@ -8,14 +8,21 @@
     ]>
 
 <resources>
-    <string name="app_name">&TERMUX_API_APP_NAME;</string>
-    <string name="main_activity_heading">Permissions and background access</string>
+    <string name="api_app_name">&TERMUX_API_APP_NAME;</string>
+    <string name="api_main_activity_heading">Permissions and background access</string>
+    <string name="api_main_intro">The tpp API commands reach Android through &TERMUX_API_APP_NAME;: location, SMS, clipboard, notifications and more. These settings keep them working.</string>
+    <string name="api_title_battery">Run in the background</string>
+    <string name="api_title_overlay">Display over other apps</string>
+    <string name="api_title_launcher_icon">Launcher icon</string>
+    <string name="api_launcher_icon_info">Show &TERMUX_API_APP_NAME; in the app drawer. The API works without it; this screen also opens from the &TERMUX_APP_NAME; settings.</string>
+    <string name="api_status_allowed">Allowed</string>
+    <string name="api_status_needed">Not allowed</string>
     <string name="share_file_chooser_title">Share with</string>
     <string name="grant_permission">Grant permission</string>
     <string name="keep_alive_service">This service keeps &TERMUX_API_APP_NAME; running in the background for faster startup of termux-* commands.</string>
     <string name="permission_description">This app needs the following permission(s):\n</string>
 
-    <string name="plugin_info">&TERMUX_API_APP_NAME; is a plugin app for the &TERMUX_APP_NAME; app
+    <string name="api_plugin_info">&TERMUX_API_APP_NAME; is a plugin app for the &TERMUX_APP_NAME; app
         that executes termux-api package commands.
         Check the TermuxPP app %1$s, this API app %2$s and the %3$s package %4$s for more info.
         This fork builds on the original Termux projects: core app %5$s, API app %6$s, and API package %7$s.
@@ -32,27 +39,13 @@
 
 
     <!-- TermuxAPIMainActivity -->
-    <string name="msg_battery_optimization_not_disabled_warning">Android battery optimizations
-        should be disabled for the &TERMUX_API_APP_NAME; app so that termux-api script can start
-        it from the background if its failing to do so. Do not worry, this will not drain battery,
-        the app currently only runs commands when called from termux-api script.
-        Check https://developer.android.com/about/versions/oreo/background and
-        https://developer.android.com/guide/components/foreground-services#background-start-restrictions
-        for more info.
+    <string name="msg_battery_optimization_not_disabled_warning">Lets tpp start API commands while &TERMUX_APP_NAME; is in the background. It does not drain the battery: the API only runs when a command asks for it.</string>
+    <string name="action_disable_battery_optimizations">Allow</string>
 
-        \n\nAlso check https://dontkillmyapp.com for info on vendor specific app killers.
-        Depending on vendor you may need to do things like enable AutoStart, disable DuraSpeed,
-        enable `Display pop-up windows while running in the background` for the app.</string>
-    <string name="action_disable_battery_optimizations">Disable Battery Optimizations</string>
+    <string name="msg_display_over_other_apps_permission_not_granted_warning">Lets API commands open dialogs and screens, such as tpp dialog or the fingerprint prompt, while another app is in front.</string>
+    <string name="action_grant_display_over_other_apps_permission">Allow</string>
 
-    <string name="msg_display_over_other_apps_permission_not_granted_warning">The display over other
-        apps permission should be granted to &TERMUX_API_APP_NAME; app for starting foreground
-        activities from background. Check https://developer.android.com/guide/components/activities/background-starts
-        for more info.
-    </string>
-    <string name="action_grant_display_over_other_apps_permission">Grant Draw Over Apps Permission</string>
-
-    <string name="msg_change_launcher_activity_state_info">The &TERMUX_API_APP_NAME; app does not
+    <string name="api_msg_change_launcher_activity_state_info">The &TERMUX_API_APP_NAME; app does not
         require a require launcher activity/icon to function. You can optionally disable the launcher
         activity if you want and enable it again from the main activity if required.
         \n\nThe launcher activity is an alias for the current main activity of the app which can

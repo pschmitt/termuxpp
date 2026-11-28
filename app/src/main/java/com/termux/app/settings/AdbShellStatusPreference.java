@@ -34,7 +34,7 @@ public final class AdbShellStatusPreference extends SwitchPreferenceCompat {
         int iconPadding = Math.round(8 * density);
         icon.setPadding(iconPadding, iconPadding, iconPadding, iconPadding);
         icon.setBackgroundResource(R.drawable.ui_icon_container);
-        int foreground = MaterialColors.getColor(holder.itemView, R.attr.termuxUiOnContainer);
+        int foreground = MaterialColors.getColor(holder.itemView, dev.pschmitt.termux.shared.R.attr.termuxUiOnContainer);
         icon.setImageTintList(ColorStateList.valueOf(foreground));
 
         ViewGroup.LayoutParams statusSize = status.getLayoutParams();

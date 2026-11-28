@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Default TermuxPP UI colors for the base theme, so that every screen, the plugin screens
+     included, has the termuxUi attributes. The app theme and the accents override them. -->
+<resources>
+    <color name="termuxpp_ui_primary">#6A3FB5</color>
+    <color name="termuxpp_ui_on_primary">#FFFFFF</color>
+    <color name="termuxpp_ui_container">#EBDDFF</color>
+    <color name="termuxpp_ui_on_container">#2A0F55</color>
+    <color name="termuxpp_ui_ripple">#1F6A3FB5</color>
+    <color name="termuxpp_ui_shelf">#EFE6FA</color>
+    <color name="termuxpp_ui_search">#EDE3F5</color>
+    <color name="termuxpp_ui_group">#F3EAF9</color>
+</resources>

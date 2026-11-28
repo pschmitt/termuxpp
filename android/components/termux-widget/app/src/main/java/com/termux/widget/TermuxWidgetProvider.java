@@ -278,7 +278,7 @@ public final class TermuxWidgetProvider extends AppWidgetProvider {
 
         // If executable is null or empty, then exit here instead of getting canonical path which would expand to "/"
         if (executionCommand.executable == null || executionCommand.executable.isEmpty()) {
-            errmsg  = context.getString(R.string.error_null_or_empty_executable);
+            errmsg  = context.getString(R.string.widget_error_null_or_empty_executable);
             Logger.logErrorAndShowToast(context, logTag, errmsg);
             return;
         }
@@ -290,7 +290,7 @@ public final class TermuxWidgetProvider extends AppWidgetProvider {
         if (!FileUtils.isPathInDirPaths(executionCommand.executable, ShortcutUtils.SHORTCUT_FILES_ALLOWED_PATHS_LIST, true)) {
             errmsg = context.getString(R.string.error_executable_not_under_shortcuts_directories,
                     Joiner.on(", ").skipNulls().join(TermuxFileUtils.getUnExpandedTermuxPaths(ShortcutUtils.SHORTCUT_FILES_ALLOWED_PATHS_LIST))) +
-                    "\n" + context.getString(R.string.msg_executable_absolute_path, executionCommand.executable);
+                    "\n" + context.getString(R.string.widget_msg_executable_absolute_path, executionCommand.executable);
             Logger.logErrorAndShowToast(context, logTag, errmsg);
             return;
         }
@@ -305,7 +305,7 @@ public final class TermuxWidgetProvider extends AppWidgetProvider {
                 shortcutScriptsRoot != null, true,
                 false);
         if (error != null) {
-            error.appendMessage("\n" + context.getString(R.string.msg_executable_absolute_path, executionCommand.executable));
+            error.appendMessage("\n" + context.getString(R.string.widget_msg_executable_absolute_path, executionCommand.executable));
             executionCommand.setStateFailed(error);
             Logger.logErrorAndShowToast(context, logTag, ResultData.getErrorsListMinimalString(executionCommand.resultData));
             return;
@@ -336,7 +336,7 @@ public final class TermuxWidgetProvider extends AppWidgetProvider {
         executionIntent.setClassName(TermuxConstants.TERMUX_PACKAGE_NAME, TermuxConstants.TERMUX_APP.TERMUX_SERVICE_NAME);
         executionIntent.putExtra(TERMUX_SERVICE.EXTRA_RUNNER, executionCommand.runner); // Runner extra will be prioritized over background extra
         executionIntent.putExtra(TERMUX_SERVICE.EXTRA_BACKGROUND, Runner.APP_SHELL.getName().equals(executionCommand.runner)); // Backward compatibility for runner
-        executionIntent.putExtra(TERMUX_SERVICE.EXTRA_PLUGIN_API_HELP, context.getString(R.string.plugin_api_help, TermuxWidgetMainActivity.TERMUXPP_WIDGET_GITHUB_REPO_URL));
+        executionIntent.putExtra(TERMUX_SERVICE.EXTRA_PLUGIN_API_HELP, context.getString(R.string.widget_plugin_api_help, TermuxWidgetMainActivity.TERMUXPP_WIDGET_GITHUB_REPO_URL));
 
         Logger.logVerboseExtended(logTag, executionCommand.toString());
         Logger.logDebug(logTag, "Sending execution intent to " + executionIntent.getComponent().toString() + " for \"" + executionCommand.executable + "\" with runner " + executionCommand.runner);

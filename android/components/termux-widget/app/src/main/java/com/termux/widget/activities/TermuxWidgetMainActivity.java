@@ -3,6 +3,8 @@ package com.termux.widget.activities;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
+
+import dev.pschmitt.termux.shared.activity.PluginScreen;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.content.Context;
@@ -22,7 +24,6 @@ import dev.pschmitt.termux.shared.android.PackageUtils;
 import dev.pschmitt.termux.shared.errors.Error;
 import dev.pschmitt.termux.shared.file.FileUtils;
 import dev.pschmitt.termux.shared.logger.Logger;
-import dev.pschmitt.termux.shared.markdown.MarkdownUtils;
 import dev.pschmitt.termux.shared.termux.TermuxConstants;
 import dev.pschmitt.termux.shared.termux.file.TermuxFileUtils;
 import dev.pschmitt.termux.shared.theme.NightMode;
@@ -71,11 +72,7 @@ public class TermuxWidgetMainActivity extends AppCompatActivity {
         applySystemBarInsets();
 
         AppCompatActivityUtils.setToolbar(this, dev.pschmitt.termux.shared.R.id.toolbar);
-        AppCompatActivityUtils.setToolbarTitle(this, dev.pschmitt.termux.shared.R.id.toolbar, getString(R.string.app_name), 0);
-
-        TextView pluginInfo = findViewById(R.id.textview_plugin_info);
-        pluginInfo.setText(getString(R.string.plugin_info, TERMUXPP_APP_GITHUB_REPO_URL,
-                TERMUXPP_WIDGET_GITHUB_REPO_URL));
+        AppCompatActivityUtils.setToolbarTitle(this, dev.pschmitt.termux.shared.R.id.toolbar, getString(R.string.widget_main_title), 0);
 
         setDynamicShortcutsViews();
         setRefreshAllWidgetsViews();
@@ -121,67 +118,29 @@ public class TermuxWidgetMainActivity extends AppCompatActivity {
             if (shortcutManager != null) {
                 maxShortcutsInfoLinearLayout.setVisibility(View.VISIBLE);
                 maxShortcutsInfoTextView.setText(getString(R.string.msg_max_shortcuts_limit_info,
-                        shortcutManager.getMaxShortcutCountPerActivity(), MAX_SHORTCUTS_LIMIT_DOCS_URL));
+                        shortcutManager.getMaxShortcutCountPerActivity()));
             }
         }
     }
 
     private void setChangeLauncherActivityStateViews() {
-        String packageName = TermuxConstants.TERMUX_PACKAGE_NAME;
-        String className = TermuxConstants.TERMUX_WIDGET_APP.TERMUX_WIDGET_LAUNCHER_ACTIVITY_NAME;
-
-        TextView changeLauncherActivityStateTextView = findViewById(R.id.textview_change_launcher_activity_state_details);
-        changeLauncherActivityStateTextView.setText(MarkdownUtils.getSpannedMarkdownText(this,
-                getString(R.string.msg_change_launcher_activity_state_info, packageName, getClass().getName())));
-
-        Button changeLauncherActivityStateButton = findViewById(R.id.button_change_launcher_activity_state);
-        String stateChangeMessage;
-        boolean newState;
-
-        Boolean currentlyDisabled = PackageUtils.isComponentDisabled(this,
-                packageName, className, false);
-        if (currentlyDisabled == null) {
-            Logger.logError(LOG_TAG, "Failed to check if \"" + packageName + "/" + className + "\" launcher activity is disabled");
-            changeLauncherActivityStateButton.setEnabled(false);
-            changeLauncherActivityStateButton.setAlpha(.5f);
-            changeLauncherActivityStateButton.setText(dev.pschmitt.termux.shared.R.string.action_disable_launcher_icon);
-            changeLauncherActivityStateButton.setOnClickListener(null);
-            return;
-        }
-
-        changeLauncherActivityStateButton.setEnabled(true);
-        changeLauncherActivityStateButton.setAlpha(1f);
-        if (currentlyDisabled) {
-            changeLauncherActivityStateButton.setText(dev.pschmitt.termux.shared.R.string.action_enable_launcher_icon);
-            stateChangeMessage = getString(dev.pschmitt.termux.shared.R.string.msg_enabling_launcher_icon, TermuxConstants.TERMUX_WIDGET_APP_NAME);
-            newState = true;
-        } else {
-            changeLauncherActivityStateButton.setText(dev.pschmitt.termux.shared.R.string.action_disable_launcher_icon);
-            stateChangeMessage = getString(dev.pschmitt.termux.shared.R.string.msg_disabling_launcher_icon, TermuxConstants.TERMUX_WIDGET_APP_NAME);
-            newState = false;
-        }
-
-        changeLauncherActivityStateButton.setOnClickListener(v -> {
-            Logger.logInfo(LOG_TAG, stateChangeMessage);
-            String errmsg = PackageUtils.setComponentState(this,
-                    packageName, className, newState, stateChangeMessage, true);
-            if (errmsg == null)
-                setChangeLauncherActivityStateViews();
-            else
-                Logger.logError(LOG_TAG, errmsg);
-        });
+        TextView details = findViewById(R.id.textview_change_launcher_activity_state_details);
+        details.setText(getString(R.string.widget_launcher_icon_info));
+        // The launcher icon: the activity-alias of this activity, in this class's package.
+        PluginScreen.bindLauncherSwitch(this, findViewById(R.id.switch_launcher_icon),
+            TermuxWidgetMainActivity.class.getPackage().getName() + ".TermuxWidgetLauncherActivity",
+            TermuxConstants.TERMUX_WIDGET_APP_NAME);
     }
 
     private void setDynamicShortcutsViews() {
-        LinearLayout dynamicShortcutsLinearLayout = findViewById(R.id.linearlayout_dynamic_shortcuts);
+        View dynamicShortcutsLinearLayout = findViewById(R.id.linearlayout_dynamic_shortcuts);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
             dynamicShortcutsLinearLayout.setVisibility(View.VISIBLE);
 
             TextView dynamicShortcutsInfoTextView = findViewById(R.id.textview_dynamic_shortcuts_info);
-            dynamicShortcutsInfoTextView.setText(MarkdownUtils.getSpannedMarkdownText(this,
-                    getString(R.string.msg_dynamic_shortcuts_info,
-                    TermuxFileUtils.getUnExpandedTermuxPath(getDynamicShortcutsDirPath()))));
+            dynamicShortcutsInfoTextView.setText(getString(R.string.msg_dynamic_shortcuts_info,
+                    TermuxFileUtils.getUnExpandedTermuxPath(getDynamicShortcutsDirPath())));
 
             Button createDynamicShortcutsButton = findViewById(R.id.button_create_dynamic_shortcuts);
             createDynamicShortcutsButton.setOnClickListener(v -> createDynamicShortcuts(this));

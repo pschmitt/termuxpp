@@ -1,6 +1,7 @@
 package com.termux.app.fragments.settings;
 
 import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 
 import androidx.annotation.Keep;
@@ -23,22 +24,29 @@ public class CompanionAppsPreferencesFragment extends GroupedPreferencesFragment
         if (context == null) return;
 
         setPreferencesFromResource(R.xml.companion_apps_preferences, rootKey);
-        configurePreference("termux_api",
-            TermuxAPIAppSharedPreferences.build(context, false) != null, R.drawable.ui_ic_extension);
-        configurePreference("termux_tasker",
-            TermuxTaskerAppSharedPreferences.build(context, false) != null, R.drawable.ui_ic_bolt);
-        configurePreference("termux_widget",
-            TermuxWidgetAppSharedPreferences.build(context, false) != null, R.drawable.ui_ic_widgets);
+        configurePreference(context, "termux_api",
+            TermuxAPIAppSharedPreferences.build(context, false) != null, R.drawable.ui_ic_extension,
+            dev.pschmitt.termux.api.activities.TermuxAPIMainActivity.class);
+        configurePreference(context, "termux_tasker",
+            TermuxTaskerAppSharedPreferences.build(context, false) != null, R.drawable.ui_ic_bolt,
+            dev.pschmitt.termux.tasker.activities.TermuxTaskerMainActivity.class);
+        configurePreference(context, "termux_widget",
+            TermuxWidgetAppSharedPreferences.build(context, false) != null, R.drawable.ui_ic_widgets,
+            com.termux.widget.activities.TermuxWidgetMainActivity.class);
     }
 
-    private void configurePreference(@NonNull String key, boolean available,
-                                     @DrawableRes int fallbackIcon) {
+    /** Each entry opens its screen, which works with its launcher icon turned off too. */
+    private void configurePreference(@NonNull Context context, @NonNull String key, boolean available,
+                                     @DrawableRes int fallbackIcon, @NonNull Class<?> activity) {
         Preference preference = findPreference(key);
         if (preference == null) return;
         preference.setVisible(true);
         preference.setIcon(fallbackIcon);
         if (!available) {
             preference.setSummary(R.string.termux_companion_unavailable_summary);
+            return;
         }
+        preference.setSelectable(true);
+        preference.setIntent(new Intent(context, activity));
     }
 }

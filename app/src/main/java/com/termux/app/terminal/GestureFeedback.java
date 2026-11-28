@@ -118,7 +118,7 @@ public final class GestureFeedback {
             this.x = Float.isNaN(x) ? view.getWidth() / 2f : x;
             this.y = Float.isNaN(y) ? view.getHeight() / 2f : y;
             density = view.getResources().getDisplayMetrics().density;
-            color = MaterialColors.getColor(view, R.attr.termuxUiPrimary);
+            color = MaterialColors.getColor(view, dev.pschmitt.termux.shared.R.attr.termuxUiPrimary);
             setBounds(0, 0, view.getWidth(), view.getHeight());
             float inset = 10 * density, len = 24 * density, radius = 10 * density;
             int index = 0;
@@ -225,8 +225,8 @@ public final class GestureFeedback {
             this.armed = armed;
             this.gravity = gravity;
             float density = view.getResources().getDisplayMetrics().density;
-            surface.setColor(MaterialColors.getColor(view, armed ? R.attr.termuxUiPrimary : R.attr.termuxUiContainer));
-            text.setColor(MaterialColors.getColor(view, armed ? R.attr.termuxUiOnPrimary : R.attr.termuxUiOnContainer));
+            surface.setColor(MaterialColors.getColor(view, armed ? dev.pschmitt.termux.shared.R.attr.termuxUiPrimary : dev.pschmitt.termux.shared.R.attr.termuxUiContainer));
+            text.setColor(MaterialColors.getColor(view, armed ? dev.pschmitt.termux.shared.R.attr.termuxUiOnPrimary : dev.pschmitt.termux.shared.R.attr.termuxUiOnContainer));
             text.setTextSize(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, 14,
                 view.getResources().getDisplayMetrics()));
             text.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));

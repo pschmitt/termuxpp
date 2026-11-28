@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- API permissions: a headline, then one card per requirement with its status, and the
+     launcher icon switch. Uses the shared Plugin styles (termux-shared). -->
 <LinearLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -7,7 +9,8 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="@color/ui_surface">
+    android:background="?android:attr/colorBackground"
+    tools:context=".activities.TermuxAPIMainActivity">
 
     <include
         layout="@layout/partial_primary_toolbar"
@@ -15,141 +18,195 @@
 
     <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="match_parent" >
+        android:layout_height="match_parent">
+
         <LinearLayout
             android:orientation="vertical"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:paddingTop="20dp"
+            android:paddingTop="8dp"
             android:paddingBottom="24dp"
-            android:paddingStart="@dimen/activity_horizontal_margin"
-            android:paddingEnd="@dimen/activity_horizontal_margin"
-            android:background="@color/ui_surface"
-            tools:context=".activities.TermuxAPIMainActivity">
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp">
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="@string/main_activity_heading"
-                android:textAppearance="@style/TextAppearance.TermuxPP.ToolbarTitle"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
+                android:text="@string/api_main_activity_heading"
+                android:textAppearance="@style/TextAppearance.TermuxPP.Plugin.Headline"
                 android:accessibilityHeading="true" />
 
-            <com.google.android.material.textview.MaterialTextView
+            <TextView
                 android:id="@+id/textview_plugin_info"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingTop="12dp"
-                android:paddingBottom="16dp"
-                android:gravity="start|center_vertical"
-                android:textSize="14sp"
-                android:lineSpacingMultiplier="1.15"
-                android:textStyle="normal"
-                android:textColor="@color/ui_on_surface_variant"
-                android:textColorLink="@color/ui_primary"
-                android:textIsSelectable="true"
-                android:autoLink="web"/>
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="20dp"
+                android:text="@string/api_main_intro"
+                android:textAppearance="@style/TextAppearance.TermuxPP.Plugin.Body" />
 
-
-
-            <View style="@style/ViewDivider"/>
-
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/textview_battery_optimization_not_disabled_warning"
+            <!-- Battery optimization -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.TermuxPP.Plugin.Card"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingBottom="@dimen/activity_vertical_margin"
-                android:gravity="start|center_vertical"
-                android:text="@string/msg_battery_optimization_not_disabled_warning"
-                android:textSize="14sp"
-                android:textStyle="normal"
-                android:textColor="@color/red_error"
-                android:textColorLink="@color/red_error_link"
-                android:textIsSelectable="true"
-                android:autoLink="web"/>
+                android:layout_height="wrap_content">
 
-            <com.google.android.material.button.MaterialButton
-                style="@style/Widget.TermuxPP.Button.Tonal"
-                android:id="@+id/btn_disable_battery_optimizations"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="start"
-                android:gravity="center"
-                android:minHeight="48dp"
-                android:text="@string/action_disable_battery_optimizations"
-                android:textSize="14sp"
-                android:textAllCaps="false"
-                android:letterSpacing="0"
-                android:textColor="@color/ui_on_container"
-                android:backgroundTint="@color/ui_container"
-                app:strokeWidth="0dp"/>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
 
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:drawablePadding="12dp"
+                        android:gravity="center_vertical"
+                        android:text="@string/api_title_battery"
+                        android:textAppearance="@style/TextAppearance.TermuxPP.Plugin.CardTitle"
+                        android:accessibilityHeading="true"
+                        app:drawableStartCompat="@drawable/ic_plugin_battery"
+                        app:drawableTint="?attr/termuxUiPrimary" />
 
+                    <TextView
+                        android:id="@+id/textview_battery_optimization_not_disabled_warning"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="8dp"
+                        android:text="@string/msg_battery_optimization_not_disabled_warning"
+                        android:textAppearance="@style/TextAppearance.TermuxPP.Plugin.Body" />
 
-            <View style="@style/ViewDivider"/>
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="12dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/textview_display_over_other_apps_not_granted_warning"
+                        <TextView
+                            android:id="@+id/textview_battery_status"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:textAppearance="@style/TextAppearance.TermuxPP.Plugin.CardTitle" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_disable_battery_optimizations"
+                            style="@style/Widget.TermuxPP.Plugin.Button.Filled"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/action_disable_battery_optimizations" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Display over other apps -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.TermuxPP.Plugin.Card"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingBottom="@dimen/activity_vertical_margin"
-                android:gravity="start|center_vertical"
-                android:text="@string/msg_display_over_other_apps_permission_not_granted_warning"
-                android:textSize="14sp"
-                android:textStyle="normal"
-                android:textColor="@color/red_error"
-                android:textColorLink="@color/red_error_link"
-                android:textIsSelectable="true"
-                android:autoLink="web"/>
+                android:layout_height="wrap_content">
 
-            <com.google.android.material.button.MaterialButton
-                style="@style/Widget.TermuxPP.Button.Tonal"
-                android:id="@+id/button_grant_display_over_other_apps_permission"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="start"
-                android:gravity="center"
-                android:minHeight="48dp"
-                android:layout_marginBottom="@dimen/activity_vertical_margin"
-                android:text="@string/action_grant_display_over_other_apps_permission"
-                android:textSize="14sp"
-                android:textAllCaps="false"
-                android:letterSpacing="0"
-                android:textColor="@color/ui_on_container"
-                android:backgroundTint="@color/ui_container"
-                app:strokeWidth="0dp"/>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
 
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:drawablePadding="12dp"
+                        android:gravity="center_vertical"
+                        android:text="@string/api_title_overlay"
+                        android:textAppearance="@style/TextAppearance.TermuxPP.Plugin.CardTitle"
+                        android:accessibilityHeading="true"
+                        app:drawableStartCompat="@drawable/ic_plugin_overlay"
+                        app:drawableTint="?attr/termuxUiPrimary" />
 
+                    <TextView
+                        android:id="@+id/textview_display_over_other_apps_not_granted_warning"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="8dp"
+                        android:text="@string/msg_display_over_other_apps_permission_not_granted_warning"
+                        android:textAppearance="@style/TextAppearance.TermuxPP.Plugin.Body" />
 
-            <View style="@style/ViewDivider"/>
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:paddingTop="12dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
 
-            <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/textview_change_launcher_activity_state_details"
+                        <TextView
+                            android:id="@+id/textview_overlay_status"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:textAppearance="@style/TextAppearance.TermuxPP.Plugin.CardTitle" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/button_grant_display_over_other_apps_permission"
+                            style="@style/Widget.TermuxPP.Plugin.Button.Filled"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/action_grant_display_over_other_apps_permission" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Launcher icon -->
+            <com.google.android.material.card.MaterialCardView
+                style="@style/Widget.TermuxPP.Plugin.Card"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:paddingBottom="@dimen/activity_vertical_margin"
-                android:gravity="start|center_vertical"
-                android:textSize="14sp"
-                android:textStyle="normal"
-                android:textColor="@color/ui_on_surface_variant"
-                android:textColorLink="@color/ui_primary"
-                android:textIsSelectable="true"
-                android:autoLink="web"/>
+                android:layout_height="wrap_content">
 
-            <com.google.android.material.button.MaterialButton
-                style="@style/Widget.TermuxPP.Button.Tonal"
-                android:id="@+id/button_change_launcher_activity_state"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="start"
-                android:gravity="center"
-                android:minHeight="48dp"
-                android:textSize="14sp"
-                android:textAllCaps="false"
-                android:letterSpacing="0"
-                android:textColor="@color/ui_on_container"
-                android:backgroundTint="@color/ui_container"
-                app:strokeWidth="0dp"/>
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:drawablePadding="12dp"
+                            android:gravity="center_vertical"
+                            android:text="@string/api_title_launcher_icon"
+                            android:textAppearance="@style/TextAppearance.TermuxPP.Plugin.CardTitle"
+                            app:drawableStartCompat="@drawable/ic_plugin_launcher"
+                            app:drawableTint="?attr/termuxUiPrimary" />
+
+                        <TextView
+                            android:id="@+id/textview_change_launcher_activity_state_details"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:paddingTop="8dp"
+                            android:text="@string/api_launcher_icon_info"
+                            android:textAppearance="@style/TextAppearance.TermuxPP.Plugin.Body" />
+                    </LinearLayout>
+
+                    <com.google.android.material.switchmaterial.SwitchMaterial
+                        android:id="@+id/switch_launcher_icon"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="16dp"
+                        android:contentDescription="@string/api_title_launcher_icon"
+                        app:thumbTint="@color/plugin_switch_thumb"
+                        app:trackTint="@color/plugin_switch_track" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
         </LinearLayout>
 
     </ScrollView>
+
 </LinearLayout>
