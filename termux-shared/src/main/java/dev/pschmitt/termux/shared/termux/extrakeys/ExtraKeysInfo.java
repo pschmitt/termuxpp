@@ -195,8 +195,21 @@ public class ExtraKeysInfo {
         if (items.length() > ExtraKeyButton.MAX_MENU_ITEMS)
             throw new JSONException("A key menu can have at most " + ExtraKeyButton.MAX_MENU_ITEMS + " items");
         List<ExtraKeyButton> menu = new ArrayList<>();
-        for (int i = 0; i < items.length(); i++)
-            menu.add(new ExtraKeyButton(normalizeKeyConfig(items.get(i)), displayMap, aliasMap));
+        boolean hasDefault = false;
+        for (int i = 0; i < items.length(); i++) {
+            JSONObject item = normalizeKeyConfig(items.get(i));
+            ExtraKeyButton button = new ExtraKeyButton(item, displayMap, aliasMap);
+            if (item.has(ExtraKeyButton.KEY_MENU_DEFAULT)) {
+                Object flag = item.get(ExtraKeyButton.KEY_MENU_DEFAULT);
+                if (!(flag instanceof Boolean)) throw new JSONException("A menu item's default must be true or false");
+                if ((Boolean) flag) {
+                    if (hasDefault) throw new JSONException("A key menu can have only one default item");
+                    hasDefault = true;
+                    button.setMenuDefault(true);
+                }
+            }
+            menu.add(button);
+        }
         return menu;
     }
 

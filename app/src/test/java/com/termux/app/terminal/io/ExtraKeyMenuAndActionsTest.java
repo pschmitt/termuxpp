@@ -82,6 +82,10 @@ public class ExtraKeyMenuAndActionsTest {
         assertEquals("/", pipe.getMenu().get(1).getKey());
         assertEquals(TerminalGestureAction.OPEN_MENU, pipe.getMenu().get(2).getAction());
         assertEquals(TerminalGestureAction.NEW_SESSION, pipe.getDoubleTap().getAction());
+        assertFalse(pipe.getMenu().get(0).isMenuDefault());
+        ExtraKeyButton dash = parse("[[{key:'|',menu:['~',{key:'-',default:true},{key:'/',default:false}]}]]");
+        assertTrue(dash.getMenu().get(1).isMenuDefault());
+        assertFalse(dash.getMenu().get(2).isMenuDefault());
         assertEquals(TerminalGestureAction.PREVIOUS_SESSION,
             parse("[[{key:'a','fling-left':{action:'previous-session'}}]]").getFling(false).getAction());
 
@@ -93,6 +97,8 @@ public class ExtraKeyMenuAndActionsTest {
             "[[{key:'a',menu:'~'}]]",
             "[[{key:'a',menu:['1','2','3','4','5','6','7','8','9','10','11','12','13']}]]",
             "[[{key:'a',menu:['~'],hold:'CTRL'}]]",
+            "[[{key:'a',menu:[{key:'~',default:true},{key:'/',default:true}]}]]",
+            "[[{key:'a',menu:[{key:'~',default:'yes'}]}]]",
         }) {
             assertThrows(invalid, JSONException.class, () -> parse(invalid));
         }
@@ -118,6 +124,25 @@ public class ExtraKeyMenuAndActionsTest {
         touch(pipe, MotionEvent.ACTION_UP, 50, 50);
         ShadowLooper.idleMainLooper();
         assertEquals(List.of("\\", "~", "|"), pressed);
+    }
+
+    @Test public void aDefaultItemIsPickedUntilTheFingerMovesAway() throws Exception {
+        ExtraKeysView keys = keys("[[{key:'|',menu:['~','/',{key:'-',default:true}]},'a','b','c','d','e']]");
+        View pipe = keys.getChildAt(0);
+
+        // Lifting without moving picks the default, not the item nearest to the finger.
+        touch(pipe, MotionEvent.ACTION_DOWN, 50, 50);
+        ShadowLooper.idleMainLooper(ViewConfiguration.getLongPressTimeout() + 50, TimeUnit.MILLISECONDS);
+        touch(pipe, MotionEvent.ACTION_MOVE, 60, 52);
+        touch(pipe, MotionEvent.ACTION_UP, 60, 52);
+        assertEquals(List.of("-"), pressed);
+
+        // Sliding away hands over to the nearest item: the second cell starts at 6 + 100 px.
+        touch(pipe, MotionEvent.ACTION_DOWN, 50, 50);
+        ShadowLooper.idleMainLooper(ViewConfiguration.getLongPressTimeout() + 50, TimeUnit.MILLISECONDS);
+        touch(pipe, MotionEvent.ACTION_MOVE, 156, 50);
+        touch(pipe, MotionEvent.ACTION_UP, 156, 50);
+        assertEquals(List.of("-", "/"), pressed);
     }
 
     @Test public void doubleTapRunsItsBindingAndASingleTapWaitsForIt() throws Exception {

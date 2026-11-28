@@ -96,6 +96,16 @@ tpp ui sidebar toggle --right
 tpp ui clear
 ```
 
+`tpp ui picker` works like fzf: it shows the lines of its standard input in a picker with a search
+field and prints the line you pick, so it fits in pipes and command substitutions. Closing the
+picker without a choice exits with status 130. `--title` names the picker, `--query` types a search
+first. It takes up to 20,000 lines; blank lines are dropped.
+
+```sh
+cd "$(ls -d */ | tpp ui picker --title Directories)"
+git switch "$(git branch --format='%(refname:short)' | tpp ui picker)"
+```
+
 `tpp ui settings --search` opens Settings with the search results already visible.
 `tpp ui session-switcher` and `tpp session switcher` open the same picker. `tpp ui clear` closes
 everything at once: both sidebars, the palette, the pickers, the menu and Settings.
@@ -696,13 +706,15 @@ timeout; only keys that have one wait for it, so other keys stay instant.
 A **long-press menu** (`menu`) lists up to 12 alternates, each a key name or a key object with
 `key`, `macro`, `command` or `action`. Long-press the key, slide to an item and lift the finger to
 choose it; the item nearest to the finger is highlighted, starting with the one above the key.
+Mark one item `default: true` to make it the one above the key: the menu opens with it
+highlighted, and lifting the finger without sliding picks it.
 A key has either a long-press menu or a `hold` key, not both. In the layout editor, use
 **Long-press menu → Add menu item**.
 
 ```yaml
 extra-keys:
   keys:
-    - - {key: "|", popup: "-", menu: ["~", "/", "\\"]}
+    - - {key: "|", popup: "-", menu: ["~", "/", "\\", {key: "-", default: true}]}
       - {action: open-left-sidebar, double-tap: {action: open-right-sidebar}}
       - {key: ESC, fling-left: {action: previous-session}, fling-right: {action: next-session}}
 ```

@@ -41,6 +41,9 @@ public class ExtraKeyButton {
     /** Alternates shown in a menu on a long press: {@code menu: ['~', '/', '\\']}. */
     public static final String KEY_MENU = "menu";
 
+    /** The key name of the flag that makes a menu item the one picked when the finger does not move. */
+    public static final String KEY_MENU_DEFAULT = "default";
+
     /** The alternate sent by a double tap. */
     public static final String KEY_DOUBLE_TAP = "double-tap";
 
@@ -263,6 +266,17 @@ public class ExtraKeyButton {
     @Nullable
     public List<ExtraKeyButton> getMenu() {
         return menu;
+    }
+
+    private boolean menuDefault;
+
+    /** Whether this menu item is its menu's default: highlighted when the menu opens, above the key. */
+    public boolean isMenuDefault() {
+        return menuDefault;
+    }
+
+    void setMenuDefault(boolean menuDefault) {
+        this.menuDefault = menuDefault;
     }
 
     void setMenu(@Nullable List<ExtraKeyButton> menu) {

@@ -30,6 +30,8 @@
     <string name="ui_session_switcher_title">Session switcher</string>
     <string name="ui_tmux_switcher_title">tmux windows</string>
     <string name="ui_palette_title">Command palette</string>
+    <string name="ui_picker_title">Pick a line</string>
+    <string name="ui_picker_hint">Type to filter</string>
     <string name="ui_palette_hint">Search everything</string>
     <string name="ui_palette_empty">Nothing matches</string>
     <string name="ui_palette_kind_action">Action</string>

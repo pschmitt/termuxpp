@@ -585,7 +585,8 @@ powers `tpp ui` commands to show, hide or toggle More, Settings (with an optiona
 search query), the command palette, the session and tmux pickers and the
 sidebars, and `tpp ui clear` to close them all. The command palette (also the
 `open-palette` action) searches actions, sessions, tmux windows and settings;
-upstream Termux has no palette. Upstream Termux's sidebar
+upstream Termux has no palette. `tpp ui picker` shows the lines of its stdin in
+the same dialog and prints the one you pick, like fzf. Upstream Termux's sidebar
 uses numeric prefixes alongside the session name and terminal title.
 [Upstream sidebar source](https://github.com/termux/termux-app/blob/master/app/src/main/java/com/termux/app/terminal/TermuxSessionsListViewController.java).
 

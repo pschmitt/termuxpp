@@ -23,7 +23,8 @@ import java.util.concurrent.TimeoutException;
 
 /** Local session controls for processes running under the TermuxPP Android UID. */
 final class SessionCommandServer implements AutoCloseable {
-    private static final int MAX_REQUEST_BYTES = 4096;
+    /** Large enough for the lines of {@code tpp ui picker}; only the app's own UID may connect. */
+    private static final int MAX_REQUEST_BYTES = 1024 * 1024;
     /** How long a tmux helper's wait for a chosen window is held open, well inside the helper's own timeout. */
     static final long WAIT_MS = 750;
     private final LocalServerSocket listener;
@@ -69,6 +70,12 @@ final class SessionCommandServer implements AutoCloseable {
             JSONObject response = new JSONObject();
             try {
                 JSONArray arguments = new JSONArray(readRequest(connection));
+                if ("picker".equals(arguments.optString(0))) {
+                    // Waits for the choice on this thread, never on the main thread.
+                    response.put("result", service.awaitPicker(arguments));
+                    connection.getOutputStream().write((response + "\n").getBytes(StandardCharsets.UTF_8));
+                    return;
+                }
                 if ("tmux-wait".equals(arguments.optString(0))) {
                     // Waits on this thread, never on the main thread.
                     response.put("result", service.awaitTmuxSelection(arguments));

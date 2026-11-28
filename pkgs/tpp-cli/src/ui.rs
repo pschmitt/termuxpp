@@ -1,12 +1,16 @@
 //! Open surfaces in the running TermuxPP activity through its app-local socket.
 
-use tpp_session::client::SocketExchange;
+use std::io::{IsTerminal, Read};
+use std::time::Duration;
+
+use tpp_session::client::{Exchange, ExchangeError, SocketExchange};
 use tpp_session::json::{self, Value};
 
 pub const ACTIONS: &[&str] = &[
     "clear",
     "more",
     "palette",
+    "picker",
     "session-switcher",
     "settings",
     "sidebar",
@@ -16,12 +20,13 @@ pub const ACTIONS: &[&str] = &[
 /// What to do with a surface; `show` is the default.
 const OPERATIONS: &[&str] = &["show", "hide", "toggle"];
 
-const HELP: &str = "Usage: tpp ui COMMAND [show|hide|toggle] [--json]\nShow, hide or toggle part of the TermuxPP interface in the visible terminal.\n\nCommands:\n  clear                Close everything: sidebars, palette, pickers, menu, Settings\n  more                 The terminal More menu\n  palette              The command palette [--search QUERY]\n  session-switcher     The session picker\n  settings             Settings [--search QUERY]\n  sidebar              The session sidebar [--right]\n  tmux-switcher        The tmux window picker\n\nWithout show, hide or toggle, the command shows the surface.\n";
+const HELP: &str = "Usage: tpp ui COMMAND [show|hide|toggle] [--json]\nShow, hide or toggle part of the TermuxPP interface in the visible terminal.\n\nCommands:\n  clear                Close everything: sidebars, palette, pickers, menu, Settings\n  more                 The terminal More menu\n  palette              The command palette [--search QUERY]\n  picker               Pick a line from stdin, like fzf: ls | tpp ui picker\n  session-switcher     The session picker\n  settings             Settings [--search QUERY]\n  sidebar              The session sidebar [--right]\n  tmux-switcher        The tmux window picker\n\nWithout show, hide or toggle, the command shows the surface.\n";
 
 /// The options that ACTION takes besides show, hide and toggle.
 fn usage(action: &str) -> String {
     match action {
         "clear" => "Usage: tpp ui clear [--json]\n".to_owned(),
+        "picker" => "Usage: COMMAND | tpp ui picker [--title TEXT] [--query QUERY]\nShow the lines of stdin in the visible terminal and print the one you pick.\nExit status 130 when the picker is closed without a choice.\n".to_owned(),
         "settings" | "palette" => {
             format!("Usage: tpp ui {action} [show|hide|toggle] [--search QUERY] [--json]\n")
         }
@@ -78,6 +83,10 @@ pub fn run(words: &[String], mut json_output: bool) -> i32 {
             }
         },
     };
+
+    if action == "picker" {
+        return picker(args.collect());
+    }
 
     let mut query = None;
     let mut operation = None;
@@ -137,6 +146,106 @@ pub fn run(words: &[String], mut json_output: bool) -> i32 {
     0
 }
 
+/// Most lines the picker takes (the app's limit).
+const PICKER_LINES: usize = 20_000;
+/// How long the picker may stay open (the app gives up after 30 minutes).
+const PICKER_TIMEOUT: Duration = Duration::from_secs(31 * 60);
+
+/// `tpp ui picker`: the lines of stdin in a picker in the app; prints the chosen one.
+fn picker(words: Vec<&str>) -> i32 {
+    let mut title = None;
+    let mut query = None;
+    let mut args = words.into_iter();
+    while let Some(arg) = args.next() {
+        match arg {
+            "-h" | "--help" => {
+                print!("{}", crate::ctx::color_help(&usage("picker")));
+                return 0;
+            }
+            "--title" | "--query" => {
+                let Some(value) = args.next() else {
+                    err!("ui picker: {arg} requires a value");
+                    return 2;
+                };
+                if arg == "--title" {
+                    title = Some(value);
+                } else {
+                    query = Some(value);
+                }
+            }
+            _ => {
+                err!("ui picker: unexpected argument '{arg}'");
+                return 2;
+            }
+        }
+    }
+    let mut stdin = std::io::stdin();
+    if stdin.is_terminal() {
+        err!("ui picker: pipe the lines in, like: ls | tpp ui picker");
+        return 2;
+    }
+    let mut input = Vec::new();
+    if let Err(error) = stdin.read_to_end(&mut input) {
+        err!("ui picker: cannot read stdin: {error}");
+        return 1;
+    }
+    let lines: Vec<Value> = String::from_utf8_lossy(&input)
+        .lines()
+        .map(|line| line.trim_end_matches('\r'))
+        .filter(|line| !line.trim().is_empty())
+        .map(Value::string)
+        .collect();
+    if lines.is_empty() {
+        err!("ui picker: no lines to pick from");
+        return 1;
+    }
+    if lines.len() > PICKER_LINES {
+        err!(
+            "ui picker: too many lines ({}, at most {PICKER_LINES})",
+            lines.len()
+        );
+        return 1;
+    }
+    let mut options = vec![("items".to_owned(), Value::Array(lines))];
+    if let Some(title) = title {
+        options.push(("title".to_owned(), Value::string(title)));
+    }
+    if let Some(query) = query {
+        options.push(("query".to_owned(), Value::string(query)));
+    }
+    let request = Value::Array(vec![Value::string("picker"), Value::Object(options)]);
+    let reply = match SocketExchange::from_environment().exchange(&request, PICKER_TIMEOUT) {
+        Ok(reply) => reply,
+        Err(ExchangeError::Unreachable(error)) => {
+            err!("ui picker: cannot reach TermuxPP; open the app first ({error})");
+            return 1;
+        }
+        Err(ExchangeError::Failed(error)) => {
+            err!("ui picker: {error}");
+            return 1;
+        }
+    };
+    if let Some(error) = reply.get("error") {
+        err!("ui picker: {}", error.display());
+        return 1;
+    }
+    match reply.get("result") {
+        Some(Value::String(line)) => {
+            println!("{line}");
+            0
+        }
+        // Closed without a choice, like fzf.
+        Some(Value::Null) => 130,
+        _ => {
+            err!(
+                "ui picker: unexpected reply from TermuxPP: {}",
+                reply.to_compact()
+            );
+            1
+        }
+    }
+}
+
 pub fn complete(words: &[String]) -> Vec<String> {
     let [prior @ .., current] = words else {
         return Vec::new();
@@ -159,6 +268,19 @@ pub fn complete(words: &[String]) -> Vec<String> {
     };
     if prior.last().is_some_and(|word| word == "--search") {
         return Vec::new();
+    }
+    if action == "picker" {
+        if prior
+            .last()
+            .is_some_and(|word| word == "--title" || word == "--query")
+        {
+            return Vec::new();
+        }
+        return ["--help", "--query", "--title"]
+            .into_iter()
+            .filter(|word| word.starts_with(current) && !prior.iter().any(|used| used == word))
+            .map(str::to_owned)
+            .collect();
     }
     let mut candidates = vec!["--help", "--json"];
     if action != "clear" && !prior.iter().any(|word| OPERATIONS.contains(&word.as_str())) {

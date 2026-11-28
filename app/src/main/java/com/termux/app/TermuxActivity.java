@@ -1095,6 +1095,19 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         return palette.show(query);
     }
 
+    /** {@code tpp ui picker}: show {@code lines} to pick one; {@code result} gets it or {@code null}. */
+    public boolean showPicker(@Nullable String title, List<String> lines, @Nullable String query,
+                              CommandPalette.Picked result) {
+        if (!mIsVisible || isFinishing() || isDestroyed() || mTermuxService == null) return false;
+        if (palette == null) palette = new CommandPalette(this);
+        return palette.showPicker(title, lines, query, result);
+    }
+
+    /** Close an open {@code tpp ui picker}, which then reports no choice. */
+    public void dismissPalette() {
+        if (palette != null) palette.dismiss();
+    }
+
     /** Switch to tmux window {@code id} of {@code session}, as a picker row does. */
     void selectTmuxWindow(TerminalSession session, String id) {
         selectTmuxWindow(session, id, null, pending -> {});

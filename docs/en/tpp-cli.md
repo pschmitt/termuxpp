@@ -50,6 +50,7 @@ tpp torch on
 tpp volume set music 8
 tpp ui settings --search "font size"
 tpp ui palette toggle
+ls -al | tpp ui picker
 tpp session new --name logs -- tail -f build.log
 ```
 

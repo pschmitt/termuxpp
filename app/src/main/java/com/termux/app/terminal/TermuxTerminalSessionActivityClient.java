@@ -313,6 +313,15 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         return mActivity.openTerminalUi(action, query);
     }
 
+    public boolean showPicker(String title, java.util.List<String> lines, String query,
+                              com.termux.app.CommandPalette.Picked result) {
+        return mActivity.showPicker(title, lines, query, result);
+    }
+
+    public void dismissPalette() {
+        mActivity.dismissPalette();
+    }
+
     public boolean controlTerminalUi(String action, String operation, String query, boolean right) {
         return mActivity.controlTerminalUi(action, operation, query, right);
     }

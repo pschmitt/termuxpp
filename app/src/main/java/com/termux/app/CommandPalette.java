@@ -47,10 +47,15 @@ import java.util.Locale;
  * The command palette: one search over the actions, the sessions, their tmux windows and the settings. Enter or
  * a tap runs an entry. It is a picker dialog like the session and tmux switchers, placed the same way.
  */
-final class CommandPalette {
+public final class CommandPalette {
 
     /** The kinds of entries, in the order they rank on equal matches. */
-    enum Kind { SESSION, WINDOW, ACTION, SETTING }
+    enum Kind { SESSION, WINDOW, ACTION, SETTING, LINE }
+
+    /** The outcome of {@code tpp ui picker}: the chosen line, or {@code null} when the picker was closed. */
+    public interface Picked {
+        void done(@Nullable String line);
+    }
 
     @VisibleForTesting
     static final class Entry {
@@ -77,6 +82,8 @@ final class CommandPalette {
 
     /** Most entries a search shows: the rest is a refinement away. */
     private static final int LIMIT = 60;
+    /** Most lines a picker search shows. */
+    private static final int PICKER_LIMIT = 300;
 
     private final TermuxActivity activity;
     @Nullable private AlertDialog dialog;
@@ -87,6 +94,10 @@ final class CommandPalette {
     private EditText search;
     private LinearLayout list;
     private ScrollView scroll;
+    /** Set while the dialog is a {@code tpp ui picker} instead of the palette. */
+    @Nullable private Picked picked;
+    /** Whether the open dialog's choice was made; one flag per dialog, see {@link #open}. */
+    private boolean[] answered = {false};
 
     CommandPalette(@NonNull TermuxActivity activity) {
         this.activity = activity;
@@ -102,25 +113,47 @@ final class CommandPalette {
 
     /** Show the palette, or type {@code query} into the open one. */
     boolean show(@Nullable String query) {
-        if (isShowing()) {
+        if (isShowing() && picked == null) {
             if (query != null) {
                 search.setText(query);
                 search.setSelection(query.length());
             }
             return true;
         }
+        dismiss();
+        picked = null;
         collectEntries();
+        return open(activity.getString(R.string.ui_palette_title), query);
+    }
+
+    /**
+     * Show {@code lines} to pick one from, like fzf: {@code result} gets the chosen line, or {@code null} when the
+     * picker closes without one (also when another picker or the palette replaces it).
+     */
+    boolean showPicker(@Nullable String title, @NonNull List<String> lines, @Nullable String query,
+                       @NonNull Picked result) {
+        dismiss();
+        entries.clear();
+        for (String line : lines) entries.add(new Entry(Kind.LINE, line, "", () -> result.done(line)));
+        picked = result;
+        return open(title == null ? activity.getString(R.string.ui_picker_title) : title, query);
+    }
+
+    private boolean open(@NonNull String title, @Nullable String query) {
 
         LinearLayout content = new LinearLayout(activity);
         content.setOrientation(LinearLayout.VERTICAL);
         search = new EditText(activity);
-        search.setHint(R.string.ui_palette_hint);
+        search.setHint(picked == null ? R.string.ui_palette_hint : R.string.ui_picker_hint);
         search.setSingleLine(true);
         // No autocorrect: keyboards like Gboard replace a query ("font") on Enter despite
         // NO_SUGGESTIONS; a visible password field is never corrected and stays readable.
         search.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
             | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
         search.setTypeface(Typeface.DEFAULT);
+        // A password-like field invites password managers ("Unlock …" chips): it is a search, not a login.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+            search.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS);
         search.setImeOptions(EditorInfo.IME_ACTION_GO | EditorInfo.IME_FLAG_NO_EXTRACT_UI);
         LinearLayout.LayoutParams searchLayout = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -165,15 +198,27 @@ final class CommandPalette {
             }
         });
 
-        dialog = activity.pickerBuilder()
-            .setTitle(R.string.ui_palette_title)
+        AlertDialog created = activity.pickerBuilder()
+            .setTitle(title)
             .setView(content)
             .create();
-        dialog.setOnDismissListener(closed -> dialog = null);
-        if (dialog.getWindow() != null)
-            dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
-        dialog.show();
-        activity.placePicker(dialog);
+        dialog = created;
+        // Dismissal is reported later through a message: by then another dialog may have replaced this
+        // one, so everything here belongs to this dialog alone.
+        Picked owner = picked;
+        boolean[] choice = {false};
+        answered = choice;
+        created.setOnDismissListener(closed -> {
+            if (dialog == created) {
+                dialog = null;
+                picked = null;
+            }
+            if (owner != null && !choice[0]) owner.done(null);
+        });
+        if (created.getWindow() != null)
+            created.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+        created.show();
+        activity.placePicker(created);
         if (query != null) {
             search.setText(query);
             search.setSelection(query.length());
@@ -243,8 +288,8 @@ final class CommandPalette {
 
     private void refresh(String query) {
         List<Entry> candidates = new ArrayList<>(entries);
-        if (!query.trim().isEmpty()) candidates.addAll(settingsEntries());
-        shown = filter(candidates, query, LIMIT);
+        if (picked == null && !query.trim().isEmpty()) candidates.addAll(settingsEntries());
+        shown = filter(candidates, query, picked == null ? LIMIT : PICKER_LIMIT);
         list.removeAllViews();
         if (shown.isEmpty()) {
             TextView empty = text(activity.getString(R.string.ui_palette_empty), 14, false);
@@ -265,8 +310,16 @@ final class CommandPalette {
         activity.getTheme().resolveAttribute(android.R.attr.selectableItemBackground, ripple, true);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
             row.setForeground(activity.getDrawable(ripple.resourceId));
-        row.addView(text(entry.title, 15, true));
-        row.addView(text(entry.detail, 12, false));
+        TextView title = text(entry.title, entry.kind == Kind.LINE ? 13 : 15, true);
+        // Picker lines are often columns (ls -l): keep them aligned, and wrap them, since what matters
+        // (a file name) is often at the end.
+        if (entry.kind == Kind.LINE) {
+            title.setTypeface(Typeface.MONOSPACE);
+            title.setSingleLine(false);
+            title.setMaxLines(3);
+        }
+        row.addView(title);
+        if (!entry.detail.isEmpty()) row.addView(text(entry.detail, 12, false));
         row.setOnClickListener(view -> run(entry));
         row.setOnHoverListener((view, event) -> {
             select(index);
@@ -316,6 +369,8 @@ final class CommandPalette {
 
     /** Close the palette first: an entry may open another picker or move the keyboard. */
     private void run(Entry entry) {
+        // The choice reports itself: the dismissal must not report a cancel too.
+        answered[0] = true;
         dismiss();
         activity.getWindow().getDecorView().post(entry.run);
     }

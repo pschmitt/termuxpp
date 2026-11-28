@@ -906,6 +906,78 @@ fn ui_commands_send_actions_and_search_to_the_app() {
 }
 
 #[test]
+fn ui_picker_sends_stdin_lines_and_prints_the_choice() {
+    let fx = Fixture::new("picker");
+    let name = format!("tpp-picker-test-{}", std::process::id());
+    let listener =
+        UnixListener::bind_addr(&SocketAddr::from_abstract_name(&name).unwrap()).unwrap();
+    listener.set_nonblocking(true).unwrap();
+
+    for (reply, status, printed) in [
+        (r#"{"result": "beta two"}"#, 0, "beta two\n"),
+        (r#"{"result": null}"#, 130, ""),
+        (r#"{"error": "Cannot open the picker"}"#, 1, ""),
+    ] {
+        let mut child = fx
+            .command(&["ui", "picker", "--title", "Files", "--query", "be"])
+            .env("TPP_SESSION_SOCKET", &name)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        child
+            .stdin
+            .take()
+            .unwrap()
+            .write_all(b"alpha one\r\n\n  \nbeta two\n")
+            .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let stream = loop {
+            match listener.accept() {
+                Ok((stream, _)) => break stream,
+                Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
+                    assert!(Instant::now() < deadline, "no picker request");
+                    std::thread::sleep(Duration::from_millis(5));
+                }
+                Err(error) => panic!("could not accept picker request: {error}"),
+            }
+        };
+        stream
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .unwrap();
+        let mut stream = BufReader::new(stream);
+        let mut request = String::new();
+        stream.read_line(&mut request).unwrap();
+        // Blank lines and carriage returns are dropped.
+        assert_eq!(
+            request.trim_end(),
+            r#"["picker", {"items": ["alpha one", "beta two"], "title": "Files", "query": "be"}]"#
+        );
+        stream
+            .get_mut()
+            .write_all(format!("{reply}\n").as_bytes())
+            .unwrap();
+        let output = child.wait_with_output().unwrap();
+        assert_eq!(code(&output), status, "{}", err(&output));
+        assert_eq!(out(&output), printed);
+    }
+
+    let empty = fx
+        .command(&["ui", "picker"])
+        .env("TPP_SESSION_SOCKET", &name)
+        .stdin(Stdio::null())
+        .output()
+        .unwrap();
+    assert_eq!(code(&empty), 1, "{}", err(&empty));
+    assert!(err(&empty).contains("no lines"), "{}", err(&empty));
+    assert_eq!(code(&fx.run(&["ui", "picker", "--title"])), 2);
+    assert_eq!(code(&fx.run(&["ui", "picker", "show"])), 2);
+    assert_eq!(complete(&fx, &["ui", "picker", "--q"]).1, ["--query"]);
+    assert!(complete(&fx, &["ui", "picker", "--title", ""]).1.is_empty());
+}
+
+#[test]
 fn every_command_answers_help_from_the_binary() {
     // No app and no file is needed for the usage text of any command
     let fx = Fixture::new("usage");

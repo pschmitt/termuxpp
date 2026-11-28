@@ -969,6 +969,49 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         return id == null ? JSONObject.NULL : id;
     }
 
+    /** Most lines {@code tpp ui picker} takes. */
+    static final int MAX_PICKER_LINES = 20000;
+
+    /**
+     * {@code tpp ui picker}: show the lines and wait, on the calling connection thread, for the choice. Returns
+     * the chosen line, or {@code null} when the picker closed without one.
+     */
+    Object awaitPicker(JSONArray args) throws JSONException, InterruptedException {
+        if (args.length() != 2) throw new IllegalArgumentException("Invalid picker arguments");
+        JSONObject options = args.getJSONObject(1);
+        JSONArray items = options.getJSONArray("items");
+        if (items.length() == 0) throw new IllegalArgumentException("No lines to pick from");
+        if (items.length() > MAX_PICKER_LINES)
+            throw new IllegalArgumentException("Too many lines to pick from (at most " + MAX_PICKER_LINES + ")");
+        java.util.List<String> lines = new java.util.ArrayList<>(items.length());
+        for (int i = 0; i < items.length(); i++) lines.add(items.getString(i));
+        String title = options.has("title") ? options.getString("title") : null;
+        String query = options.has("query") ? options.getString("query") : null;
+
+        java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(1);
+        Object[] outcome = {JSONObject.NULL};
+        String[] failure = {null};
+        android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());
+        main.post(() -> {
+            if (mTermuxTerminalSessionActivityClient == null || !mTermuxTerminalSessionActivityClient.showPicker(
+                    title, lines, query, line -> {
+                        outcome[0] = line == null ? JSONObject.NULL : line;
+                        done.countDown();
+                    })) {
+                failure[0] = "Cannot open the picker from the current TermuxPP screen";
+                done.countDown();
+            }
+        });
+        if (!done.await(30, java.util.concurrent.TimeUnit.MINUTES)) {
+            main.post(() -> {
+                if (mTermuxTerminalSessionActivityClient != null) mTermuxTerminalSessionActivityClient.dismissPalette();
+            });
+            throw new IllegalStateException("Nothing was picked in 30 minutes");
+        }
+        if (failure[0] != null) throw new IllegalStateException(failure[0]);
+        return outcome[0];
+    }
+
     /** Called on the main thread by the app-UID session socket. */
     Object runSessionCommand(JSONArray args) throws JSONException, ErrnoException {
         String command = args.getString(0);
