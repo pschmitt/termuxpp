@@ -296,6 +296,11 @@ public abstract class TermuxSharedProperties {
                     if (style.equalsIgnoreCase(value)) return style;
                 }
                 return TermuxPropertyConstants.DEFAULT_GESTURE_FEEDBACK_STYLE;
+            case TermuxPropertyConstants.KEY_PALETTE_FULLSCREEN:
+            case TermuxPropertyConstants.KEY_UI_PICKER_FULLSCREEN:
+            case TermuxPropertyConstants.KEY_SESSION_SWITCHER_FULLSCREEN:
+            case TermuxPropertyConstants.KEY_TMUX_SWITCHER_FULLSCREEN:
+                return value == null ? null : SharedProperties.getBooleanValueForStringValue(value.trim());
             case TermuxPropertyConstants.KEY_TERMINAL_PICKER_POSITION:
                 for (String position : new String[]{TermuxPropertyConstants.PICKER_POSITION_TOP,
                     TermuxPropertyConstants.PICKER_POSITION_CENTER, TermuxPropertyConstants.PICKER_POSITION_TERMINAL}) {
@@ -642,10 +647,21 @@ public abstract class TermuxSharedProperties {
      */
     public static Integer getCodePointForSessionShortcuts(String key, String value) {
         if (key == null) return null;
+        if (value == null && TermuxPropertyConstants.KEY_SHORTCUT_CREATE_SESSION.equals(key))
+            value = TermuxPropertyConstants.DEFAULT_SHORTCUT_CREATE_SESSION;
         if (value == null) return null;
         // "disabled" switches the shortcut off, so a configured default can be removed.
         if (value.trim().equalsIgnoreCase(VALUE_SHORTCUT_DISABLED)) return null;
         String[] parts = value.toLowerCase().trim().split("\\+");
+        // Ctrl+Shift and a letter: the letter with SHORTCUT_SHIFT set. Shift changes other keys by layout.
+        if (parts.length == 3 && parts[0].trim().equals("ctrl") && parts[1].trim().equals("shift")) {
+            String letter = parts[2].trim();
+            if (letter.length() != 1 || letter.charAt(0) < 'a' || letter.charAt(0) > 'z') {
+                Logger.logError(LOG_TAG, "Keyboard shortcut '" + key + "' is not Ctrl+Shift+<letter>");
+                return null;
+            }
+            return letter.charAt(0) | TermuxPropertyConstants.SHORTCUT_SHIFT;
+        }
         String input = parts.length == 2 ? parts[1].trim() : null;
         if (!(parts.length == 2 && parts[0].trim().equals("ctrl")) || input.isEmpty() || input.length() > 2) {
             Logger.logError(LOG_TAG, "Keyboard shortcut '" + key + "' is not Ctrl+<something>");
@@ -1308,6 +1324,17 @@ public abstract class TermuxSharedProperties {
     /** Whether the extra keys toolbar follows the soft keyboard: shown only while it is visible. */
     public boolean shouldExtraKeysAutoHide() {
         return (boolean) getInternalPropertyValue(TermuxPropertyConstants.KEY_EXTRA_KEYS_AUTO_HIDE, true);
+    }
+
+    /**
+     * Whether a picker fills the screen: {@code override} ({@code tpp ui ... --fullscreen}) if given, else
+     * the picker's own setting ({@code key}, one of the per-picker keys), else the global one.
+     */
+    public boolean isPickerFullscreen(@NonNull String key, @Nullable Boolean override) {
+        if (override != null) return override;
+        Object own = getInternalPropertyValue(key, true);
+        if (own instanceof Boolean) return (Boolean) own;
+        return (boolean) getInternalPropertyValue(TermuxPropertyConstants.KEY_PICKER_FULLSCREEN, true);
     }
 
     /** How high the extra keys rows are: one of the {@code EXTRA_KEYS_COMPACT_*} values. */

@@ -46,6 +46,11 @@ public final class SettingTitles {
         title("terminal.default-working-directory", "Start directory");
 
         title("sessions.picker-position", "Picker position");
+        title("sessions.picker-fullscreen", "Full-screen pickers");
+        title("sessions.pickers.palette.fullscreen", "Command palette: full screen");
+        title("sessions.pickers.picker.fullscreen", "tpp ui picker: full screen");
+        title("sessions.pickers.session-switcher.fullscreen", "Session picker: full screen");
+        title("sessions.pickers.tmux-switcher.fullscreen", "tmux window picker: full screen");
         title("sessions.create-on-single-session-switch", "Switching from the only session creates a new one");
         title("sessions.command-context", "Where commands run");
         title("sessions.tmpdir-cleanup-days", "Delete unused temporary files after (days)");

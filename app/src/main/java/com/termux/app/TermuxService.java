@@ -927,7 +927,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
             return;
         }
         if (!mTermuxTerminalSessionActivityClient.controlTerminalUi(request.action, request.operation,
-                request.query, request.right))
+                request.query, request.right, request.fullscreen))
             throw new IllegalStateException("Cannot open " + request.action + " from the current TermuxPP screen");
     }
 
@@ -987,6 +987,13 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         for (int i = 0; i < items.length(); i++) lines.add(items.getString(i));
         String title = options.has("title") ? options.getString("title") : null;
         String query = options.has("query") ? options.getString("query") : null;
+        Boolean fullscreen = null;
+        if (options.has("fullscreen")) {
+            Object value = options.get("fullscreen");
+            if (!(value instanceof Boolean)) throw new IllegalArgumentException("Invalid picker arguments");
+            fullscreen = (Boolean) value;
+        }
+        Boolean fullscreenChoice = fullscreen;
 
         java.util.concurrent.CountDownLatch done = new java.util.concurrent.CountDownLatch(1);
         Object[] outcome = {JSONObject.NULL};
@@ -994,7 +1001,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         android.os.Handler main = new android.os.Handler(android.os.Looper.getMainLooper());
         main.post(() -> {
             if (mTermuxTerminalSessionActivityClient == null || !mTermuxTerminalSessionActivityClient.showPicker(
-                    title, lines, query, line -> {
+                    title, lines, query, fullscreenChoice, line -> {
                         outcome[0] = line == null ? JSONObject.NULL : line;
                         done.countDown();
                     })) {

@@ -67,7 +67,7 @@ actions and options.
 | Command | Actions | Details |
 | --- | --- | --- |
 | `session` | `new`, `list`, `focus`, `rename`, `move`, `close`, `kill`, `switcher`, ... | [Session commands](terminal-settings.md#session-commands) |
-| `ui` | `more`, `settings`, `session-switcher`, `sidebar` | [Opening the app interface](terminal-settings.md#opening-the-app-interface) |
+| `ui` | `clear`, `more`, `palette`, `picker`, `session-switcher`, `settings`, `sidebar`, `tmux-switcher` (pickers take `--fullscreen`) | [Opening the app interface](terminal-settings.md#opening-the-app-interface) |
 | `settings` | `reload` | Reload `config.yaml`, fonts, and colors. |
 | `tmux` | `attach`, `switcher` | [Remote tmux integration](termuxpp-differences.md#remote-tmux-integration) |
 | `api` | `start`, `stop` | Start or stop the API keep-alive service. |

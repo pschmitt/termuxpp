@@ -116,6 +116,11 @@ its path and by its key in the former `termux.properties` format.
 
 | Path | Type | Default | Description |
 | --- | --- | --- | --- |
+| `picker-fullscreen` | bool | `false` | Open the pickers full screen instead of as a dialog. `tpp ui ... --fullscreen` / `--no-fullscreen` overrides it. |
+| `pickers.palette.fullscreen` | bool | follows `picker-fullscreen` | The command palette full screen, or not. |
+| `pickers.picker.fullscreen` | bool | follows `picker-fullscreen` | `tpp ui picker` full screen, or not. |
+| `pickers.session-switcher.fullscreen` | bool | follows `picker-fullscreen` | The session picker full screen, or not. |
+| `pickers.tmux-switcher.fullscreen` | bool | follows `picker-fullscreen` | The tmux window picker full screen, or not. |
 | `picker-position` | enum: `top`, `center`, `terminal` | `top` | Where the session picker, the tmux window picker and the command palette open. `terminal` centers them on the terminal, above the keyboard. |
 | `create-on-single-session-switch` | bool | `false` | With only one session open, next/previous session creates a new one. |
 | `command-context` | enum: `session`, `nix`, `outer` | `session` | Where commands run: every `run-command` gesture and every extra key with a `command`. `session` follows `nix.enabled`, `nix` always uses the guest, and `outer` uses the native prefix. |
@@ -153,11 +158,11 @@ session.
 | `char-based-input` | bool | `false` | Send each character as you type. Use it when typed text only appears after Enter, which happens with some keyboards (for example on Samsung devices). |
 | `ctrl-space-workaround` | bool | `false` | Fix Ctrl+Space not sending NUL on some devices. |
 | `hardware-shortcuts` | bool | `true` | Handle the built-in Ctrl+Alt shortcuts of a hardware keyboard (for example Ctrl+Alt+N for the next session, Ctrl+Alt+F for the command palette). Turn it off so that the keys reach the terminal. |
-| `shortcuts.create-session` | `ctrl+X` or `disabled` | `ctrl+t` | Ctrl shortcut for a new session. `disabled` removes it. |
-| `shortcuts.next-session` | `ctrl+X` or `disabled` | `ctrl+2` | Ctrl shortcut for the next session. |
-| `shortcuts.previous-session` | `ctrl+X` or `disabled` | `ctrl+1` | Ctrl shortcut for the previous session. |
-| `shortcuts.rename-session` | `ctrl+X` or `disabled` | `ctrl+r` | Ctrl shortcut to rename the current session. |
-| `shortcuts.palette` | `ctrl+X` or `disabled` | unset | Ctrl shortcut for the command palette. A hardware keyboard also has Ctrl+Alt+F. |
+| `shortcuts.create-session` | `ctrl+X`, `ctrl+shift+L` or `disabled` | `ctrl+shift+t` | Shortcut for a new session. `disabled` removes it. |
+| `shortcuts.next-session` | `ctrl+X`, `ctrl+shift+L` or `disabled` | unset | Shortcut for the next session, like `ctrl+2`. |
+| `shortcuts.previous-session` | `ctrl+X`, `ctrl+shift+L` or `disabled` | unset | Shortcut for the previous session, like `ctrl+1`. |
+| `shortcuts.rename-session` | `ctrl+X`, `ctrl+shift+L` or `disabled` | unset | Shortcut to rename the current session, like `ctrl+r`. |
+| `shortcuts.palette` | `ctrl+X`, `ctrl+shift+L` or `disabled` | unset | Shortcut for the command palette. A hardware keyboard also has Ctrl+Alt+F. |
 | `volume.mode` | enum: `virtual`, `volume` | `virtual` | `volume` gives both buttons back to Android and ignores `volume.up` and `volume.down`. |
 | `volume.up.action` | `modifier` or action | `modifier` | Volume up. `modifier` makes it a virtual Fn key while held. `run-command` is not allowed. |
 | `volume.up.keys` | keys | unset | Keys for `send-keys`. |

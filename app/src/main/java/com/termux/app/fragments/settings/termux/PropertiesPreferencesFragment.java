@@ -117,6 +117,8 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
                         ? getString(R.string.properties_default_boolean, getString(R.string.ui_tmux_layout_nested))
                         : key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_COMPACT)
                         ? getString(R.string.properties_default_boolean, "Normal")
+                        : TermuxPropertyConstants.PICKER_FULLSCREEN_OVERRIDES.contains(key)
+                        ? getString(R.string.properties_default_boolean, "follow Full-screen pickers")
                         : key.equals(TermuxPropertyConstants.KEY_TERMINAL_PICKER_POSITION)
                         ? getString(R.string.properties_default_boolean, getString(R.string.ui_picker_position_top))
                         : getString(R.string.properties_default));
@@ -195,7 +197,8 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
         }
     }
 
-    private int iconFor(String key) {
+    /** The icon of a property's preference; the command palette shows it too. */
+    public static int iconFor(String key) {
         if (key.contains("color") || key.endsWith("style") || key.equals("night-mode")
             || key.equals("use-black-ui")) return R.drawable.ui_ic_palette;
         if (key.contains("keyboard") || key.startsWith("extra-keys") || key.startsWith("shortcut.")
@@ -213,6 +216,8 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
     }
 
     private String choiceLabel(String key, String value) {
+        if (TermuxPropertyConstants.PICKER_FULLSCREEN_OVERRIDES.contains(key))
+            return "true".equals(value) ? "Full screen" : "Dialog";
         if (TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT.equals(key) && "google-sans".equals(value))
             return "Google Sans (Gboard)";
         if (TermuxPropertyConstants.KEY_EXTRA_KEYS_COMPACT.equals(key)) {

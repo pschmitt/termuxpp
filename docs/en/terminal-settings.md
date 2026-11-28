@@ -87,6 +87,7 @@ Run these commands from the visible TermuxPP terminal. Each surface takes `show`
 ```text
 tpp ui palette
 tpp ui palette --search "font"
+tpp ui palette --fullscreen
 tpp ui more toggle
 tpp ui settings --search "font size"
 tpp ui session-switcher hide
@@ -106,6 +107,20 @@ cd "$(ls -d */ | tpp ui picker --title Directories)"
 git switch "$(git branch --format='%(refname:short)' | tpp ui picker)"
 ```
 
+The pickers (the palette, `tpp ui picker`, the session picker and the tmux window picker) open as a
+dialog or full screen. `sessions.picker-fullscreen: true` makes all of them full screen;
+`sessions.pickers.NAME.fullscreen` (`palette`, `picker`, `session-switcher`, `tmux-switcher`) sets
+one picker either way, and `--fullscreen` (`--fs`) or `--no-fullscreen` on the command overrides
+both for that one opening.
+
+```yaml
+sessions:
+  picker-fullscreen: false
+  pickers:
+    palette:
+      fullscreen: true
+```
+
 `tpp ui settings --search` opens Settings with the search results already visible.
 `tpp ui session-switcher` and `tpp session switcher` open the same picker. `tpp ui clear` closes
 everything at once: both sidebars, the palette, the pickers, the menu and Settings.
@@ -123,7 +138,8 @@ Open it with the `open-palette` action (bind it to a tap, a swipe, a volume key 
 like any other action), with Ctrl+Alt+F on a hardware keyboard, with a Ctrl shortcut of your own
 (`keyboard.shortcuts.palette: ctrl+g`; that key then no longer reaches the shell), or with
 `tpp ui palette`. It opens where the other pickers do
-(`sessions.picker-position`).
+(`sessions.picker-position`), or full screen (see above). Each entry shows an icon: the terminal
+for sessions, the program running in a tmux window, the action's or the setting's own icon.
 
 ## Terminal appearance
 

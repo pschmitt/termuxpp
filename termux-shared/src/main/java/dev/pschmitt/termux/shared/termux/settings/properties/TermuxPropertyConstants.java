@@ -336,6 +336,11 @@ public final class TermuxPropertyConstants {
     /** Defines the key for the command palette shortcut */
     public static final String KEY_SHORTCUT_PALETTE =  "shortcut.palette"; // Default: "shortcut.palette"
 
+    /** The shortcut that {@link #KEY_SHORTCUT_CREATE_SESSION} has unless set ("disabled" removes it). */
+    public static final String DEFAULT_SHORTCUT_CREATE_SESSION = "ctrl+shift+t";
+    /** Set in a shortcut's code point when it needs Shift too ({@code ctrl+shift+t}). */
+    public static final int SHORTCUT_SHIFT = 1 << 30;
+
     public static final int ACTION_SHORTCUT_CREATE_SESSION = 1;
     public static final int ACTION_SHORTCUT_NEXT_SESSION = 2;
     public static final int ACTION_SHORTCUT_PREVIOUS_SESSION = 3;
@@ -467,6 +472,17 @@ public final class TermuxPropertyConstants {
     /** In the middle of the terminal view, which shrinks while the keyboard is shown. */
     public static final String PICKER_POSITION_TERMINAL = "terminal";
     public static final String DEFAULT_PICKER_POSITION = PICKER_POSITION_TOP;
+
+    /** Whether the pickers fill the screen instead of opening as a dialog; each can override it below. */
+    public static final String KEY_PICKER_FULLSCREEN = "terminal-picker-fullscreen";
+    /** Per picker, true or false over {@link #KEY_PICKER_FULLSCREEN}; unset follows it. */
+    public static final String KEY_PALETTE_FULLSCREEN = "terminal-palette-fullscreen";
+    public static final String KEY_UI_PICKER_FULLSCREEN = "terminal-ui-picker-fullscreen";
+    public static final String KEY_SESSION_SWITCHER_FULLSCREEN = "terminal-session-switcher-fullscreen";
+    public static final String KEY_TMUX_SWITCHER_FULLSCREEN = "terminal-tmux-switcher-fullscreen";
+    /** The per-picker keys, which take true, false or nothing (follow {@link #KEY_PICKER_FULLSCREEN}). */
+    public static final List<String> PICKER_FULLSCREEN_OVERRIDES = Arrays.asList(KEY_PALETTE_FULLSCREEN,
+        KEY_UI_PICKER_FULLSCREEN, KEY_SESSION_SWITCHER_FULLSCREEN, KEY_TMUX_SWITCHER_FULLSCREEN);
 
     public static final String KEY_TERMINAL_TOAST_POSITION = "terminal-toast-position";
     public static final int DEFAULT_TERMINAL_TOAST_GRAVITY = Gravity.TOP | Gravity.CENTER_HORIZONTAL;
@@ -776,6 +792,11 @@ public final class TermuxPropertyConstants {
         KEY_SIDEBAR_RIGHT_NEW_SESSION,
         KEY_SIDEBAR_RIGHT_KEYBOARD,
         KEY_TERMINAL_PICKER_POSITION,
+        KEY_PICKER_FULLSCREEN,
+        KEY_PALETTE_FULLSCREEN,
+        KEY_UI_PICKER_FULLSCREEN,
+        KEY_SESSION_SWITCHER_FULLSCREEN,
+        KEY_TMUX_SWITCHER_FULLSCREEN,
 
         /* gesture command configuration */
         KEY_GESTURE_COMMAND_CONTEXT,
@@ -848,6 +869,7 @@ public final class TermuxPropertyConstants {
         KEY_DISABLE_TERMINAL_SESSION_CHANGE_TOAST,
         KEY_ENFORCE_CHAR_BASED_INPUT,
         KEY_EXTRA_KEYS_AUTO_HIDE,
+        KEY_PICKER_FULLSCREEN,
         KEY_HIDE_SOFT_KEYBOARD_ON_STARTUP,
         KEY_TERMINAL_ONCLICK_URL_OPEN,
         KEY_USE_CTRL_SPACE_WORKAROUND,

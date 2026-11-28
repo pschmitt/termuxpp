@@ -104,6 +104,26 @@ public class PropertyInputSpecTest {
     }
 
     @Test
+    public void shortcutsTakeCtrlShiftLetters() {
+        String key = TermuxPropertyConstants.KEY_SHORTCUT_CREATE_SESSION;
+        assertNull(PropertyInputSpec.validationError(key, "ctrl+shift+t"));
+        assertNull(PropertyInputSpec.validationError(key, "Ctrl + Shift + T"));
+        assertNotNull(PropertyInputSpec.validationError(key, "ctrl+shift+1"));
+        assertNotNull(PropertyInputSpec.validationError(key, "shift+t"));
+        assertTrue(PropertyInputSpec.help(key).contains("Default: ctrl+shift+t"));
+    }
+
+    @Test
+    public void pickerFullscreenOverrides() {
+        for (String key : TermuxPropertyConstants.PICKER_FULLSCREEN_OVERRIDES) {
+            assertArrayEquals(new String[] {"true", "false"}, PropertyInputSpec.choices(key));
+            assertNull(PropertyInputSpec.validationError(key, "true"));
+            assertNotNull(PropertyInputSpec.validationError(key, "maybe"));
+        }
+        assertTrue(PropertyInputSpec.help(TermuxPropertyConstants.KEY_PICKER_FULLSCREEN).contains("Default: false"));
+    }
+
+    @Test
     public void extraKeysFontWeight() {
         String weight = TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT_WEIGHT;
         assertNull(PropertyInputSpec.validationError(weight, "500"));
@@ -378,7 +398,8 @@ public class PropertyInputSpecTest {
                 || key.equals(toastKey) || key.equals(engineKey) || key.equals(feedbackKey)
                 || key.equals(gesturePositionKey) || key.equals(tmuxKey) || key.equals(tmuxStyle)
                 || key.equals(pickerKey) || key.equals(fontKey) || key.equals(animationKey) || key.equals(themeKey)
-                || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_COMPACT)) continue;
+                || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_COMPACT)
+                || TermuxPropertyConstants.PICKER_FULLSCREEN_OVERRIDES.contains(key)) continue;
             assertEquals(key, 0, PropertyInputSpec.choices(key).length);
         }
         assertEquals(0, PropertyInputSpec.choices(null).length);

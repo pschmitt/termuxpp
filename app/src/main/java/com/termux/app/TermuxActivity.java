@@ -1040,7 +1040,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      *
      * @return false when the surface should show but cannot from the current screen.
      */
-    public boolean controlTerminalUi(String action, String op, @Nullable String query, boolean right) {
+    public boolean controlTerminalUi(String action, String op, @Nullable String query, boolean right,
+                                     @Nullable Boolean fullscreen) {
         if ("clear".equals(action)) {
             closeAllTerminalUi();
             return true;
@@ -1051,7 +1052,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             hideTerminalUi(action, right);
             return true;
         }
-        return openTerminalUi(action, query, right);
+        return openTerminalUi(action, query, right, fullscreen);
     }
 
     /** Whether {@code tpp ui ACTION} is showing now. */
@@ -1091,17 +1092,23 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     /** Open the command palette, optionally with {@code query} already typed. */
     public boolean showPalette(@Nullable String query) {
+        return showPalette(query, null);
+    }
+
+    /** {@code fullscreen} overrides the palette's setting; {@code null} keeps it. */
+    public boolean showPalette(@Nullable String query, @Nullable Boolean fullscreen) {
         if (!mIsVisible || isFinishing() || isDestroyed() || mTermuxService == null) return false;
         if (palette == null) palette = new CommandPalette(this);
-        return palette.show(query);
+        return palette.show(query, mProperties.isPickerFullscreen(TermuxPropertyConstants.KEY_PALETTE_FULLSCREEN, fullscreen));
     }
 
     /** {@code tpp ui picker}: show {@code lines} to pick one; {@code result} gets it or {@code null}. */
     public boolean showPicker(@Nullable String title, List<String> lines, @Nullable String query,
-                              CommandPalette.Picked result) {
+                              @Nullable Boolean fullscreen, CommandPalette.Picked result) {
         if (!mIsVisible || isFinishing() || isDestroyed() || mTermuxService == null) return false;
         if (palette == null) palette = new CommandPalette(this);
-        return palette.showPicker(title, lines, query, result);
+        return palette.showPicker(title, lines, query,
+            mProperties.isPickerFullscreen(TermuxPropertyConstants.KEY_UI_PICKER_FULLSCREEN, fullscreen), result);
     }
 
     /** Close an open {@code tpp ui picker}, which then reports no choice. */
@@ -1115,6 +1122,11 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     public boolean openTerminalUi(String action, @Nullable String query, boolean right) {
+        return openTerminalUi(action, query, right, null);
+    }
+
+    /** {@code fullscreen} overrides the setting of a picker ({@code tpp ui ... --fullscreen}). */
+    public boolean openTerminalUi(String action, @Nullable String query, boolean right, @Nullable Boolean fullscreen) {
         if (!mIsVisible || isFinishing() || isDestroyed()) return false;
         switch (action) {
             case "more":
@@ -1124,19 +1136,25 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                 if (query != null) intent.putExtra(SettingsActivity.EXTRA_SEARCH_QUERY, query);
                 return ActivityUtils.startActivity(this, intent) == null;
             case "tmux-switcher":
-                return showTmuxSwitcher(getCurrentSession());
+                return showTmuxSwitcher(getCurrentSession(), fullscreen);
             case "session-switcher":
-                return showSessionSwitcher();
+                return showSessionSwitcher(fullscreen);
             case "sidebar":
                 return openSidebar(right);
             case "palette":
-                return showPalette(query);
+                return showPalette(query, fullscreen);
             default:
                 throw new IllegalArgumentException("Unknown terminal UI action: " + action);
         }
     }
 
     public boolean showSessionSwitcher() {
+        return showSessionSwitcher(null);
+    }
+
+    public boolean showSessionSwitcher(@Nullable Boolean fullscreenOverride) {
+        boolean fullscreen = mProperties.isPickerFullscreen(
+            TermuxPropertyConstants.KEY_SESSION_SWITCHER_FULLSCREEN, fullscreenOverride);
         if (!mIsVisible || mTermuxService == null || isFinishing()
             || getDrawer().getDrawerLockMode(Gravity.START) == DrawerLayout.LOCK_MODE_LOCKED_CLOSED) return false;
         if (sessionSwitcher != null && sessionSwitcher.isShowing()) return true;
@@ -1180,7 +1198,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         }
         scrollPickerTo(content, currentRow);
 
-        sessionSwitcher = pickerBuilder()
+        sessionSwitcher = pickerBuilder(fullscreen)
             .setTitle(R.string.ui_session_switcher_title)
             .setView(content)
             .setPositiveButton(R.string.action_new_session, (dialog, which) ->
@@ -1194,7 +1212,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             .create();
         sessionSwitcher.setOnDismissListener(dialog -> sessionSwitcher = null);
         sessionSwitcher.show();
-        placePicker(sessionSwitcher);
+        placePicker(sessionSwitcher, fullscreen);
         return true;
     }
 
@@ -1212,9 +1230,21 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      * small one.
      */
     MaterialAlertDialogBuilder pickerBuilder() {
+        return pickerBuilder(false);
+    }
+
+    /** A full-screen picker has no inset and square corners: it is a screen, not a card. */
+    MaterialAlertDialogBuilder pickerBuilder(boolean fullscreen) {
         MaterialAlertDialogBuilder builder = DialogUtils.builder(this);
-        if (!TermuxPropertyConstants.PICKER_POSITION_CENTER.equals(pickerPosition()))
+        if (fullscreen) {
+            builder.setBackgroundInsetStart(0).setBackgroundInsetEnd(0)
+                .setBackgroundInsetTop(0).setBackgroundInsetBottom(0);
+            if (builder.getBackground() instanceof com.google.android.material.shape.MaterialShapeDrawable)
+                ((com.google.android.material.shape.MaterialShapeDrawable) builder.getBackground())
+                    .setShapeAppearanceModel(new com.google.android.material.shape.ShapeAppearanceModel());
+        } else if (!TermuxPropertyConstants.PICKER_POSITION_CENTER.equals(pickerPosition())) {
             builder.setBackgroundInsetTop(sidebarDp(16)).setBackgroundInsetBottom(sidebarDp(16));
+        }
         return builder;
     }
 
@@ -1223,8 +1253,48 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      * the screen (the dialog's own place), or the middle of the terminal view, which the keyboard shrinks.
      */
     void placePicker(AlertDialog dialog) {
+        placePicker(dialog, false);
+    }
+
+    /** A full-screen picker fills the window, and shrinks above the keyboard instead of moving. */
+    void placePicker(AlertDialog dialog, boolean fullscreen) {
         Window window = dialog.getWindow();
         if (window == null) return;
+        if (fullscreen) {
+            window.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+            window.setSoftInputMode((window.getAttributes().softInputMode
+                & ~WindowManager.LayoutParams.SOFT_INPUT_MASK_ADJUST) | WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+            // The content takes all the height, so that the buttons sit at the bottom of the screen.
+            View panel = window.findViewById(androidx.appcompat.R.id.customPanel);
+            if (panel != null && panel.getLayoutParams() instanceof LinearLayout.LayoutParams) {
+                LinearLayout.LayoutParams layout = (LinearLayout.LayoutParams) panel.getLayoutParams();
+                layout.height = 0;
+                layout.weight = 1;
+                panel.setLayoutParams(layout);
+                // The dialog's panels wrap their content: stretch them up to the window.
+                View content = window.findViewById(android.R.id.content);
+                for (android.view.ViewParent parent = panel.getParent(); parent instanceof View && parent != content;
+                     parent = parent.getParent()) {
+                    ViewGroup.LayoutParams params = ((View) parent).getLayoutParams();
+                    if (params == null) continue;
+                    params.height = ViewGroup.LayoutParams.MATCH_PARENT;
+                    ((View) parent).setLayoutParams(params);
+                }
+            }
+            // Full screen reaches under the system bars: keep the title and the buttons clear of them.
+            View root = window.findViewById(android.R.id.content);
+            if (root != null) {
+                androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(root, (view, insets) -> {
+                    androidx.core.graphics.Insets bars = insets.getInsets(
+                        androidx.core.view.WindowInsetsCompat.Type.systemBars()
+                            | androidx.core.view.WindowInsetsCompat.Type.displayCutout());
+                    view.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+                    return insets;
+                });
+                androidx.core.view.ViewCompat.requestApplyInsets(root);
+            }
+            return;
+        }
         String position = pickerPosition();
         if (TermuxPropertyConstants.PICKER_POSITION_CENTER.equals(position)) return;
 
@@ -1473,6 +1543,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     public boolean showTmuxSwitcher(@Nullable TerminalSession session) {
+        return showTmuxSwitcher(session, null);
+    }
+
+    public boolean showTmuxSwitcher(@Nullable TerminalSession session, @Nullable Boolean fullscreenOverride) {
+        boolean fullscreen = mProperties.isPickerFullscreen(
+            TermuxPropertyConstants.KEY_TMUX_SWITCHER_FULLSCREEN, fullscreenOverride);
         if (session == null || mTermuxService == null || !mIsVisible || isFinishing()) return false;
         if (tmuxSwitcher != null && tmuxSwitcher.isShowing()) return true;
         JSONArray windows = mTermuxService.getTmuxWindows(session);
@@ -1485,12 +1561,12 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
         View activeRow = addTmuxWindows(list, session, windows, false, () -> tmuxSwitcher);
         scrollPickerTo(content, activeRow);
 
-        tmuxSwitcher = pickerBuilder()
+        tmuxSwitcher = pickerBuilder(fullscreen)
             .setView(content)
             .create();
         tmuxSwitcher.setOnDismissListener(dialog -> tmuxSwitcher = null);
         tmuxSwitcher.show();
-        placePicker(tmuxSwitcher);
+        placePicker(tmuxSwitcher, fullscreen);
         return true;
     }
 

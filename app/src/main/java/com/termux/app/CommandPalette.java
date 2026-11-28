@@ -15,11 +15,15 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
+import android.content.res.ColorStateList;
 import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
@@ -29,7 +33,9 @@ import androidx.core.graphics.ColorUtils;
 import com.google.android.material.color.MaterialColors;
 import com.termux.R;
 import com.termux.app.activities.SettingsActivity;
+import com.termux.app.fragments.settings.termux.PropertiesPreferencesFragment;
 import com.termux.app.settings.SettingsSearchIndex;
+import com.termux.app.terminal.TmuxProgramIcon;
 import com.termux.terminal.TerminalSession;
 
 import dev.pschmitt.termux.shared.termux.settings.properties.TerminalGestureAction;
@@ -64,6 +70,10 @@ public final class CommandPalette {
         final String detail;
         final Runnable run;
         private final String searchable;
+        /** A drawable, or 0 for none (picker lines). */
+        @DrawableRes int icon;
+        /** A tmux window's program, whose brand colour tints the icon; {@code null} for the palette's colour. */
+        @Nullable TmuxProgramIcon program;
 
         Entry(@NonNull Kind kind, @NonNull String title, @NonNull String detail, @NonNull Runnable run) {
             this(kind, title, detail, "", run);
@@ -77,6 +87,17 @@ public final class CommandPalette {
             this.detail = detail;
             this.run = run;
             this.searchable = normalize(title + " " + detail + " " + keywords);
+        }
+
+        Entry icon(@DrawableRes int drawable) {
+            icon = drawable;
+            return this;
+        }
+
+        Entry program(@NonNull TmuxProgramIcon icon) {
+            this.icon = icon.drawable;
+            program = icon;
+            return this;
         }
     }
 
@@ -111,8 +132,8 @@ public final class CommandPalette {
         if (dialog != null) dialog.dismiss();
     }
 
-    /** Show the palette, or type {@code query} into the open one. */
-    boolean show(@Nullable String query) {
+    /** Show the palette (full screen or as a dialog), or type {@code query} into the open one. */
+    boolean show(@Nullable String query, boolean fullscreen) {
         if (isShowing() && picked == null) {
             if (query != null) {
                 search.setText(query);
@@ -123,7 +144,7 @@ public final class CommandPalette {
         dismiss();
         picked = null;
         collectEntries();
-        return open(activity.getString(R.string.ui_palette_title), query);
+        return open(activity.getString(R.string.ui_palette_title), query, fullscreen);
     }
 
     /**
@@ -131,21 +152,23 @@ public final class CommandPalette {
      * picker closes without one (also when another picker or the palette replaces it).
      */
     boolean showPicker(@Nullable String title, @NonNull List<String> lines, @Nullable String query,
-                       @NonNull Picked result) {
+                       boolean fullscreen, @NonNull Picked result) {
         dismiss();
         entries.clear();
         for (String line : lines) entries.add(new Entry(Kind.LINE, line, "", () -> result.done(line)));
         picked = result;
-        return open(title == null ? activity.getString(R.string.ui_picker_title) : title, query);
+        return open(title == null ? activity.getString(R.string.ui_picker_title) : title, query, fullscreen);
     }
 
-    private boolean open(@NonNull String title, @Nullable String query) {
+    private boolean open(@NonNull String title, @Nullable String query, boolean fullscreen) {
 
         LinearLayout content = new LinearLayout(activity);
         content.setOrientation(LinearLayout.VERTICAL);
-        search = new EditText(activity);
+        View bar = android.view.LayoutInflater.from(activity).inflate(R.layout.ui_palette_search, content, false);
+        search = bar.findViewById(R.id.palette_search_query);
+        View clear = bar.findViewById(R.id.palette_search_clear);
+        clear.setOnClickListener(view -> search.setText(""));
         search.setHint(picked == null ? R.string.ui_palette_hint : R.string.ui_picker_hint);
-        search.setSingleLine(true);
         // No autocorrect: keyboards like Gboard replace a query ("font") on Enter despite
         // NO_SUGGESTIONS; a visible password field is never corrected and stays readable.
         search.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_VISIBLE_PASSWORD
@@ -159,22 +182,25 @@ public final class CommandPalette {
             ViewGroup.LayoutParams.WRAP_CONTENT);
         searchLayout.setMarginStart(dp(20));
         searchLayout.setMarginEnd(dp(20));
-        content.addView(search, searchLayout);
+        searchLayout.bottomMargin = dp(8);
+        content.addView(bar, searchLayout);
 
         list = new LinearLayout(activity);
         list.setOrientation(LinearLayout.VERTICAL);
-        list.setPaddingRelative(0, dp(4), 0, dp(8));
+        list.setPaddingRelative(dp(8), dp(4), dp(8), dp(8));
         scroll = new ScrollView(activity);
         scroll.addView(list, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.WRAP_CONTENT));
-        // A fixed height, so the dialog does not jump while the results change.
+        // A fixed height, so the dialog does not jump while the results change; full screen, all that is left.
         int height = Math.round(activity.getResources().getDisplayMetrics().heightPixels * 0.42f);
-        content.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height));
+        content.addView(scroll, fullscreen ? new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1)
+            : new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, height));
 
         search.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence text, int start, int count, int after) {}
             @Override public void onTextChanged(CharSequence text, int start, int before, int count) {}
             @Override public void afterTextChanged(Editable text) {
+                clear.setVisibility(text.length() == 0 ? View.INVISIBLE : View.VISIBLE);
                 refresh(text.toString());
             }
         });
@@ -198,7 +224,7 @@ public final class CommandPalette {
             }
         });
 
-        AlertDialog created = activity.pickerBuilder()
+        AlertDialog created = activity.pickerBuilder(fullscreen)
             .setTitle(title)
             .setView(content)
             .create();
@@ -218,7 +244,7 @@ public final class CommandPalette {
         if (created.getWindow() != null)
             created.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
         created.show();
-        activity.placePicker(created);
+        activity.placePicker(created, fullscreen);
         if (query != null) {
             search.setText(query);
             search.setSelection(query.length());
@@ -246,7 +272,7 @@ public final class CommandPalette {
                     if (activity.getTermuxService() != null
                         && activity.getTermuxService().getTermuxSessionForTerminalSession(session) != null)
                         activity.getTermuxTerminalSessionClient().setCurrentSession(session);
-                }));
+                }).icon(R.drawable.ui_ic_terminal));
                 JSONArray windows = service.getTmuxWindows(session);
                 for (int window = 0; window < windows.length(); window++) {
                     JSONObject object = windows.optJSONObject(window);
@@ -256,20 +282,43 @@ public final class CommandPalette {
                     if (id.isEmpty() || label.isEmpty()) continue;
                     String detail1 = activity.getString(R.string.ui_palette_kind_window, name)
                         + (object.optBoolean("active") ? " · " + activity.getString(R.string.ui_palette_active) : "");
-                    entries.add(new Entry(Kind.WINDOW, label, detail1, () -> activity.selectTmuxWindow(session, id)));
+                    TmuxProgramIcon program = TmuxProgramIcon.forCommand(object.optString("program", null));
+                    Entry entry = new Entry(Kind.WINDOW, label, detail1, () -> activity.selectTmuxWindow(session, id));
+                    entries.add(program != null ? entry.program(program) : entry.icon(R.drawable.ui_ic_program_tmux));
                 }
             }
         }
         String action = activity.getString(R.string.ui_palette_kind_action);
         entries.add(new Entry(Kind.ACTION, activity.getString(R.string.action_open_settings), action,
-            () -> activity.openTerminalUi("settings", null)));
+            () -> activity.openTerminalUi("settings", null)).icon(R.drawable.ui_ic_settings));
         for (TerminalGestureAction gesture : TerminalGestureAction.values()) {
             switch (gesture) {
                 case NONE: case RUN_COMMAND: case SEND_KEYS: case OPEN_PALETTE: continue;
                 default: break;
             }
             entries.add(new Entry(Kind.ACTION, gesture.getLabel(), action, gesture.getValue(),
-                () -> activity.getTermuxTerminalViewClient().performGestureAction(gesture)));
+                () -> activity.getTermuxTerminalViewClient().performGestureAction(gesture)).icon(iconFor(gesture)));
+        }
+    }
+
+    /** The icon of an action in the palette. */
+    @VisibleForTesting
+    @DrawableRes
+    static int iconFor(@NonNull TerminalGestureAction action) {
+        switch (action) {
+            case SHOW_KEYBOARD: case TOGGLE_KEYBOARD: case HIDE_KEYBOARD: return R.drawable.ui_ic_keyboard;
+            case TOGGLE_TEXT_INPUT: return R.drawable.ui_ic_select_text;
+            case SHOW_EXTRA_KEYS: case HIDE_EXTRA_KEYS: case TOGGLE_EXTRA_KEYS: return R.drawable.ui_ic_menu_key;
+            case NEXT_SESSION: return R.drawable.ui_ic_action_next;
+            case PREVIOUS_SESSION: return R.drawable.ui_ic_action_previous;
+            case NEW_SESSION: return R.drawable.ui_ic_add;
+            case OPEN_SIDEBAR: case OPEN_RIGHT_SIDEBAR: return R.drawable.ui_ic_action_sidebar;
+            case OPEN_SESSION_SWITCHER: return R.drawable.ui_ic_action_switch;
+            case OPEN_TMUX_SWITCHER: return R.drawable.ui_ic_program_tmux;
+            case OPEN_MENU: return R.drawable.ui_ic_menu_more;
+            case FONT_SIZE_UP: return R.drawable.ui_ic_action_zoom_in;
+            case FONT_SIZE_DOWN: return R.drawable.ui_ic_action_zoom_out;
+            default: return R.drawable.ui_ic_bolt;
         }
     }
 
@@ -281,7 +330,9 @@ public final class CommandPalette {
         for (SettingsSearchIndex.Result setting : settings) {
             String detail = setting.breadcrumb.isEmpty() ? kind : kind + " · " + setting.breadcrumb;
             result.add(new Entry(Kind.SETTING, setting.title, detail, setting.keywords(), () -> activity.startActivity(
-                new Intent(activity, SettingsActivity.class).putExtra(SettingsActivity.EXTRA_OPEN_SETTING, setting.id()))));
+                new Intent(activity, SettingsActivity.class).putExtra(SettingsActivity.EXTRA_OPEN_SETTING, setting.id())))
+                .icon(setting.preferenceKey == null ? R.drawable.ui_ic_settings
+                    : PropertiesPreferencesFragment.iconFor(setting.preferenceKey)));
         }
         return result;
     }
@@ -302,10 +353,14 @@ public final class CommandPalette {
 
     private View row(Entry entry, int index) {
         LinearLayout row = new LinearLayout(activity);
-        row.setOrientation(LinearLayout.VERTICAL);
-        row.setPaddingRelative(dp(24), dp(8), dp(24), dp(8));
-        row.setMinimumHeight(dp(48));
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setPaddingRelative(dp(entry.icon != 0 ? 12 : 16), dp(8), dp(16), dp(8));
+        row.setMinimumHeight(dp(entry.icon != 0 ? 56 : 44));
         row.setGravity(Gravity.CENTER_VERTICAL);
+        if (entry.icon != 0) row.addView(icon(entry), iconLayout());
+        LinearLayout texts = new LinearLayout(activity);
+        texts.setOrientation(LinearLayout.VERTICAL);
+        row.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1));
         TypedValue ripple = new TypedValue();
         activity.getTheme().resolveAttribute(android.R.attr.selectableItemBackground, ripple, true);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
@@ -318,14 +373,35 @@ public final class CommandPalette {
             title.setSingleLine(false);
             title.setMaxLines(3);
         }
-        row.addView(title);
-        if (!entry.detail.isEmpty()) row.addView(text(entry.detail, 12, false));
+        texts.addView(title);
+        if (!entry.detail.isEmpty()) texts.addView(text(entry.detail, 12, false));
         row.setOnClickListener(view -> run(entry));
         row.setOnHoverListener((view, event) -> {
             select(index);
             return false;
         });
         return row;
+    }
+
+    /** The entry's icon in a round tonal container, like the Settings rows. */
+    private View icon(Entry entry) {
+        FrameLayout container = new FrameLayout(activity);
+        container.setBackgroundResource(R.drawable.ui_icon_container);
+        ImageView image = new ImageView(activity);
+        image.setImageResource(entry.icon);
+        int onContainer = MaterialColors.getColor(list, dev.pschmitt.termux.shared.R.attr.termuxUiOnContainer);
+        int background = MaterialColors.getColor(list, dev.pschmitt.termux.shared.R.attr.termuxUiContainer);
+        image.setImageTintList(ColorStateList.valueOf(entry.program == null ? onContainer
+            : TmuxProgramIcon.tint(entry.program, onContainer, background)));
+        image.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
+        container.addView(image, new FrameLayout.LayoutParams(dp(20), dp(20), Gravity.CENTER));
+        return container;
+    }
+
+    private LinearLayout.LayoutParams iconLayout() {
+        LinearLayout.LayoutParams layout = new LinearLayout.LayoutParams(dp(40), dp(40));
+        layout.setMarginEnd(dp(14));
+        return layout;
     }
 
     private TextView text(String value, int sp, boolean primary) {

@@ -60,4 +60,18 @@ public class TerminalUiRequestTest {
             assertThrows(json, IllegalArgumentException.class, () -> parse(json));
         }
     }
+
+    @Test
+    public void fullscreenOverridesPickersOnly() throws Exception {
+        assertNull(parse("[\"ui\", \"palette\"]").fullscreen);
+        assertEquals(Boolean.TRUE, parse("[\"ui\", \"palette\", {\"op\": \"show\", \"fullscreen\": true}]").fullscreen);
+        assertEquals(Boolean.FALSE,
+            parse("[\"ui\", \"tmux-switcher\", {\"op\": \"toggle\", \"fullscreen\": false}]").fullscreen);
+        assertThrows(IllegalArgumentException.class,
+            () -> parse("[\"ui\", \"sidebar\", {\"fullscreen\": true}]"));
+        assertThrows(IllegalArgumentException.class,
+            () -> parse("[\"ui\", \"palette\", {\"op\": \"hide\", \"fullscreen\": true}]"));
+        assertThrows(IllegalArgumentException.class,
+            () -> parse("[\"ui\", \"palette\", {\"fullscreen\": \"yes\"}]"));
+    }
 }

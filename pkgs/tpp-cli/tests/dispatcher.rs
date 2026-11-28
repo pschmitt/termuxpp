@@ -847,6 +847,14 @@ fn ui_commands_send_actions_and_search_to_the_app() {
             &["ui", "settings", "toggle", "--search", "font"][..],
             r#"["ui", "settings", {"op": "toggle", "query": "font"}]"#,
         ),
+        (
+            &["ui", "palette", "--fs"][..],
+            r#"["ui", "palette", {"op": "show", "fullscreen": true}]"#,
+        ),
+        (
+            &["ui", "tmux-switcher", "toggle", "--no-fullscreen"][..],
+            r#"["ui", "tmux-switcher", {"op": "toggle", "fullscreen": false}]"#,
+        ),
     ] {
         let child = fx
             .command(args)
@@ -886,6 +894,9 @@ fn ui_commands_send_actions_and_search_to_the_app() {
     assert_eq!(code(&fx.run(&["ui", "settings", "--search"])), 2);
     assert_eq!(code(&fx.run(&["ui", "sidebar", "--search", "font"])), 2);
     assert_eq!(code(&fx.run(&["ui", "palette", "--right"])), 2);
+    assert_eq!(code(&fx.run(&["ui", "sidebar", "--fullscreen"])), 2);
+    assert_eq!(code(&fx.run(&["ui", "palette", "--fs", "--no-fullscreen"])), 2);
+    assert_eq!(code(&fx.run(&["ui", "palette", "hide", "--fs"])), 2);
     assert_eq!(code(&fx.run(&["ui", "clear", "toggle"])), 2);
     assert_eq!(code(&fx.run(&["ui", "more", "show", "hide"])), 2);
     assert_eq!(
@@ -893,6 +904,8 @@ fn ui_commands_send_actions_and_search_to_the_app() {
         2
     );
     assert_eq!(complete(&fx, &["ui", "settings", "--s"]).1, ["--search"]);
+    assert_eq!(complete(&fx, &["ui", "palette", "--f"]).1, ["--fs", "--fullscreen"]);
+    assert!(complete(&fx, &["ui", "palette", "--fs", "--"]).1.iter().all(|word| word != "--fullscreen"));
     assert_eq!(complete(&fx, &["ui", "si"]).1, ["sidebar"]);
     assert_eq!(complete(&fx, &["ui", "palette", "t"]).1, ["toggle"]);
     assert_eq!(

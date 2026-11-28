@@ -20,27 +20,52 @@ pub const ACTIONS: &[&str] = &[
 /// What to do with a surface; `show` is the default.
 const OPERATIONS: &[&str] = &["show", "hide", "toggle"];
 
-const HELP: &str = "Usage: tpp ui COMMAND [show|hide|toggle] [--json]\nShow, hide or toggle part of the TermuxPP interface in the visible terminal.\n\nCommands:\n  clear                Close everything: sidebars, palette, pickers, menu, Settings\n  more                 The terminal More menu\n  palette              The command palette [--search QUERY]\n  picker               Pick a line from stdin, like fzf: ls | tpp ui picker\n  session-switcher     The session picker\n  settings             Settings [--search QUERY]\n  sidebar              The session sidebar [--right]\n  tmux-switcher        The tmux window picker\n\nWithout show, hide or toggle, the command shows the surface.\n";
+const HELP: &str = "Usage: tpp ui COMMAND [show|hide|toggle] [--json]\nShow, hide or toggle part of the TermuxPP interface in the visible terminal.\n\nCommands:\n  clear                Close everything: sidebars, palette, pickers, menu, Settings\n  more                 The terminal More menu\n  palette              The command palette [--search QUERY]\n  picker               Pick a line from stdin, like fzf: ls | tpp ui picker\n  session-switcher     The session picker\n  settings             Settings [--search QUERY]\n  sidebar              The session sidebar [--right]\n  tmux-switcher        The tmux window picker\n\nWithout show, hide or toggle, the command shows the surface.\nThe pickers (palette, picker, session-switcher, tmux-switcher) take --fullscreen (--fs) or\n--no-fullscreen to override their configured size.\n";
 
 /// The options that ACTION takes besides show, hide and toggle.
 fn usage(action: &str) -> String {
     match action {
         "clear" => "Usage: tpp ui clear [--json]\n".to_owned(),
-        "picker" => "Usage: COMMAND | tpp ui picker [--title TEXT] [--query QUERY]\nShow the lines of stdin in the visible terminal and print the one you pick.\nExit status 130 when the picker is closed without a choice.\n".to_owned(),
-        "settings" | "palette" => {
-            format!("Usage: tpp ui {action} [show|hide|toggle] [--search QUERY] [--json]\n")
-        }
+        "picker" => "Usage: COMMAND | tpp ui picker [--title TEXT] [--query QUERY] [--fullscreen|--fs|--no-fullscreen]\nShow the lines of stdin in the visible terminal and print the one you pick.\nExit status 130 when the picker is closed without a choice.\n".to_owned(),
+        "settings" => "Usage: tpp ui settings [show|hide|toggle] [--search QUERY] [--json]\n".to_owned(),
+        "palette" => "Usage: tpp ui palette [show|hide|toggle] [--search QUERY] [--fullscreen|--fs|--no-fullscreen] [--json]\n"
+            .to_owned(),
+        "session-switcher" | "tmux-switcher" => format!(
+            "Usage: tpp ui {action} [show|hide|toggle] [--fullscreen|--fs|--no-fullscreen] [--json]\n"
+        ),
         "sidebar" => "Usage: tpp ui sidebar [show|hide|toggle] [--right] [--json]\n".to_owned(),
         _ => format!("Usage: tpp ui {action} [show|hide|toggle] [--json]\n"),
+    }
+}
+
+/// The surfaces that open as pickers and so take `--fullscreen`.
+const FULLSCREEN_ACTIONS: &[&str] = &["palette", "session-switcher", "tmux-switcher"];
+
+/// `--fullscreen`/`--fs` (true) or `--no-fullscreen` (false); anything else is not one.
+fn fullscreen_flag(arg: &str) -> Option<bool> {
+    match arg {
+        "--fullscreen" | "--fs" => Some(true),
+        "--no-fullscreen" => Some(false),
+        _ => None,
     }
 }
 
 /// The request for the app. A plain `show` keeps the original form
 /// (`["ui", ACTION]`, `["ui", "settings", QUERY]`), which older apps know;
 /// everything else adds an options object.
-fn request(action: &str, operation: &str, query: Option<&str>, right: bool) -> Value {
+fn request(
+    action: &str,
+    operation: &str,
+    query: Option<&str>,
+    right: bool,
+    fullscreen: Option<bool>,
+) -> Value {
     let mut request = vec![Value::string("ui"), Value::string(action)];
-    if operation == "show" && !right && (query.is_none() || action == "settings") {
+    if operation == "show"
+        && !right
+        && fullscreen.is_none()
+        && (query.is_none() || action == "settings")
+    {
         if let Some(query) = query {
             request.push(Value::string(query));
         }
@@ -52,6 +77,9 @@ fn request(action: &str, operation: &str, query: Option<&str>, right: bool) -> V
     }
     if right {
         options.push(("side".to_owned(), Value::string("right")));
+    }
+    if let Some(fullscreen) = fullscreen {
+        options.push(("fullscreen".to_owned(), Value::Bool(fullscreen)));
     }
     request.push(Value::Object(options));
     Value::Array(request)
@@ -91,7 +119,13 @@ pub fn run(words: &[String], mut json_output: bool) -> i32 {
     let mut query = None;
     let mut operation = None;
     let mut right = false;
+    let mut fullscreen = None;
     while let Some(arg) = args.next() {
+        let flag = fullscreen_flag(arg).filter(|_| FULLSCREEN_ACTIONS.contains(&action));
+        if flag.is_some() && fullscreen.is_none() {
+            fullscreen = flag;
+            continue;
+        }
         match arg {
             "--json" => json_output = true,
             "-h" | "--help" => {
@@ -120,9 +154,13 @@ pub fn run(words: &[String], mut json_output: bool) -> i32 {
         err!("ui {action}: --search only goes with show or toggle");
         return 2;
     }
+    if fullscreen.is_some() && operation == "hide" {
+        err!("ui {action}: --fullscreen only goes with show or toggle");
+        return 2;
+    }
 
     let exchange = SocketExchange::from_environment();
-    let request = request(action, operation, query, right);
+    let request = request(action, operation, query, right, fullscreen);
     if let Err(message) = tpp_session::cli::request_app(&exchange, &request) {
         err!("ui {action}: {message}");
         return 1;
@@ -155,8 +193,14 @@ const PICKER_TIMEOUT: Duration = Duration::from_secs(31 * 60);
 fn picker(words: Vec<&str>) -> i32 {
     let mut title = None;
     let mut query = None;
+    let mut fullscreen = None;
     let mut args = words.into_iter();
     while let Some(arg) = args.next() {
+        let flag = fullscreen_flag(arg);
+        if flag.is_some() && fullscreen.is_none() {
+            fullscreen = flag;
+            continue;
+        }
         match arg {
             "-h" | "--help" => {
                 print!("{}", crate::ctx::color_help(&usage("picker")));
@@ -212,6 +256,9 @@ fn picker(words: Vec<&str>) -> i32 {
     }
     if let Some(query) = query {
         options.push(("query".to_owned(), Value::string(query)));
+    }
+    if let Some(fullscreen) = fullscreen {
+        options.push(("fullscreen".to_owned(), Value::Bool(fullscreen)));
     }
     let request = Value::Array(vec![Value::string("picker"), Value::Object(options)]);
     let reply = match SocketExchange::from_environment().exchange(&request, PICKER_TIMEOUT) {
@@ -276,8 +323,10 @@ pub fn complete(words: &[String]) -> Vec<String> {
         {
             return Vec::new();
         }
-        return ["--help", "--query", "--title"]
+        let fullscreen_used = prior.iter().any(|word| fullscreen_flag(word).is_some());
+        return ["--fs", "--fullscreen", "--help", "--no-fullscreen", "--query", "--title"]
             .into_iter()
+            .filter(|word| !(fullscreen_used && fullscreen_flag(word).is_some()))
             .filter(|word| word.starts_with(current) && !prior.iter().any(|used| used == word))
             .map(str::to_owned)
             .collect();
@@ -290,6 +339,9 @@ pub fn complete(words: &[String]) -> Vec<String> {
         "settings" | "palette" => candidates.push("--search"),
         "sidebar" => candidates.push("--right"),
         _ => {}
+    }
+    if FULLSCREEN_ACTIONS.contains(&action) && !prior.iter().any(|word| fullscreen_flag(word).is_some()) {
+        candidates.extend(["--fs", "--fullscreen", "--no-fullscreen"]);
     }
     candidates
         .into_iter()

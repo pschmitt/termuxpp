@@ -120,6 +120,8 @@ badges, the filled current session, and tmux windows in the configured sidebar
 layout and style. They open at the top of the screen by default;
 `terminal-picker-position` also offers the middle of the screen or of the
 terminal view ([Picker position](terminal-settings.md#picker-position)).
+The pickers can also open full screen, globally, per picker, or per
+`tpp ui ... --fullscreen` call.
 [Upstream drawer](https://github.com/termux/termux-app/blob/master/app/src/main/res/layout/activity_termux.xml) ·
 [TermuxPP shelf](../../app/src/main/res/layout/activity_termux.xml)
 
@@ -736,7 +738,9 @@ gestures, including the extra-keys swipe. The default is to keep the current ses
 
 Each `shortcut.create-session`, `shortcut.next-session`, `shortcut.previous-session` and
 `shortcut.rename-session` property accepts `disabled` (case and surrounding spaces ignored) to
-switch that shortcut off without a parse error. Sources:
+switch that shortcut off without a parse error. They also take `ctrl+shift+` and a letter, and
+`shortcut.create-session` defaults to `ctrl+shift+t`; upstream has no default shortcut and ignores
+Shift. Sources:
 [parser](../../termux-shared/src/main/java/dev/pschmitt/termux/shared/termux/settings/properties/TermuxSharedProperties.java)
 and [validator](../../app/src/main/java/com/termux/app/settings/PropertyInputSpec.java).
 

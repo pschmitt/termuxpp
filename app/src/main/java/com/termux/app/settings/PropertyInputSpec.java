@@ -224,6 +224,16 @@ public final class PropertyInputSpec {
                 return "How the current session and the active tmux window are marked in the sidebars and pickers."
                     + " Subtle uses an outlined row with an accent dot. "
                     + "Rounded uses a filled accent pill. Default: rounded.";
+            case TermuxPropertyConstants.KEY_PICKER_FULLSCREEN:
+                return bool(key, "Open the pickers (command palette, tpp ui picker, session and tmux window"
+                    + " pickers) full screen instead of as a dialog. Each picker can override it, and"
+                    + " tpp ui ... --fullscreen or --no-fullscreen overrides both.");
+            case TermuxPropertyConstants.KEY_PALETTE_FULLSCREEN:
+            case TermuxPropertyConstants.KEY_UI_PICKER_FULLSCREEN:
+            case TermuxPropertyConstants.KEY_SESSION_SWITCHER_FULLSCREEN:
+            case TermuxPropertyConstants.KEY_TMUX_SWITCHER_FULLSCREEN:
+                return "Whether this picker opens full screen (true) or as a dialog (false). Default: not set,"
+                    + " it follows Full-screen pickers. tpp ui ... --fullscreen or --no-fullscreen overrides it.";
             case TermuxPropertyConstants.KEY_TERMINAL_PICKER_POSITION:
                 return "Where the session picker and the tmux window picker open. Top: at the top of the screen. "
                     + "Center: in the middle of the screen. Terminal: in the middle of the terminal, above the "
@@ -331,7 +341,10 @@ public final class PropertyInputSpec {
 
             /* session shortcuts */
             case TermuxPropertyConstants.KEY_SHORTCUT_CREATE_SESSION:
-                return shortcut("create a new terminal session", "ctrl+t");
+                return "The keyboard shortcut to create a new terminal session. Format: ctrl+ and one key, like"
+                    + " ctrl+t, or ctrl+shift+ and a letter, where Ctrl is the virtual Ctrl key of the extra keys (or"
+                    + " Ctrl on a hardware keyboard), or disabled to switch the shortcut off. Case is ignored."
+                    + " Default: " + TermuxPropertyConstants.DEFAULT_SHORTCUT_CREATE_SESSION + ".";
             case TermuxPropertyConstants.KEY_SHORTCUT_NEXT_SESSION:
                 return shortcut("switch to the next terminal session", "ctrl+2");
             case TermuxPropertyConstants.KEY_SHORTCUT_PREVIOUS_SESSION:
@@ -442,6 +455,11 @@ public final class PropertyInputSpec {
                     if (position.equalsIgnoreCase(value)) return null;
                 }
                 return "Expected top, center or terminal";
+            case TermuxPropertyConstants.KEY_PALETTE_FULLSCREEN:
+            case TermuxPropertyConstants.KEY_UI_PICKER_FULLSCREEN:
+            case TermuxPropertyConstants.KEY_SESSION_SWITCHER_FULLSCREEN:
+            case TermuxPropertyConstants.KEY_TMUX_SWITCHER_FULLSCREEN:
+                return SharedProperties.getBooleanValueForStringValue(value) != null ? null : "Expected true or false";
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_COMPACT:
                 if (TermuxPropertyConstants.EXTRA_KEYS_COMPACT_CUSTOM.equalsIgnoreCase(value)
                     || SharedProperties.getBooleanValueForStringValue(value) != null) return null;
@@ -650,6 +668,8 @@ public final class PropertyInputSpec {
      */
     @NonNull
     public static String[] choices(@Nullable String key) {
+        if (TermuxPropertyConstants.PICKER_FULLSCREEN_OVERRIDES.contains(key))
+            return new String[] {"true", "false"};
         if (TermuxPropertyConstants.KEY_EXTRA_KEYS_COMPACT.equals(key))
             return new String[] {TermuxPropertyConstants.EXTRA_KEYS_COMPACT_FALSE,
                 TermuxPropertyConstants.EXTRA_KEYS_COMPACT_TRUE, TermuxPropertyConstants.EXTRA_KEYS_COMPACT_CUSTOM};
@@ -751,8 +771,12 @@ public final class PropertyInputSpec {
     @Nullable
     private static String shortcut(String value) {
         if (value.trim().equalsIgnoreCase("disabled")) return null;
-        String error = "Expected ctrl+ and a key, like ctrl+t, or disabled";
+        String error = "Expected ctrl+ and a key, like ctrl+t, ctrl+shift+ and a letter, or disabled";
         String[] parts = value.toLowerCase(java.util.Locale.ROOT).trim().split("\\+");
+        if (parts.length == 3 && parts[0].trim().equals("ctrl") && parts[1].trim().equals("shift")) {
+            String letter = parts[2].trim();
+            return letter.length() == 1 && letter.charAt(0) >= 'a' && letter.charAt(0) <= 'z' ? null : error;
+        }
         String input = parts.length == 2 ? parts[1].trim() : null;
         if (!(parts.length == 2 && parts[0].trim().equals("ctrl")) || input.isEmpty() || input.length() > 2)
             return error;
@@ -812,7 +836,7 @@ public final class PropertyInputSpec {
 
     private static String shortcut(String action, String example) {
         return "The keyboard shortcut to " + action + ". Format: ctrl+ and one key, like " + example
-            + ", where Ctrl is the virtual Ctrl key of the extra keys (or Ctrl on a hardware keyboard), or"
+            + ", or ctrl+shift+ and a letter, where Ctrl is the virtual Ctrl key of the extra keys (or Ctrl on a hardware keyboard), or"
             + " disabled to switch the shortcut off. Case is ignored. Default: not set, there is no shortcut.";
     }
 

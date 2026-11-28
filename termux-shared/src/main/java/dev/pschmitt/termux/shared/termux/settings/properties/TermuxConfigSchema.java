@@ -109,6 +109,11 @@ public final class TermuxConfigSchema {
         add("terminal.default-working-directory", "default-working-directory");
 
         add("sessions.picker-position", "terminal-picker-position");
+        add("sessions.picker-fullscreen", "terminal-picker-fullscreen");
+        add("sessions.pickers.palette.fullscreen", "terminal-palette-fullscreen");
+        add("sessions.pickers.picker.fullscreen", "terminal-ui-picker-fullscreen");
+        add("sessions.pickers.session-switcher.fullscreen", "terminal-session-switcher-fullscreen");
+        add("sessions.pickers.tmux-switcher.fullscreen", "terminal-tmux-switcher-fullscreen");
         add("sessions.create-on-single-session-switch", "create-session-on-single-session-switch");
         add("sessions.command-context", "gesture-command-context");
         add("sessions.tmpdir-cleanup-days", "delete-tmpdir-files-older-than-x-days-on-exit");

@@ -890,35 +890,50 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
                 return true;
             }
 
-            List<KeyboardShortcut> shortcuts = mSessionShortcuts;
-            if (shortcuts != null && !shortcuts.isEmpty()) {
-                int codePointLowerCase = Character.toLowerCase(codePoint);
-                for (int i = shortcuts.size() - 1; i >= 0; i--) {
-                    KeyboardShortcut shortcut = shortcuts.get(i);
-                    if (codePointLowerCase == shortcut.codePoint) {
-                        switch (shortcut.shortcutAction) {
-                            case TermuxPropertyConstants.ACTION_SHORTCUT_CREATE_SESSION:
-                                mTermuxTerminalSessionActivityClient.addNewSession(false, null);
-                                return true;
-                            case TermuxPropertyConstants.ACTION_SHORTCUT_NEXT_SESSION:
-                                mTermuxTerminalSessionActivityClient.switchToSession(true);
-                                return true;
-                            case TermuxPropertyConstants.ACTION_SHORTCUT_PREVIOUS_SESSION:
-                                mTermuxTerminalSessionActivityClient.switchToSession(false);
-                                return true;
-                            case TermuxPropertyConstants.ACTION_SHORTCUT_RENAME_SESSION:
-                                mTermuxTerminalSessionActivityClient.renameSession(mActivity.getCurrentSession());
-                                return true;
-                            case TermuxPropertyConstants.ACTION_SHORTCUT_PALETTE:
-                                mActivity.showPalette(null);
-                                return true;
-                        }
-                    }
+            KeyboardShortcut shortcut = matchShortcut(mSessionShortcuts, codePoint);
+            if (shortcut != null) {
+                switch (shortcut.shortcutAction) {
+                    case TermuxPropertyConstants.ACTION_SHORTCUT_CREATE_SESSION:
+                        mTermuxTerminalSessionActivityClient.addNewSession(false, null);
+                        return true;
+                    case TermuxPropertyConstants.ACTION_SHORTCUT_NEXT_SESSION:
+                        mTermuxTerminalSessionActivityClient.switchToSession(true);
+                        return true;
+                    case TermuxPropertyConstants.ACTION_SHORTCUT_PREVIOUS_SESSION:
+                        mTermuxTerminalSessionActivityClient.switchToSession(false);
+                        return true;
+                    case TermuxPropertyConstants.ACTION_SHORTCUT_RENAME_SESSION:
+                        mTermuxTerminalSessionActivityClient.renameSession(mActivity.getCurrentSession());
+                        return true;
+                    case TermuxPropertyConstants.ACTION_SHORTCUT_PALETTE:
+                        mActivity.showPalette(null);
+                        return true;
                 }
             }
         }
 
         return false;
+    }
+
+    /**
+     * The shortcut for a Ctrl code point: a Ctrl+Shift one when Shift made the letter upper case (so that Ctrl+T
+     * and Ctrl+Shift+T can differ), else a plain Ctrl one, which ignores case.
+     */
+    @Nullable
+    static KeyboardShortcut matchShortcut(@Nullable List<KeyboardShortcut> shortcuts, int codePoint) {
+        if (shortcuts == null) return null;
+        int lowerCase = Character.toLowerCase(codePoint);
+        boolean shifted = Character.isUpperCase(codePoint);
+        for (boolean wantShift : new boolean[] {true, false}) {
+            if (wantShift && !shifted) continue;
+            for (int i = shortcuts.size() - 1; i >= 0; i--) {
+                KeyboardShortcut shortcut = shortcuts.get(i);
+                boolean needsShift = (shortcut.codePoint & TermuxPropertyConstants.SHORTCUT_SHIFT) != 0;
+                if (needsShift == wantShift
+                    && (shortcut.codePoint & ~TermuxPropertyConstants.SHORTCUT_SHIFT) == lowerCase) return shortcut;
+            }
+        }
+        return null;
     }
 
     /**
