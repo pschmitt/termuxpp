@@ -401,7 +401,7 @@ public final class TermuxPropertyConstants {
 
     public static final String KEY_EXTRA_KEYS_FONT = "extra-keys-font";
     public static final String DEFAULT_EXTRA_KEYS_FONT = "system";
-    public static final String[] EXTRA_KEYS_FONTS = {"system", "terminal", "monospace", "serif"};
+    public static final String[] EXTRA_KEYS_FONTS = {"system", "google-sans", "terminal", "monospace", "serif"};
 
     public static final String KEY_EXTRA_KEYS_ANIMATION = "extra-keys-animation";
 

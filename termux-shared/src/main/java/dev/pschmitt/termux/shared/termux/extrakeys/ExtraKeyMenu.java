@@ -48,6 +48,14 @@ final class ExtraKeyMenu {
     private final float slop;
     private boolean moved;
 
+    /** The key font at medium weight: Gboard draws its popup glyphs heavier than regular text. */
+    @NonNull
+    static Typeface popupTypeface(@Nullable Typeface typeface) {
+        Typeface base = typeface != null ? typeface : Typeface.DEFAULT;
+        if (android.os.Build.VERSION.SDK_INT >= 28) return Typeface.create(base, 500, false);
+        return Typeface.create(base, Typeface.BOLD);
+    }
+
     /** The column count for {@code count} items: one row up to {@link #MAX_COLUMNS}, then balanced rows. */
     static int columnsFor(int count) {
         if (count <= MAX_COLUMNS) return Math.max(1, count);
@@ -113,10 +121,10 @@ final class ExtraKeyMenu {
             TextView cell = new TextView(context);
             cell.setText(item.getDisplay());
             cell.setGravity(Gravity.CENTER);
-            cell.setTextSize(18);
+            cell.setTextSize(22);
             cell.setSingleLine(true);
             cell.setAllCaps(allCaps && !item.hasCustomDisplay());
-            if (typeface != null) cell.setTypeface(typeface);
+            cell.setTypeface(popupTypeface(typeface));
             cell.setTextColor(item.textColor != null ? item.textColor : textColor);
             cell.setContentDescription(item.getDisplay());
             GridLayout.LayoutParams params = new GridLayout.LayoutParams(

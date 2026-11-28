@@ -203,7 +203,8 @@ public final class PropertyInputSpec {
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_ROW_BACKGROUND_COLOR:
                 return "The color behind the keyboard row. Use a hexadecimal color such as #201B29. Clear it to use the theme background.";
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT:
-                return "Choose the extra-key font. Terminal uses the font selected for terminal text.";
+                return "Choose the extra-key font. Terminal uses the font selected for terminal text. Google Sans is Gboard's font;"
+                    + " phones without it (non-Pixels) use the system font.";
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION:
                 return "Choose the visual effect for a pressed extra key. Tap a preview key to try it. Key preview is the default.";
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_BUTTON_CORNER_RADIUS:

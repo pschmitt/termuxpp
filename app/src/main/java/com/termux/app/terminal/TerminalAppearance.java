@@ -94,6 +94,8 @@ public final class TerminalAppearance {
             return loadFont(context, Setting.FONT.selection(context), configPaths());
         if ("monospace".equalsIgnoreCase(choice)) return Typeface.MONOSPACE;
         if ("serif".equalsIgnoreCase(choice)) return Typeface.SERIF;
+        // Gboard's font. Pixels ship it as a system family; elsewhere this is the system font.
+        if ("google-sans".equalsIgnoreCase(choice)) return Typeface.create("google-sans-text", Typeface.NORMAL);
         return null;
     }
 

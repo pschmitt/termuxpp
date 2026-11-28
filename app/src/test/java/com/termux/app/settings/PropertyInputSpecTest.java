@@ -346,8 +346,8 @@ public class PropertyInputSpecTest {
         valid(toastKey, toastPositions);
         invalid(toastKey, "top", "center-top", "bottom right");
         String fontKey = TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT;
-        assertArrayEquals(new String[]{"system", "terminal", "monospace", "serif"}, PropertyInputSpec.choices(fontKey));
-        valid(fontKey, "system", "terminal", "monospace", "serif");
+        assertArrayEquals(new String[]{"system", "google-sans", "terminal", "monospace", "serif"}, PropertyInputSpec.choices(fontKey));
+        valid(fontKey, "system", "google-sans", "terminal", "monospace", "serif");
         invalid(fontKey, "unknown");
         String themeKey = TermuxPropertyConstants.KEY_EXTRA_KEYS_THEME;
         assertArrayEquals(new String[]{"default", "rounded"}, PropertyInputSpec.choices(themeKey));

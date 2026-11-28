@@ -122,8 +122,8 @@ public class ExtraKeysConstants {
         }};
 
         public static final ExtraKeyDisplayMap NICER_LOOKING_DISPLAY = new ExtraKeyDisplayMap() {{
-            // nicer looking for most cases
-            put("-", "―"); // U+2015 ― HORIZONTAL BAR
+            // Upstream drew "-" as U+2015 HORIZONTAL BAR, which reads as an em dash; TermuxPP keeps the
+            // hyphen-minus, as phone keyboards show it.
         }};
 
         /**
