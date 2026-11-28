@@ -1014,7 +1014,8 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     public void applyExtraKeysFont(Typeface terminalTypeface) {
         if (mExtraKeysView != null && "terminal".equals(mProperties.getExtraKeysFont()))
-            mExtraKeysView.setKeyTypeface(terminalTypeface);
+            mExtraKeysView.setKeyTypeface(TerminalAppearance.withWeight(terminalTypeface,
+                mProperties.getExtraKeysFontWeight()));
     }
 
     public void setExtraKeysView(ExtraKeysView extraKeysView) {
@@ -1931,7 +1932,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
                     mProperties.getExtraKeysButtonCornerRadius());
                 mExtraKeysView.setKeyAnimation(mProperties.getExtraKeysAnimation());
                 mExtraKeysView.setKeyTypeface(TerminalAppearance.loadExtraKeysFont(
-                    this, mProperties.getExtraKeysFont()));
+                    this, mProperties.getExtraKeysFont(), mProperties.getExtraKeysFontWeight()));
                 mExtraKeysView.reload(mTermuxTerminalExtraKeys.getExtraKeysInfo(), mTerminalToolbarDefaultHeight);
             }
 

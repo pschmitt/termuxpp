@@ -48,11 +48,12 @@ final class ExtraKeyMenu {
     private final float slop;
     private boolean moved;
 
-    /** The key font at medium weight: Gboard draws its popup glyphs heavier than regular text. */
+    /** The key font at least at medium weight: Gboard draws its popup glyphs heavier than regular text. */
     @NonNull
     static Typeface popupTypeface(@Nullable Typeface typeface) {
         Typeface base = typeface != null ? typeface : Typeface.DEFAULT;
-        if (android.os.Build.VERSION.SDK_INT >= 28) return Typeface.create(base, 500, false);
+        if (android.os.Build.VERSION.SDK_INT >= 28)
+            return Typeface.create(base, Math.max(500, base.getWeight()), false);
         return Typeface.create(base, Typeface.BOLD);
     }
 

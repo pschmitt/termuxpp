@@ -104,6 +104,20 @@ public class PropertyInputSpecTest {
     }
 
     @Test
+    public void extraKeysFontWeight() {
+        String weight = TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT_WEIGHT;
+        assertNull(PropertyInputSpec.validationError(weight, "500"));
+        assertNotNull(PropertyInputSpec.validationError(weight, "50"));
+        assertNotNull(PropertyInputSpec.validationError(weight, "1000"));
+        assertNotNull(PropertyInputSpec.validationError(weight, "bold"));
+        assertEquals(InputType.TYPE_CLASS_NUMBER, PropertyInputSpec.inputType(weight));
+        assertTrue(PropertyInputSpec.help(weight).contains("100 to 900"));
+        assertEquals(500, TermuxSharedProperties.getExtraKeysFontWeightInternalPropertyValueFromValue(" 500 "));
+        assertEquals(0, TermuxSharedProperties.getExtraKeysFontWeightInternalPropertyValueFromValue("1000"));
+        assertEquals(0, TermuxSharedProperties.getExtraKeysFontWeightInternalPropertyValueFromValue(null));
+    }
+
+    @Test
     public void extraKeysRowHeightFollowsCompactMode() {
         float normal = TermuxPropertyConstants.EXTRA_KEYS_DEFAULT_ROW_HEIGHT_DP;
         assertEquals(normal, TermuxSharedProperties.getExtraKeysRowHeightDp(null, null, null), 0.001f);

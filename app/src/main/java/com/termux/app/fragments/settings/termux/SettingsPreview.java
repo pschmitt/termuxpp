@@ -62,6 +62,7 @@ final class SettingsPreview extends FrameLayout {
             || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_THEME)
             || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_ROW_BACKGROUND_COLOR)
             || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT)
+            || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT_WEIGHT)
             || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION)
             || key.equals("terminal-toolbar-height") || key.equals("night-mode") || key.equals(AppAccent.KEY)
             || key.equals(TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_LAYOUT)
@@ -114,7 +115,9 @@ final class SettingsPreview extends FrameLayout {
             ExtraKeysColorParser.parseColor(values.getProperty(TermuxPropertyConstants.KEY_EXTRA_KEYS_ROW_BACKGROUND_COLOR)),
             fg, bg, radius);
         keyboard.setKeyTypeface(TerminalAppearance.loadExtraKeysFont(getContext(),
-            values.getProperty(TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT)));
+            values.getProperty(TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT),
+            TermuxSharedProperties.getExtraKeysFontWeightInternalPropertyValueFromValue(
+                values.getProperty(TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT_WEIGHT))));
         keyboard.setKeyAnimation(ExtraKeyAnimation.parseOrDefault(values.getProperty(TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION)));
         keyboard.setButtonTextAllCaps(!"false".equalsIgnoreCase(value("extra-keys-text-all-caps", "true")));
         float rowHeight = TermuxSharedProperties.getExtraKeysRowHeightDp(values.getProperty("terminal-toolbar-height"),
@@ -122,6 +125,7 @@ final class SettingsPreview extends FrameLayout {
             values.getProperty(TermuxPropertyConstants.KEY_EXTRA_KEYS_ROW_HEIGHT));
         boolean interactive = key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION)
             || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT)
+            || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT_WEIGHT)
             || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_THEME)
             || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_ROW_BACKGROUND_COLOR);
         String sample = "[[\"ESC\",\"CTRL\",\"ALT\",\"LEFT\",\"DOWN\",\"UP\",\"RIGHT\"]]";

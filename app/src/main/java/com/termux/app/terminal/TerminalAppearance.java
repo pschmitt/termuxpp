@@ -98,17 +98,27 @@ public final class TerminalAppearance {
         return null;
     }
 
+    /** The extra keys font ({@code extra-keys.font}) at a weight ({@code extra-keys.font-weight}, 0 to keep it). */
+    public static Typeface loadExtraKeysFont(Context context, String choice, int weight) {
+        return withWeight(loadExtraKeysFont(context, choice), weight);
+    }
+
+    /** The typeface at a weight from 100 to 900, or as it is for 0 (or before Android 9). */
+    public static Typeface withWeight(Typeface typeface, int weight) {
+        if (weight <= 0 || android.os.Build.VERSION.SDK_INT < 28) return typeface;
+        return Typeface.create(typeface != null ? typeface : Typeface.DEFAULT, weight, false);
+    }
+
     /** Where Pixels keep Google Sans, which they expose as the {@code google-sans-text} family. */
     private static final String[] SYSTEM_GOOGLE_SANS = {
         "/product/fonts/GoogleSans-Regular.ttf", "/system/fonts/GoogleSans-Regular.ttf"};
-    /** Google Sans Flex (SIL OFL 1.1), built by scripts/build-extra-keys-font.sh. */
-    private static final String BUNDLED_GOOGLE_SANS_REGULAR = "extra-keys-fonts/GoogleSansFlex-Regular.ttf";
-    private static final String BUNDLED_GOOGLE_SANS_MEDIUM = "extra-keys-fonts/GoogleSansFlex-Medium.ttf";
+    /** Google Sans Flex (SIL OFL 1.1) with a variable weight, built by scripts/build-extra-keys-font.sh. */
+    private static final String BUNDLED_GOOGLE_SANS = "extra-keys-fonts/GoogleSansFlex.ttf";
     private static Typeface sBundledGoogleSans;
 
     /**
-     * Gboard's font: the system's Google Sans on a Pixel, otherwise the bundled Google Sans Flex,
-     * regular and medium in one family so that a medium weight (long-press menus) is the real cut.
+     * Gboard's font: the system's Google Sans on a Pixel, otherwise the bundled Google Sans Flex, with
+     * a real cut for every weight from 100 to 900 (extra-keys.font-weight, the long-press menus).
      */
     static Typeface googleSans(Context context) {
         for (String path : SYSTEM_GOOGLE_SANS) {
@@ -117,20 +127,37 @@ public final class TerminalAppearance {
         if (sBundledGoogleSans != null) return sBundledGoogleSans;
         try {
             if (android.os.Build.VERSION.SDK_INT >= 29) {
-                android.content.res.AssetManager assets = context.getAssets();
-                android.graphics.fonts.FontFamily family = new android.graphics.fonts.FontFamily.Builder(
-                    new android.graphics.fonts.Font.Builder(assets, BUNDLED_GOOGLE_SANS_REGULAR).setWeight(400).build())
-                    .addFont(new android.graphics.fonts.Font.Builder(assets, BUNDLED_GOOGLE_SANS_MEDIUM).setWeight(500).build())
-                    .build();
-                sBundledGoogleSans = new Typeface.CustomFallbackBuilder(family).setSystemFallback("sans-serif").build();
+                java.nio.ByteBuffer data = readAsset(context, BUNDLED_GOOGLE_SANS);
+                android.graphics.fonts.FontFamily.Builder family = null;
+                for (int weight = 100; weight <= 900; weight += 100) {
+                    android.graphics.fonts.Font font = new android.graphics.fonts.Font.Builder(data.duplicate())
+                        .setWeight(weight).setFontVariationSettings("'wght' " + weight).build();
+                    if (family == null) family = new android.graphics.fonts.FontFamily.Builder(font);
+                    else family.addFont(font);
+                }
+                sBundledGoogleSans = new Typeface.CustomFallbackBuilder(family.build())
+                    .setStyle(new android.graphics.fonts.FontStyle(400, android.graphics.fonts.FontStyle.FONT_SLANT_UPRIGHT))
+                    .setSystemFallback("sans-serif").build();
             } else {
-                sBundledGoogleSans = Typeface.createFromAsset(context.getAssets(), BUNDLED_GOOGLE_SANS_REGULAR);
+                sBundledGoogleSans = Typeface.createFromAsset(context.getAssets(), BUNDLED_GOOGLE_SANS);
             }
         } catch (IOException | RuntimeException e) {
             Logger.logStackTraceWithMessage(LOG_TAG, "Could not load the bundled Google Sans Flex", e);
             return null;
         }
         return sBundledGoogleSans;
+    }
+
+    /** An asset in a direct buffer, as {@link android.graphics.fonts.Font.Builder} needs, read once for all weights. */
+    private static java.nio.ByteBuffer readAsset(Context context, String path) throws IOException {
+        try (InputStream in = context.getAssets().open(path)) {
+            java.io.ByteArrayOutputStream bytes = new java.io.ByteArrayOutputStream();
+            byte[] chunk = new byte[16384];
+            for (int n; (n = in.read(chunk)) > 0; ) bytes.write(chunk, 0, n);
+            java.nio.ByteBuffer buffer = java.nio.ByteBuffer.allocateDirect(bytes.size());
+            buffer.put(bytes.toByteArray()).flip();
+            return buffer;
+        }
     }
 
     public static Typeface loadFont(Context context, String choice, List<String> paths) {

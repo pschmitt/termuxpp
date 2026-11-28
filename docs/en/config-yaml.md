@@ -179,6 +179,7 @@ modifier details.
 | `row-height` | int 16–120 (dp) | `28` | Height of each row when `compact` is `custom`. `height` does not apply then. |
 | `background-color` | color | theme | Color behind the row. |
 | `font` | enum: `system`, `google-sans`, `terminal`, `monospace`, `serif` | `system` | Font of the labels. `terminal` uses the terminal font; `google-sans` is Gboard's font: Google Sans on a Pixel, the bundled Google Sans Flex (OFL) elsewhere. |
+| `font-weight` | int 100–900 | font's own | Weight of the labels: 400 regular, 500 medium (like Gboard), 700 bold. |
 | `animation` | enum: `key-preview`, `key-bubble`, `press-in`, `pop`, `lift`, `off` | `key-preview` | Effect of a pressed key. |
 | `all-caps` | bool | `true` | Show labels in capital letters. |
 | `corner-radius` | float 0–32 (dp) | theme | Corner radius of the buttons. It overrides the theme. |

@@ -90,6 +90,7 @@ public final class SettingTitles {
         title("extra-keys.auto-hide", "Hide with the keyboard");
         title("extra-keys.background-color", "Background color");
         title("extra-keys.font", "Font");
+        title("extra-keys.font-weight", "Font weight");
         title("extra-keys.animation", "Press animation");
         title("extra-keys.all-caps", "Capital letters");
         title("extra-keys.corner-radius", "Corner radius");

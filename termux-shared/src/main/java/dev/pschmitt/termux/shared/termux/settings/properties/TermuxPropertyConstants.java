@@ -403,6 +403,14 @@ public final class TermuxPropertyConstants {
     public static final String DEFAULT_EXTRA_KEYS_FONT = "system";
     public static final String[] EXTRA_KEYS_FONTS = {"system", "google-sans", "terminal", "monospace", "serif"};
 
+    /** The weight of the extra keys labels, from {@link #IVALUE_EXTRA_KEYS_FONT_WEIGHT_MIN} (thin) to
+     * {@link #IVALUE_EXTRA_KEYS_FONT_WEIGHT_MAX} (black): 400 is regular, 500 medium, 700 bold. Unset
+     * ({@link #DEFAULT_IVALUE_EXTRA_KEYS_FONT_WEIGHT}) keeps the font's own weight. */
+    public static final String KEY_EXTRA_KEYS_FONT_WEIGHT = "extra-keys-font-weight";
+    public static final int IVALUE_EXTRA_KEYS_FONT_WEIGHT_MIN = 100;
+    public static final int IVALUE_EXTRA_KEYS_FONT_WEIGHT_MAX = 900;
+    public static final int DEFAULT_IVALUE_EXTRA_KEYS_FONT_WEIGHT = 0;
+
     public static final String KEY_EXTRA_KEYS_ANIMATION = "extra-keys-animation";
 
     public static final String KEY_EXTRA_KEYS_STYLE =  "extra-keys-style"; // Default: "extra-keys-style"
@@ -743,6 +751,7 @@ public final class TermuxPropertyConstants {
         KEY_EXTRA_KEYS_BUTTON_CORNER_RADIUS,
         KEY_EXTRA_KEYS_ANIMATION,
         KEY_EXTRA_KEYS_FONT,
+        KEY_EXTRA_KEYS_FONT_WEIGHT,
         KEY_EXTRA_KEYS_THEME,
 
         /* TerminalGestureAction */

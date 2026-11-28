@@ -336,6 +336,8 @@ public abstract class TermuxSharedProperties {
                     if (value != null && font.equalsIgnoreCase(value.trim())) return font;
                 }
                 return TermuxPropertyConstants.DEFAULT_EXTRA_KEYS_FONT;
+            case TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT_WEIGHT:
+                return (int) getExtraKeysFontWeightInternalPropertyValueFromValue(value);
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION:
                 return ExtraKeyAnimation.parseOrDefault(value);
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_BUTTON_CORNER_RADIUS:
@@ -952,6 +954,24 @@ public abstract class TermuxSharedProperties {
 
     public String getExtraKeysFont() {
         return (String) getInternalPropertyValue(TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT, true);
+    }
+
+    /** The weight of the extra keys labels, or 0 for the font's own weight. */
+    public int getExtraKeysFontWeight() {
+        return (int) getInternalPropertyValue(TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT_WEIGHT, true);
+    }
+
+    /**
+     * Returns the weight for the value if it is a whole number from
+     * {@link TermuxPropertyConstants#IVALUE_EXTRA_KEYS_FONT_WEIGHT_MIN} to
+     * {@link TermuxPropertyConstants#IVALUE_EXTRA_KEYS_FONT_WEIGHT_MAX}, otherwise 0 (the font's own weight).
+     */
+    public static int getExtraKeysFontWeightInternalPropertyValueFromValue(String value) {
+        int weight = DataUtils.getIntFromString(value == null ? null : value.trim(),
+            TermuxPropertyConstants.DEFAULT_IVALUE_EXTRA_KEYS_FONT_WEIGHT);
+        return weight >= TermuxPropertyConstants.IVALUE_EXTRA_KEYS_FONT_WEIGHT_MIN
+            && weight <= TermuxPropertyConstants.IVALUE_EXTRA_KEYS_FONT_WEIGHT_MAX
+            ? weight : TermuxPropertyConstants.DEFAULT_IVALUE_EXTRA_KEYS_FONT_WEIGHT;
     }
 
     public ExtraKeyAnimation getExtraKeysAnimation() {

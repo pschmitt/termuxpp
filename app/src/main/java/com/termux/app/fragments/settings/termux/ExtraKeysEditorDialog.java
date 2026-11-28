@@ -88,7 +88,7 @@ public class ExtraKeysEditorDialog extends DialogFragment {
         ExtraKeysEditorDialog dialog = new ExtraKeysEditorDialog();
         Bundle args = new Bundle();
         args.putString("value", value);
-        for (String key : new String[]{"extra-keys-style", "extra-keys-font", "extra-keys-theme", "extra-keys-row-background-color", "extra-keys-text-all-caps", "extra-keys-compact", "extra-keys-row-height", "terminal-toolbar-height",
+        for (String key : new String[]{"extra-keys-style", "extra-keys-font", "extra-keys-font-weight", "extra-keys-theme", "extra-keys-row-background-color", "extra-keys-text-all-caps", "extra-keys-compact", "extra-keys-row-height", "terminal-toolbar-height",
                 "extra-keys-button-active-text-color", "extra-keys-button-active-background-color", "extra-keys-button-corner-radius"}) {
             args.putString(key, values.getProperty(key));
         }
@@ -284,7 +284,8 @@ public class ExtraKeysEditorDialog extends DialogFragment {
         try {
             Bundle options = requireArguments();
             ExtraKeysView view = new ExtraKeysView(requireContext(), null);
-            view.setKeyTypeface(TerminalAppearance.loadExtraKeysFont(requireContext(), options.getString("extra-keys-font")));
+            view.setKeyTypeface(TerminalAppearance.loadExtraKeysFont(requireContext(), options.getString("extra-keys-font"),
+                TermuxSharedProperties.getExtraKeysFontWeightInternalPropertyValueFromValue(options.getString("extra-keys-font-weight"))));
             view.setButtonTextAllCaps(!"false".equalsIgnoreCase(options.getString("extra-keys-text-all-caps")));
             view.setAppearance(options.getString("extra-keys-theme"),
                 ExtraKeysColorParser.parseColor(options.getString("extra-keys-row-background-color")),

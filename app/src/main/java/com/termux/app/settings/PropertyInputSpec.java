@@ -89,6 +89,12 @@ public final class PropertyInputSpec {
                 return "How high the rows of the extra keys are. False: the normal height, scaled by the toolbar"
                     + " height. True: three quarters of that. Custom: exactly the row height below, in dp."
                     + " Default: false.";
+            case TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT_WEIGHT:
+                return "How heavy the extra keys labels are: 400 is regular, 500 medium (like Gboard), 700 bold."
+                    + " Long-press menus use at least medium. Format: a whole number from "
+                    + TermuxPropertyConstants.IVALUE_EXTRA_KEYS_FONT_WEIGHT_MIN + " to "
+                    + TermuxPropertyConstants.IVALUE_EXTRA_KEYS_FONT_WEIGHT_MAX
+                    + ". Default: not set, the font's own weight.";
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_ROW_HEIGHT:
                 return "The height of each extra keys row in dp, used when compact rows is custom; the toolbar"
                     + " height does not apply then. Format: a whole number from "
@@ -440,6 +446,10 @@ public final class PropertyInputSpec {
                 if (TermuxPropertyConstants.EXTRA_KEYS_COMPACT_CUSTOM.equalsIgnoreCase(value)
                     || SharedProperties.getBooleanValueForStringValue(value) != null) return null;
                 return "Expected false, true or custom";
+            case TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT_WEIGHT:
+                return intInRange(value,
+                    TermuxPropertyConstants.IVALUE_EXTRA_KEYS_FONT_WEIGHT_MIN,
+                    TermuxPropertyConstants.IVALUE_EXTRA_KEYS_FONT_WEIGHT_MAX, false);
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_ROW_HEIGHT:
                 return intInRange(value,
                     TermuxPropertyConstants.IVALUE_EXTRA_KEYS_ROW_HEIGHT_MIN,
@@ -618,6 +628,7 @@ public final class PropertyInputSpec {
             case TermuxPropertyConstants.KEY_TERMINAL_MARGIN_VERTICAL:
             case TermuxPropertyConstants.KEY_TERMINAL_TRANSCRIPT_ROWS:
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_ROW_HEIGHT:
+            case TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT_WEIGHT:
                 return InputType.TYPE_CLASS_NUMBER;
             case TermuxPropertyConstants.KEY_TERMINAL_TOOLBAR_HEIGHT_SCALE_FACTOR:
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_BUTTON_CORNER_RADIUS:

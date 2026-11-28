@@ -147,6 +147,7 @@ public final class TermuxConfigSchema {
         add("extra-keys.auto-hide", "extra-keys-auto-hide");
         add("extra-keys.background-color", "extra-keys-row-background-color");
         add("extra-keys.font", "extra-keys-font");
+        add("extra-keys.font-weight", "extra-keys-font-weight");
         add("extra-keys.animation", "extra-keys-animation");
         add("extra-keys.all-caps", "extra-keys-text-all-caps");
         add("extra-keys.corner-radius", "extra-keys-button-corner-radius");
