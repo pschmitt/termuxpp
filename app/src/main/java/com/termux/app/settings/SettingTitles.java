@@ -86,6 +86,7 @@ public final class SettingTitles {
         title("extra-keys.labels", "Key labels");
         title("extra-keys.height", "Height");
         title("extra-keys.compact", "Compact rows");
+        title("extra-keys.row-height", "Custom row height");
         title("extra-keys.auto-hide", "Hide with the keyboard");
         title("extra-keys.background-color", "Background color");
         title("extra-keys.font", "Font");

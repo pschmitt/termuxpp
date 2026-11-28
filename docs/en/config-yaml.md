@@ -175,7 +175,8 @@ modifier details.
 | `theme` | enum: `default`, `rounded` | `default` | Look of the button row. |
 | `labels` | enum: `default`, `arrows-only`, `arrows-all`, `all`, `none` | `default` | How key names are drawn, for example `LEFT` as an arrow. |
 | `height` | float 0.4–3 | `1` | Height of the toolbar as a factor of its normal height. |
-| `compact` | bool | `false` | Make each row three quarters of its normal height, on top of `height`. |
+| `compact` | `false`, `true`, `custom` | `false` | `true` makes each row three quarters of its normal height, on top of `height`; `custom` makes it `row-height` dp high. |
+| `row-height` | int 16–120 (dp) | `28` | Height of each row when `compact` is `custom`. `height` does not apply then. |
 | `background-color` | color | theme | Color behind the row. |
 | `font` | enum: `system`, `terminal`, `monospace`, `serif` | `system` | Font of the labels. `terminal` uses the terminal font. |
 | `animation` | enum: `key-preview`, `key-bubble`, `press-in`, `pop`, `lift`, `off` | `key-preview` | Effect of a pressed key. |

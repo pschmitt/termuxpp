@@ -11,6 +11,7 @@ import android.text.InputType;
 
 import dev.pschmitt.termux.shared.termux.TermuxConstants;
 import dev.pschmitt.termux.shared.termux.settings.properties.TermuxPropertyConstants;
+import dev.pschmitt.termux.shared.termux.settings.properties.TermuxSharedProperties;
 
 import org.junit.Rule;
 import org.junit.Test;
@@ -82,6 +83,37 @@ public class PropertyInputSpecTest {
         assertTrue(PropertyInputSpec.help("terminal-single-tap-action").contains("gestures.tap.single.keys"));
         assertTrue(PropertyInputSpec.help("extra-keys-style").contains("arrows-only"));
         assertTrue(PropertyInputSpec.help("volume-keys").contains("virtual"));
+    }
+
+    @Test
+    public void compactRowsAcceptBooleansAndCustom() {
+        String compact = TermuxPropertyConstants.KEY_EXTRA_KEYS_COMPACT;
+        assertNull(PropertyInputSpec.validationError(compact, "true"));
+        assertNull(PropertyInputSpec.validationError(compact, "false"));
+        assertNull(PropertyInputSpec.validationError(compact, "custom"));
+        assertNotNull(PropertyInputSpec.validationError(compact, "tiny"));
+        assertArrayEquals(new String[] {"false", "true", "custom"}, PropertyInputSpec.choices(compact));
+
+        String rowHeight = TermuxPropertyConstants.KEY_EXTRA_KEYS_ROW_HEIGHT;
+        assertNull(PropertyInputSpec.validationError(rowHeight, "24"));
+        assertNotNull(PropertyInputSpec.validationError(rowHeight, "8"));
+        assertNotNull(PropertyInputSpec.validationError(rowHeight, "500"));
+        assertNotNull(PropertyInputSpec.validationError(rowHeight, "24.5"));
+        assertEquals(InputType.TYPE_CLASS_NUMBER, PropertyInputSpec.inputType(rowHeight));
+        assertTrue(PropertyInputSpec.help(rowHeight).contains("16 to 120"));
+    }
+
+    @Test
+    public void extraKeysRowHeightFollowsCompactMode() {
+        float normal = TermuxPropertyConstants.EXTRA_KEYS_DEFAULT_ROW_HEIGHT_DP;
+        assertEquals(normal, TermuxSharedProperties.getExtraKeysRowHeightDp(null, null, null), 0.001f);
+        assertEquals(normal * 2, TermuxSharedProperties.getExtraKeysRowHeightDp("2", "false", "50"), 0.001f);
+        assertEquals(normal * 0.75f, TermuxSharedProperties.getExtraKeysRowHeightDp(null, "true", null), 0.001f);
+        // Custom ignores the toolbar height; an invalid row height falls back to the default.
+        assertEquals(50, TermuxSharedProperties.getExtraKeysRowHeightDp("2", "custom", "50"), 0.001f);
+        assertEquals(TermuxPropertyConstants.DEFAULT_IVALUE_EXTRA_KEYS_ROW_HEIGHT,
+            TermuxSharedProperties.getExtraKeysRowHeightDp(null, "CUSTOM", "5"), 0.001f);
+        assertEquals("false", TermuxSharedProperties.getExtraKeysCompactInternalPropertyValueFromValue("bogus"));
     }
 
     @Test
@@ -331,7 +363,8 @@ public class PropertyInputSpecTest {
             if (key.equals("extra-keys-style") || key.equals(TermuxPropertyConstants.KEY_GESTURE_COMMAND_CONTEXT)
                 || key.equals(toastKey) || key.equals(engineKey) || key.equals(feedbackKey)
                 || key.equals(gesturePositionKey) || key.equals(tmuxKey) || key.equals(tmuxStyle)
-                || key.equals(pickerKey) || key.equals(fontKey) || key.equals(animationKey) || key.equals(themeKey)) continue;
+                || key.equals(pickerKey) || key.equals(fontKey) || key.equals(animationKey) || key.equals(themeKey)
+                || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_COMPACT)) continue;
             assertEquals(key, 0, PropertyInputSpec.choices(key).length);
         }
         assertEquals(0, PropertyInputSpec.choices(null).length);

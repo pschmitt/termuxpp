@@ -647,7 +647,8 @@ Individual keys can override their text and background colors, add spacing aroun
 the keycap, and show an automatic or custom corner hint. The layout editor can resize each row and
 leave blank slots for unassigned keys.
 `extra-keys.compact` lowers every row to three quarters of the height that
-`extra-keys.height` gives, off by default.
+`extra-keys.height` gives, off by default; `extra-keys.compact: custom` sets an
+exact row height in dp with `extra-keys.row-height`.
 `extra-keys.auto-hide` (off by default) shows the extra keys only while the soft
 keyboard is visible, so both hide and appear together.
 [Extra-key appearance](terminal-settings.md#extra-key-appearance).

@@ -139,8 +139,26 @@ public final class TermuxPropertyConstants {
     /** Defines the key for whether text for the extra keys buttons should be all capitalized automatically */
     public static final String KEY_EXTRA_KEYS_TEXT_ALL_CAPS =  "extra-keys-text-all-caps"; // Default: "extra-keys-text-all-caps"
 
-    /** Defines the key for whether the rows of the extra keys toolbar are lower than normal. */
+    /** Defines the key for how high the rows of the extra keys toolbar are: {@link #EXTRA_KEYS_COMPACT_FALSE}
+     * (normal), {@link #EXTRA_KEYS_COMPACT_TRUE} (lower) or {@link #EXTRA_KEYS_COMPACT_CUSTOM}
+     * ({@link #KEY_EXTRA_KEYS_ROW_HEIGHT}). */
     public static final String KEY_EXTRA_KEYS_COMPACT =  "extra-keys-compact"; // Default: "extra-keys-compact"
+    /** Rows of normal height, scaled by {@link #KEY_TERMINAL_TOOLBAR_HEIGHT_SCALE_FACTOR}. */
+    public static final String EXTRA_KEYS_COMPACT_FALSE = "false";
+    /** Rows three quarters of their normal height. */
+    public static final String EXTRA_KEYS_COMPACT_TRUE = "true";
+    /** Rows exactly {@link #KEY_EXTRA_KEYS_ROW_HEIGHT} dp high. */
+    public static final String EXTRA_KEYS_COMPACT_CUSTOM = "custom";
+    public static final String DEFAULT_EXTRA_KEYS_COMPACT = EXTRA_KEYS_COMPACT_FALSE;
+
+    /** Defines the key for the height of one extra keys row in dp, used when
+     * {@link #KEY_EXTRA_KEYS_COMPACT} is {@link #EXTRA_KEYS_COMPACT_CUSTOM}. */
+    public static final String KEY_EXTRA_KEYS_ROW_HEIGHT = "extra-keys-row-height"; // Default: "extra-keys-row-height"
+    public static final int IVALUE_EXTRA_KEYS_ROW_HEIGHT_MIN = 16;
+    public static final int IVALUE_EXTRA_KEYS_ROW_HEIGHT_MAX = 120;
+    public static final int DEFAULT_IVALUE_EXTRA_KEYS_ROW_HEIGHT = 28;
+    /** The normal height of one extra keys row in dp, the height of the toolbar in the layout. */
+    public static final float EXTRA_KEYS_DEFAULT_ROW_HEIGHT_DP = 37.5f;
 
     /** Defines the key for whether the extra keys toolbar is shown only while the soft keyboard is. */
     public static final String KEY_EXTRA_KEYS_AUTO_HIDE =  "extra-keys-auto-hide"; // Default: "extra-keys-auto-hide"
@@ -695,6 +713,7 @@ public final class TermuxPropertyConstants {
         KEY_ENFORCE_CHAR_BASED_INPUT,
         KEY_EXTRA_KEYS_TEXT_ALL_CAPS,
         KEY_EXTRA_KEYS_COMPACT,
+        KEY_EXTRA_KEYS_ROW_HEIGHT,
         KEY_EXTRA_KEYS_AUTO_HIDE,
         KEY_HIDE_SOFT_KEYBOARD_ON_STARTUP,
         KEY_HIDE_SOFT_KEYBOARD_ON_SIDEBAR,
@@ -819,7 +838,6 @@ public final class TermuxPropertyConstants {
         KEY_CREATE_SESSION_ON_SINGLE_SESSION_SWITCH,
         KEY_DISABLE_TERMINAL_SESSION_CHANGE_TOAST,
         KEY_ENFORCE_CHAR_BASED_INPUT,
-        KEY_EXTRA_KEYS_COMPACT,
         KEY_EXTRA_KEYS_AUTO_HIDE,
         KEY_HIDE_SOFT_KEYBOARD_ON_STARTUP,
         KEY_TERMINAL_ONCLICK_URL_OPEN,

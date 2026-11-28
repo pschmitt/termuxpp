@@ -38,6 +38,7 @@ import dev.pschmitt.termux.shared.termux.extrakeys.ExtraKeysInfo;
 import dev.pschmitt.termux.shared.termux.extrakeys.ExtraKeysView;
 import dev.pschmitt.termux.shared.theme.ThemeUtils;
 import dev.pschmitt.termux.shared.termux.settings.properties.TermuxPropertyConstants;
+import dev.pschmitt.termux.shared.termux.settings.properties.TermuxSharedProperties;
 import dev.pschmitt.termux.shared.termux.settings.properties.TerminalGestureAction;
 
 /** Interactive samples for visual settings and gesture actions. */
@@ -55,6 +56,7 @@ final class SettingsPreview extends FrameLayout {
             || key.equals("terminal-toast-position") || key.equals("gesture-feedback-position") || key.equals("terminal-margin-horizontal")
             || key.equals("terminal-margin-vertical") || key.equals("extra-keys-style")
             || key.equals("extra-keys-text-all-caps") || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_COMPACT)
+            || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_ROW_HEIGHT)
             || key.equals("extra-keys-button-active-text-color")
             || key.equals("extra-keys-button-active-background-color") || key.equals("extra-keys-button-corner-radius")
             || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_THEME)
@@ -115,12 +117,9 @@ final class SettingsPreview extends FrameLayout {
             values.getProperty(TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT)));
         keyboard.setKeyAnimation(ExtraKeyAnimation.parseOrDefault(values.getProperty(TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION)));
         keyboard.setButtonTextAllCaps(!"false".equalsIgnoreCase(value("extra-keys-text-all-caps", "true")));
-        float scale;
-        try { scale = Float.parseFloat(value("terminal-toolbar-height", "1")); }
-        catch (NumberFormatException e) { scale = 1; }
-        if (Float.isNaN(scale) || scale < .4f || scale > 3) scale = 1;
-        if ("true".equalsIgnoreCase(value(TermuxPropertyConstants.KEY_EXTRA_KEYS_COMPACT, "false")))
-            scale *= TermuxPropertyConstants.EXTRA_KEYS_COMPACT_ROW_SCALE;
+        float rowHeight = TermuxSharedProperties.getExtraKeysRowHeightDp(values.getProperty("terminal-toolbar-height"),
+            values.getProperty(TermuxPropertyConstants.KEY_EXTRA_KEYS_COMPACT),
+            values.getProperty(TermuxPropertyConstants.KEY_EXTRA_KEYS_ROW_HEIGHT));
         boolean interactive = key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION)
             || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_FONT)
             || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_THEME)
@@ -136,8 +135,9 @@ final class SettingsPreview extends FrameLayout {
                 info = new ExtraKeysInfo(sample, style, ExtraKeysConstants.CONTROL_CHARS_ALIASES);
             }
             // Fit the dialog's preview box; the toolbar-height box holds the largest allowed scale.
-            float maxHeight = interactive ? 100 : key.equals("terminal-toolbar-height") ? 140 : 56;
-            int height = Math.round(dp(Math.min(maxHeight, 37.5f * scale * info.getMatrix().length)));
+            float maxHeight = interactive ? 100 : key.equals("terminal-toolbar-height")
+                || key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_ROW_HEIGHT) ? 140 : 56;
+            int height = Math.round(dp(Math.min(maxHeight, rowHeight * info.getMatrix().length)));
             addView(keyboard, new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, height, Gravity.CENTER_VERTICAL));
             keyboard.reload(info, height);
             if (key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_ANIMATION)) demoEffect(keyboard);

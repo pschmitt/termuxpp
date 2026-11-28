@@ -115,6 +115,8 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
                         ? "Default (Soft flash)" : key.equals(TermuxPropertyConstants.KEY_GESTURE_FEEDBACK_POSITION)
                         ? "Default (Bottom center)" : key.equals(TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_LAYOUT)
                         ? getString(R.string.properties_default_boolean, getString(R.string.ui_tmux_layout_nested))
+                        : key.equals(TermuxPropertyConstants.KEY_EXTRA_KEYS_COMPACT)
+                        ? getString(R.string.properties_default_boolean, "Normal")
                         : key.equals(TermuxPropertyConstants.KEY_TERMINAL_PICKER_POSITION)
                         ? getString(R.string.properties_default_boolean, getString(R.string.ui_picker_position_top))
                         : getString(R.string.properties_default));
@@ -211,6 +213,11 @@ public class PropertiesPreferencesFragment extends GroupedPreferencesFragment {
     }
 
     private String choiceLabel(String key, String value) {
+        if (TermuxPropertyConstants.KEY_EXTRA_KEYS_COMPACT.equals(key)) {
+            if (TermuxPropertyConstants.EXTRA_KEYS_COMPACT_TRUE.equals(value)) return "Compact (three quarters)";
+            if (TermuxPropertyConstants.EXTRA_KEYS_COMPACT_CUSTOM.equals(value)) return "Custom row height";
+            return "Normal";
+        }
         if (TermuxPropertyConstants.KEY_EXTRA_KEYS_THEME.equals(key)) {
             return getString(TermuxPropertyConstants.EXTRA_KEYS_THEME_ROUNDED.equals(value)
                 ? R.string.extra_theme_rounded : R.string.extra_theme_default);

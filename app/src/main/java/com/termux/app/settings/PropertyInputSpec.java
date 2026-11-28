@@ -86,8 +86,15 @@ public final class PropertyInputSpec {
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_TEXT_ALL_CAPS:
                 return bool(key, "Show the text of the extra keys buttons in capital letters.");
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_COMPACT:
-                return bool(key, "Make the rows of the extra keys lower, three quarters of their normal height,"
-                    + " on top of the toolbar height.");
+                return "How high the rows of the extra keys are. False: the normal height, scaled by the toolbar"
+                    + " height. True: three quarters of that. Custom: exactly the row height below, in dp."
+                    + " Default: false.";
+            case TermuxPropertyConstants.KEY_EXTRA_KEYS_ROW_HEIGHT:
+                return "The height of each extra keys row in dp, used when compact rows is custom; the toolbar"
+                    + " height does not apply then. Format: a whole number from "
+                    + TermuxPropertyConstants.IVALUE_EXTRA_KEYS_ROW_HEIGHT_MIN + " to "
+                    + TermuxPropertyConstants.IVALUE_EXTRA_KEYS_ROW_HEIGHT_MAX + ". Default: "
+                    + TermuxPropertyConstants.DEFAULT_IVALUE_EXTRA_KEYS_ROW_HEIGHT + ".";
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_AUTO_HIDE:
                 return bool(key, "Show the extra keys only while the soft keyboard is visible: they hide and"
                     + " appear together with it. Hiding the extra keys still hides them for good.");
@@ -428,6 +435,14 @@ public final class PropertyInputSpec {
                     if (position.equalsIgnoreCase(value)) return null;
                 }
                 return "Expected top, center or terminal";
+            case TermuxPropertyConstants.KEY_EXTRA_KEYS_COMPACT:
+                if (TermuxPropertyConstants.EXTRA_KEYS_COMPACT_CUSTOM.equalsIgnoreCase(value)
+                    || SharedProperties.getBooleanValueForStringValue(value) != null) return null;
+                return "Expected false, true or custom";
+            case TermuxPropertyConstants.KEY_EXTRA_KEYS_ROW_HEIGHT:
+                return intInRange(value,
+                    TermuxPropertyConstants.IVALUE_EXTRA_KEYS_ROW_HEIGHT_MIN,
+                    TermuxPropertyConstants.IVALUE_EXTRA_KEYS_ROW_HEIGHT_MAX, false);
             case TermuxPropertyConstants.KEY_TERMINAL_TMUX_SIDEBAR_LAYOUT:
                 for (String layout : choices(key)) {
                     if (layout.equalsIgnoreCase(value)) return null;
@@ -601,6 +616,7 @@ public final class PropertyInputSpec {
             case TermuxPropertyConstants.KEY_TERMINAL_MARGIN_HORIZONTAL:
             case TermuxPropertyConstants.KEY_TERMINAL_MARGIN_VERTICAL:
             case TermuxPropertyConstants.KEY_TERMINAL_TRANSCRIPT_ROWS:
+            case TermuxPropertyConstants.KEY_EXTRA_KEYS_ROW_HEIGHT:
                 return InputType.TYPE_CLASS_NUMBER;
             case TermuxPropertyConstants.KEY_TERMINAL_TOOLBAR_HEIGHT_SCALE_FACTOR:
             case TermuxPropertyConstants.KEY_EXTRA_KEYS_BUTTON_CORNER_RADIUS:
@@ -622,6 +638,9 @@ public final class PropertyInputSpec {
      */
     @NonNull
     public static String[] choices(@Nullable String key) {
+        if (TermuxPropertyConstants.KEY_EXTRA_KEYS_COMPACT.equals(key))
+            return new String[] {TermuxPropertyConstants.EXTRA_KEYS_COMPACT_FALSE,
+                TermuxPropertyConstants.EXTRA_KEYS_COMPACT_TRUE, TermuxPropertyConstants.EXTRA_KEYS_COMPACT_CUSTOM};
         if (TermuxPropertyConstants.KEY_TERMINAL_PICKER_POSITION.equals(key))
             return new String[] {TermuxPropertyConstants.PICKER_POSITION_TOP,
                 TermuxPropertyConstants.PICKER_POSITION_CENTER, TermuxPropertyConstants.PICKER_POSITION_TERMINAL};

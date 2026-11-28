@@ -620,6 +620,15 @@ extra-keys:
   compact: true
 ```
 
+`extra-keys.compact: custom` sets every row to exactly `extra-keys.row-height` dp, a whole number
+from 16 to 120 (default 28); `extra-keys.height` does not apply then. A normal row is 37.5 dp high.
+
+```yaml
+extra-keys:
+  compact: custom
+  row-height: 32
+```
+
 `extra-keys.auto-hide: true` shows the extra keys only while the soft keyboard is visible: when the
 keyboard hides (the Back key, a gesture, a hardware keyboard), the extra keys hide with it, and they
 come back with the keyboard. Hiding the extra keys with the toolbar toggle still hides them until

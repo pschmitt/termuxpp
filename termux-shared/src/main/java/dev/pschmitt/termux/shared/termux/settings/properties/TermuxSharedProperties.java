@@ -317,6 +317,10 @@ public abstract class TermuxSharedProperties {
                     : TermuxPropertyConstants.TERMINAL_ENGINE_TERMUX;
             case TermuxPropertyConstants.KEY_TERMINAL_TRANSCRIPT_ROWS:
                 return (int) getTerminalTranscriptRowsInternalPropertyValueFromValue(value);
+            case TermuxPropertyConstants.KEY_EXTRA_KEYS_COMPACT:
+                return getExtraKeysCompactInternalPropertyValueFromValue(value);
+            case TermuxPropertyConstants.KEY_EXTRA_KEYS_ROW_HEIGHT:
+                return (int) getExtraKeysRowHeightInternalPropertyValueFromValue(value);
 
             /* float */
             case TermuxPropertyConstants.KEY_TERMINAL_TOOLBAR_HEIGHT_SCALE_FACTOR:
@@ -541,6 +545,50 @@ public abstract class TermuxSharedProperties {
             TermuxPropertyConstants.IVALUE_TERMINAL_MARGIN_VERTICAL_MIN,
             TermuxPropertyConstants.IVALUE_TERMINAL_MARGIN_VERTICAL_MAX,
             true, true, LOG_TAG);
+    }
+
+    /**
+     * Returns {@link TermuxPropertyConstants#EXTRA_KEYS_COMPACT_CUSTOM} for "custom", otherwise
+     * {@link TermuxPropertyConstants#EXTRA_KEYS_COMPACT_TRUE} or {@link TermuxPropertyConstants#EXTRA_KEYS_COMPACT_FALSE}
+     * for a boolean value (the setting used to be a boolean) and the default for anything else.
+     */
+    @NonNull
+    public static String getExtraKeysCompactInternalPropertyValueFromValue(String value) {
+        if (value == null) return TermuxPropertyConstants.DEFAULT_EXTRA_KEYS_COMPACT;
+        if (TermuxPropertyConstants.EXTRA_KEYS_COMPACT_CUSTOM.equalsIgnoreCase(value.trim()))
+            return TermuxPropertyConstants.EXTRA_KEYS_COMPACT_CUSTOM;
+        Boolean compact = SharedProperties.getBooleanValueForStringValue(value.trim());
+        if (compact == null) return TermuxPropertyConstants.DEFAULT_EXTRA_KEYS_COMPACT;
+        return compact ? TermuxPropertyConstants.EXTRA_KEYS_COMPACT_TRUE : TermuxPropertyConstants.EXTRA_KEYS_COMPACT_FALSE;
+    }
+
+    /**
+     * Returns the int for the value if it is between {@link TermuxPropertyConstants#IVALUE_EXTRA_KEYS_ROW_HEIGHT_MIN}
+     * and {@link TermuxPropertyConstants#IVALUE_EXTRA_KEYS_ROW_HEIGHT_MAX}, otherwise
+     * {@link TermuxPropertyConstants#DEFAULT_IVALUE_EXTRA_KEYS_ROW_HEIGHT}.
+     */
+    public static int getExtraKeysRowHeightInternalPropertyValueFromValue(String value) {
+        return SharedProperties.getDefaultIfNotInRange(TermuxPropertyConstants.KEY_EXTRA_KEYS_ROW_HEIGHT,
+            DataUtils.getIntFromString(value, TermuxPropertyConstants.DEFAULT_IVALUE_EXTRA_KEYS_ROW_HEIGHT),
+            TermuxPropertyConstants.DEFAULT_IVALUE_EXTRA_KEYS_ROW_HEIGHT,
+            TermuxPropertyConstants.IVALUE_EXTRA_KEYS_ROW_HEIGHT_MIN,
+            TermuxPropertyConstants.IVALUE_EXTRA_KEYS_ROW_HEIGHT_MAX,
+            true, true, LOG_TAG);
+    }
+
+    /**
+     * The height of one extra keys row in dp for raw property values (any may be null): exactly
+     * {@code rowHeight} with compact "custom", else the normal height scaled by {@code toolbarHeight}
+     * and, when compact, by {@link TermuxPropertyConstants#EXTRA_KEYS_COMPACT_ROW_SCALE}.
+     */
+    public static float getExtraKeysRowHeightDp(String toolbarHeight, String compact, String rowHeight) {
+        String mode = getExtraKeysCompactInternalPropertyValueFromValue(compact);
+        if (TermuxPropertyConstants.EXTRA_KEYS_COMPACT_CUSTOM.equals(mode))
+            return getExtraKeysRowHeightInternalPropertyValueFromValue(rowHeight);
+        float scale = getTerminalToolbarHeightScaleFactorInternalPropertyValueFromValue(toolbarHeight);
+        if (TermuxPropertyConstants.EXTRA_KEYS_COMPACT_TRUE.equals(mode))
+            scale *= TermuxPropertyConstants.EXTRA_KEYS_COMPACT_ROW_SCALE;
+        return TermuxPropertyConstants.EXTRA_KEYS_DEFAULT_ROW_HEIGHT_DP * scale;
     }
 
     /**
@@ -1242,15 +1290,26 @@ public abstract class TermuxSharedProperties {
         return (boolean) getInternalPropertyValue(TermuxPropertyConstants.KEY_EXTRA_KEYS_AUTO_HIDE, true);
     }
 
-    public boolean areExtraKeysCompact() {
-        return (boolean) getInternalPropertyValue(TermuxPropertyConstants.KEY_EXTRA_KEYS_COMPACT, true);
+    /** How high the extra keys rows are: one of the {@code EXTRA_KEYS_COMPACT_*} values. */
+    @NonNull
+    public String getExtraKeysCompact() {
+        return (String) getInternalPropertyValue(TermuxPropertyConstants.KEY_EXTRA_KEYS_COMPACT, true);
+    }
+
+    /** The height of one extra keys row with compact "custom", in dp. */
+    public int getExtraKeysRowHeight() {
+        return (int) getInternalPropertyValue(TermuxPropertyConstants.KEY_EXTRA_KEYS_ROW_HEIGHT, true);
     }
 
     /** The height of one extra keys row as a factor of its normal height: the toolbar height
-     * scaled down further when the rows are compact. */
+     * scaled down further when the rows are compact, or the custom row height. */
     public float getExtraKeysRowScaleFactor() {
+        String compact = getExtraKeysCompact();
+        if (TermuxPropertyConstants.EXTRA_KEYS_COMPACT_CUSTOM.equals(compact))
+            return getExtraKeysRowHeight() / TermuxPropertyConstants.EXTRA_KEYS_DEFAULT_ROW_HEIGHT_DP;
         return getTerminalToolbarHeightScaleFactor()
-            * (areExtraKeysCompact() ? TermuxPropertyConstants.EXTRA_KEYS_COMPACT_ROW_SCALE : 1);
+            * (TermuxPropertyConstants.EXTRA_KEYS_COMPACT_TRUE.equals(compact)
+                ? TermuxPropertyConstants.EXTRA_KEYS_COMPACT_ROW_SCALE : 1);
     }
 
     public boolean shouldSoftKeyboardBeHiddenOnStartup() {
