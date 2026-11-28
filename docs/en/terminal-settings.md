@@ -110,7 +110,9 @@ at the top or the one you moved to with the arrow keys: it switches to the sessi
 runs the action, or opens Settings at that setting.
 
 Open it with the `open-palette` action (bind it to a tap, a swipe, a volume key or an extra key
-like any other action) or with `tpp ui palette`. It opens where the other pickers do
+like any other action), with Ctrl+Alt+F on a hardware keyboard, with a Ctrl shortcut of your own
+(`keyboard.shortcuts.palette: ctrl+g`; that key then no longer reaches the shell), or with
+`tpp ui palette`. It opens where the other pickers do
 (`sessions.picker-position`).
 
 ## Terminal appearance

@@ -393,6 +393,7 @@ public abstract class TermuxSharedProperties {
             case TermuxPropertyConstants.KEY_SHORTCUT_NEXT_SESSION:
             case TermuxPropertyConstants.KEY_SHORTCUT_PREVIOUS_SESSION:
             case TermuxPropertyConstants.KEY_SHORTCUT_RENAME_SESSION:
+            case TermuxPropertyConstants.KEY_SHORTCUT_PALETTE:
                 return (Integer) getCodePointForSessionShortcuts(key, value);
 
             /* String (may be null) */

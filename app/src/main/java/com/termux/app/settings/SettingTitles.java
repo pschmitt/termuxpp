@@ -74,6 +74,7 @@ public final class SettingTitles {
         title("keyboard.shortcuts.next-session", "Shortcut: next session");
         title("keyboard.shortcuts.previous-session", "Shortcut: previous session");
         title("keyboard.shortcuts.rename-session", "Shortcut: rename session");
+        title("keyboard.shortcuts.palette", "Shortcut: command palette");
         title("keyboard.volume.mode", "Volume buttons");
         title("keyboard.volume.up.action", "Volume up: action");
         title("keyboard.volume.up.keys", "Volume up: keys to send");

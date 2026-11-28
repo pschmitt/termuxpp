@@ -152,11 +152,12 @@ session.
 | `toggle-behaviour` | enum: `show/hide`, `enable/disable` | `show/hide` | What the keyboard toggle does. `enable/disable` keeps the keyboard from popping up until you toggle it again. |
 | `char-based-input` | bool | `false` | Send each character as you type. Use it when typed text only appears after Enter, which happens with some keyboards (for example on Samsung devices). |
 | `ctrl-space-workaround` | bool | `false` | Fix Ctrl+Space not sending NUL on some devices. |
-| `hardware-shortcuts` | bool | `true` | Handle the built-in Ctrl+Alt shortcuts of a hardware keyboard (for example Ctrl+Alt+N for the next session). Turn it off so that the keys reach the terminal. |
+| `hardware-shortcuts` | bool | `true` | Handle the built-in Ctrl+Alt shortcuts of a hardware keyboard (for example Ctrl+Alt+N for the next session, Ctrl+Alt+F for the command palette). Turn it off so that the keys reach the terminal. |
 | `shortcuts.create-session` | `ctrl+X` or `disabled` | `ctrl+t` | Ctrl shortcut for a new session. `disabled` removes it. |
 | `shortcuts.next-session` | `ctrl+X` or `disabled` | `ctrl+2` | Ctrl shortcut for the next session. |
 | `shortcuts.previous-session` | `ctrl+X` or `disabled` | `ctrl+1` | Ctrl shortcut for the previous session. |
 | `shortcuts.rename-session` | `ctrl+X` or `disabled` | `ctrl+r` | Ctrl shortcut to rename the current session. |
+| `shortcuts.palette` | `ctrl+X` or `disabled` | unset | Ctrl shortcut for the command palette. A hardware keyboard also has Ctrl+Alt+F. |
 | `volume.mode` | enum: `virtual`, `volume` | `virtual` | `volume` gives both buttons back to Android and ignores `volume.up` and `volume.down`. |
 | `volume.up.action` | `modifier` or action | `modifier` | Volume up. `modifier` makes it a virtual Fn key while held. `run-command` is not allowed. |
 | `volume.up.keys` | keys | unset | Keys for `send-keys`. |

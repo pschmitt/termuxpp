@@ -315,11 +315,14 @@ public final class TermuxPropertyConstants {
     public static final String KEY_SHORTCUT_PREVIOUS_SESSION =  "shortcut.previous-session"; // Default: "shortcut.previous-session"
     /** Defines the key for rename session shortcut */
     public static final String KEY_SHORTCUT_RENAME_SESSION =  "shortcut.rename-session"; // Default: "shortcut.rename-session"
+    /** Defines the key for the command palette shortcut */
+    public static final String KEY_SHORTCUT_PALETTE =  "shortcut.palette"; // Default: "shortcut.palette"
 
     public static final int ACTION_SHORTCUT_CREATE_SESSION = 1;
     public static final int ACTION_SHORTCUT_NEXT_SESSION = 2;
     public static final int ACTION_SHORTCUT_PREVIOUS_SESSION = 3;
     public static final int ACTION_SHORTCUT_RENAME_SESSION = 4;
+    public static final int ACTION_SHORTCUT_PALETTE = 5;
 
     /** Defines the bidirectional map for session shortcut values and their internal actions */
     public static final ImmutableBiMap<String, Integer> MAP_SESSION_SHORTCUTS =
@@ -328,6 +331,7 @@ public final class TermuxPropertyConstants {
             .put(KEY_SHORTCUT_NEXT_SESSION, ACTION_SHORTCUT_NEXT_SESSION)
             .put(KEY_SHORTCUT_PREVIOUS_SESSION, ACTION_SHORTCUT_PREVIOUS_SESSION)
             .put(KEY_SHORTCUT_RENAME_SESSION, ACTION_SHORTCUT_RENAME_SESSION)
+            .put(KEY_SHORTCUT_PALETTE, ACTION_SHORTCUT_PALETTE)
             .build();
 
 
@@ -778,6 +782,7 @@ public final class TermuxPropertyConstants {
         KEY_SHORTCUT_NEXT_SESSION,
         KEY_SHORTCUT_PREVIOUS_SESSION,
         KEY_SHORTCUT_RENAME_SESSION,
+        KEY_SHORTCUT_PALETTE,
 
         /* String */
         KEY_BACK_KEY_BEHAVIOUR,

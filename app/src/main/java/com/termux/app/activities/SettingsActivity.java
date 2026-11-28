@@ -150,6 +150,9 @@ public class SettingsActivity extends AppCompatActivity
     private void configureSearch() {
         searchBar = findViewById(R.id.settings_search_bar);
         searchQuery = findViewById(R.id.settings_search_query);
+        // A visible password field is never autocorrected (Gboard replaced queries on Enter despite
+        // textNoSuggestions); it would otherwise switch to a monospace font.
+        searchQuery.setTypeface(android.graphics.Typeface.DEFAULT);
         clearSearchButton = findViewById(R.id.settings_search_clear);
         getOnBackPressedDispatcher().addCallback(this, searchBack);
         findViewById(R.id.settings_search_button).setOnClickListener(view -> {

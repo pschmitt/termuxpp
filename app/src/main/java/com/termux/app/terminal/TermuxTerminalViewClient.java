@@ -640,6 +640,8 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
                 mTermuxTerminalSessionActivityClient.renameSession(currentSession);
             } else if (unicodeChar == 'c'/* create */) {
                 mTermuxTerminalSessionActivityClient.addNewSession(false, null);
+            } else if (unicodeChar == 'f' /* find: the command palette */) {
+                mActivity.showPalette(null);
             } else if (unicodeChar == 'u' /* urls */) {
                 showUrlSelection();
             } else if (unicodeChar == 'v') {
@@ -906,6 +908,9 @@ public class TermuxTerminalViewClient extends TermuxTerminalViewClientBase {
                                 return true;
                             case TermuxPropertyConstants.ACTION_SHORTCUT_RENAME_SESSION:
                                 mTermuxTerminalSessionActivityClient.renameSession(mActivity.getCurrentSession());
+                                return true;
+                            case TermuxPropertyConstants.ACTION_SHORTCUT_PALETTE:
+                                mActivity.showPalette(null);
                                 return true;
                         }
                     }

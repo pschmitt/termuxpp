@@ -324,6 +324,8 @@ public final class PropertyInputSpec {
                 return shortcut("switch to the previous terminal session", "ctrl+1");
             case TermuxPropertyConstants.KEY_SHORTCUT_RENAME_SESSION:
                 return shortcut("rename the current terminal session", "ctrl+r");
+            case TermuxPropertyConstants.KEY_SHORTCUT_PALETTE:
+                return shortcut("open the command palette (Ctrl+Alt+F also does)", "ctrl+g");
 
             /* String */
             case TermuxPropertyConstants.KEY_BACK_KEY_BEHAVIOUR:
@@ -561,6 +563,7 @@ public final class PropertyInputSpec {
             case TermuxPropertyConstants.KEY_SHORTCUT_NEXT_SESSION:
             case TermuxPropertyConstants.KEY_SHORTCUT_PREVIOUS_SESSION:
             case TermuxPropertyConstants.KEY_SHORTCUT_RENAME_SESSION:
+            case TermuxPropertyConstants.KEY_SHORTCUT_PALETTE:
                 return shortcut(value);
 
             case TermuxPropertyConstants.KEY_DEFAULT_WORKING_DIRECTORY: {

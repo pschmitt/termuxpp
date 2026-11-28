@@ -130,7 +130,7 @@ public final class TermuxConfigSchema {
         add("keyboard.char-based-input", "enforce-char-based-input");
         add("keyboard.ctrl-space-workaround", "ctrl-space-workaround");
         add("keyboard.hardware-shortcuts", "disable-hardware-keyboard-shortcuts", true);
-        for (String shortcut : new String[] {"create-session", "next-session", "previous-session", "rename-session"})
+        for (String shortcut : new String[] {"create-session", "next-session", "previous-session", "rename-session", "palette"})
             add("keyboard.shortcuts." + shortcut, "shortcut." + shortcut);
         add("keyboard.volume.mode", "volume-keys");
         add("keyboard.volume.up.action", "volume-up-action");
