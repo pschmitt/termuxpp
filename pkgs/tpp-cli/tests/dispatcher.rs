@@ -481,7 +481,10 @@ fn clipboard_images_use_raw_output_through_the_dispatcher() {
     assert_eq!(output.stdout, b"image/png\n\xff\0\r\n");
     assert_eq!(call.extra("api_version"), Some("3"));
 
-    let (automatic, call) = fx.app(&["clipboard", "get"], b"\0TPPIMG1\nimage/png\n4\n\xff\0\r\n");
+    let (automatic, call) = fx.app(
+        &["clipboard", "get"],
+        b"\0TPPIMG1\nimage/png\n4\n\xff\0\r\n",
+    );
     assert_eq!(code(&automatic), 0);
     assert_eq!(automatic.stdout, b"\xff\0\r\n");
     assert_eq!(call.extra("api_version"), Some("4"));
@@ -809,16 +812,40 @@ fn the_session_group_is_part_of_the_binary() {
 fn ui_commands_send_actions_and_search_to_the_app() {
     let fx = Fixture::new("ui");
     let name = format!("tpp-ui-test-{}", std::process::id());
-    let listener = UnixListener::bind_addr(&SocketAddr::from_abstract_name(&name).unwrap()).unwrap();
+    let listener =
+        UnixListener::bind_addr(&SocketAddr::from_abstract_name(&name).unwrap()).unwrap();
     listener.set_nonblocking(true).unwrap();
 
     for (args, expected) in [
         (&["ui", "more"][..], r#"["ui", "more"]"#),
         (&["ui", "sidebar"][..], r#"["ui", "sidebar"]"#),
-        (&["ui", "session-switcher"][..], r#"["ui", "session-switcher"]"#),
+        (
+            &["ui", "session-switcher"][..],
+            r#"["ui", "session-switcher"]"#,
+        ),
         (
             &["--json", "ui", "settings", "--search", "font size"][..],
             r#"["ui", "settings", "font size"]"#,
+        ),
+        // A plain show keeps the original form; the rest add an options object.
+        (&["ui", "palette"][..], r#"["ui", "palette"]"#),
+        (&["ui", "pal", "show"][..], r#"["ui", "palette"]"#),
+        (&["ui", "clear"][..], r#"["ui", "clear"]"#),
+        (
+            &["ui", "sidebar", "toggle", "--right"][..],
+            r#"["ui", "sidebar", {"op": "toggle", "side": "right"}]"#,
+        ),
+        (
+            &["ui", "session-switcher", "hide"][..],
+            r#"["ui", "session-switcher", {"op": "hide"}]"#,
+        ),
+        (
+            &["ui", "palette", "--search", "font"][..],
+            r#"["ui", "palette", {"op": "show", "query": "font"}]"#,
+        ),
+        (
+            &["ui", "settings", "toggle", "--search", "font"][..],
+            r#"["ui", "settings", {"op": "toggle", "query": "font"}]"#,
         ),
     ] {
         let child = fx
@@ -839,7 +866,9 @@ fn ui_commands_send_actions_and_search_to_the_app() {
                 Err(error) => panic!("could not accept UI request: {error}"),
             }
         };
-        stream.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+        stream
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .unwrap();
         let mut stream = BufReader::new(stream);
         let mut request = String::new();
         stream.read_line(&mut request).unwrap();
@@ -856,8 +885,24 @@ fn ui_commands_send_actions_and_search_to_the_app() {
 
     assert_eq!(code(&fx.run(&["ui", "settings", "--search"])), 2);
     assert_eq!(code(&fx.run(&["ui", "sidebar", "--search", "font"])), 2);
+    assert_eq!(code(&fx.run(&["ui", "palette", "--right"])), 2);
+    assert_eq!(code(&fx.run(&["ui", "clear", "toggle"])), 2);
+    assert_eq!(code(&fx.run(&["ui", "more", "show", "hide"])), 2);
+    assert_eq!(
+        code(&fx.run(&["ui", "palette", "hide", "--search", "x"])),
+        2
+    );
     assert_eq!(complete(&fx, &["ui", "settings", "--s"]).1, ["--search"]);
     assert_eq!(complete(&fx, &["ui", "si"]).1, ["sidebar"]);
+    assert_eq!(complete(&fx, &["ui", "palette", "t"]).1, ["toggle"]);
+    assert_eq!(
+        complete(&fx, &["ui", "sidebar", "toggle", "--r"]).1,
+        ["--right"]
+    );
+    assert!(complete(&fx, &["ui", "clear", ""])
+        .1
+        .iter()
+        .all(|word| word.starts_with("--")));
 }
 
 #[test]

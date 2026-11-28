@@ -313,6 +313,10 @@ public class TermuxTerminalSessionActivityClient extends TermuxTerminalSessionCl
         return mActivity.openTerminalUi(action, query);
     }
 
+    public boolean controlTerminalUi(String action, String operation, String query, boolean right) {
+        return mActivity.controlTerminalUi(action, operation, query, right);
+    }
+
     public TerminalSession getCurrentSession() {
         return mActivity.getCurrentSession();
     }

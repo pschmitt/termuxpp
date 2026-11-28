@@ -229,6 +229,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
 
     private AlertDialog sessionSwitcher;
     private AlertDialog tmuxSwitcher;
+    private CommandPalette palette;
     private final Set<String> collapsedTmuxSessions = new HashSet<>();
     private boolean restoreKeyboardAfterSidebar;
     private String appAccent;
@@ -1029,6 +1030,77 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
     }
 
     public boolean openTerminalUi(String action, @Nullable String query) {
+        return openTerminalUi(action, query, false);
+    }
+
+    /**
+     * Show, hide or toggle a surface for {@code tpp ui}: {@code op} is show, hide or toggle; {@code clear}
+     * closes everything. Hiding what is not shown succeeds.
+     *
+     * @return false when the surface should show but cannot from the current screen.
+     */
+    public boolean controlTerminalUi(String action, String op, @Nullable String query, boolean right) {
+        if ("clear".equals(action)) {
+            closeAllTerminalUi();
+            return true;
+        }
+        boolean shown = isTerminalUiShown(action, right);
+        boolean show = "show".equals(op) || ("toggle".equals(op) && !shown);
+        if (!show) {
+            hideTerminalUi(action, right);
+            return true;
+        }
+        return openTerminalUi(action, query, right);
+    }
+
+    /** Whether {@code tpp ui ACTION} is showing now. */
+    private boolean isTerminalUiShown(String action, boolean right) {
+        switch (action) {
+            case "settings": return SettingsActivity.isOpen();
+            case "more": return mContextSheetDialog != null && mContextSheetDialog.isShowing();
+            case "palette": return palette != null && palette.isShowing();
+            case "session-switcher": return sessionSwitcher != null && sessionSwitcher.isShowing();
+            case "tmux-switcher": return tmuxSwitcher != null && tmuxSwitcher.isShowing();
+            case "sidebar": return getDrawer().isDrawerOpen(right ? Gravity.END : Gravity.START);
+            default: throw new IllegalArgumentException("Unknown terminal UI action: " + action);
+        }
+    }
+
+    private void hideTerminalUi(String action, boolean right) {
+        switch (action) {
+            case "settings": SettingsActivity.finishOpen(); break;
+            case "more": if (mContextSheetDialog != null) mContextSheetDialog.dismiss(); break;
+            case "palette": if (palette != null) palette.dismiss(); break;
+            case "session-switcher": dismissSessionSwitcher(); break;
+            case "tmux-switcher": if (tmuxSwitcher != null) tmuxSwitcher.dismiss(); break;
+            case "sidebar": getDrawer().closeDrawer(right ? Gravity.END : Gravity.START); break;
+            default: throw new IllegalArgumentException("Unknown terminal UI action: " + action);
+        }
+    }
+
+    /** {@code tpp ui clear}: back to the bare terminal. */
+    public void closeAllTerminalUi() {
+        SettingsActivity.finishOpen();
+        getDrawer().closeDrawers();
+        if (palette != null) palette.dismiss();
+        dismissSessionSwitcher();
+        if (tmuxSwitcher != null) tmuxSwitcher.dismiss();
+        if (mContextSheetDialog != null) mContextSheetDialog.dismiss();
+    }
+
+    /** Open the command palette, optionally with {@code query} already typed. */
+    public boolean showPalette(@Nullable String query) {
+        if (!mIsVisible || isFinishing() || isDestroyed() || mTermuxService == null) return false;
+        if (palette == null) palette = new CommandPalette(this);
+        return palette.show(query);
+    }
+
+    /** Switch to tmux window {@code id} of {@code session}, as a picker row does. */
+    void selectTmuxWindow(TerminalSession session, String id) {
+        selectTmuxWindow(session, id, null, pending -> {});
+    }
+
+    public boolean openTerminalUi(String action, @Nullable String query, boolean right) {
         if (!mIsVisible || isFinishing() || isDestroyed()) return false;
         switch (action) {
             case "more":
@@ -1042,7 +1114,9 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
             case "session-switcher":
                 return showSessionSwitcher();
             case "sidebar":
-                return openSidebar(false);
+                return openSidebar(right);
+            case "palette":
+                return showPalette(query);
             default:
                 throw new IllegalArgumentException("Unknown terminal UI action: " + action);
         }
@@ -1123,7 +1197,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      * and below the card; away from the middle of the screen that would leave a gap, so those pickers keep a
      * small one.
      */
-    private MaterialAlertDialogBuilder pickerBuilder() {
+    MaterialAlertDialogBuilder pickerBuilder() {
         MaterialAlertDialogBuilder builder = DialogUtils.builder(this);
         if (!TermuxPropertyConstants.PICKER_POSITION_CENTER.equals(pickerPosition()))
             builder.setBackgroundInsetTop(sidebarDp(16)).setBackgroundInsetBottom(sidebarDp(16));
@@ -1134,7 +1208,7 @@ public final class TermuxActivity extends AppCompatActivity implements ServiceCo
      * Move a picker to where {@code terminal-picker-position} wants it: the top of the screen, the middle of
      * the screen (the dialog's own place), or the middle of the terminal view, which the keyboard shrinks.
      */
-    private void placePicker(AlertDialog dialog) {
+    void placePicker(AlertDialog dialog) {
         Window window = dialog.getWindow();
         if (window == null) return;
         String position = pickerPosition();

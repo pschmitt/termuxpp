@@ -29,6 +29,16 @@
     <string name="ui_drawer_title">Sessions</string>
     <string name="ui_session_switcher_title">Session switcher</string>
     <string name="ui_tmux_switcher_title">tmux windows</string>
+    <string name="ui_palette_title">Command palette</string>
+    <string name="ui_palette_hint">Search everything</string>
+    <string name="ui_palette_empty">Nothing matches</string>
+    <string name="ui_palette_kind_action">Action</string>
+    <string name="ui_palette_kind_session">Session</string>
+    <string name="ui_palette_kind_current_session">Session · current</string>
+    <string name="ui_palette_kind_window">tmux window · %1$s</string>
+    <string name="ui_palette_kind_setting">Setting</string>
+    <string name="ui_palette_active">active</string>
+    <string name="ui_palette_unnamed_session">Terminal</string>
     <string name="ui_tmux_sidebar_empty">No tmux windows in this terminal session.</string>
     <string name="ui_tmux_layout_nested">Nested windows</string>
     <string name="ui_tmux_layout_drill_down">Two-level sidebar</string>

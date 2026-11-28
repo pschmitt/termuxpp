@@ -81,18 +81,37 @@ app through the same abstract Unix socket. `TPP_SESSION_SOCKET` selects a differ
 
 ## Opening the app interface
 
-Run these commands from the visible TermuxPP terminal.
+Run these commands from the visible TermuxPP terminal. Each surface takes `show` (the default),
+`hide` or `toggle`; hiding what is not open does nothing.
 
 ```text
-tpp ui more
-tpp ui settings
+tpp ui palette
+tpp ui palette --search "font"
+tpp ui more toggle
 tpp ui settings --search "font size"
-tpp ui session-switcher
+tpp ui session-switcher hide
+tpp ui tmux-switcher toggle
 tpp ui sidebar
+tpp ui sidebar toggle --right
+tpp ui clear
 ```
 
 `tpp ui settings --search` opens Settings with the search results already visible.
-`tpp ui session-switcher` and `tpp session switcher` open the same picker.
+`tpp ui session-switcher` and `tpp session switcher` open the same picker. `tpp ui clear` closes
+everything at once: both sidebars, the palette, the pickers, the menu and Settings.
+
+## Command palette
+
+The command palette searches everything in one place: the actions (the same ones that taps,
+swipes and keys can run, plus Settings), the sessions, the tmux windows of every session and,
+once you type, every setting. Every word you type must appear in an entry's name or its
+description; names that start with what you typed come first. Enter or a tap runs the entry
+at the top or the one you moved to with the arrow keys: it switches to the session or window,
+runs the action, or opens Settings at that setting.
+
+Open it with the `open-palette` action (bind it to a tap, a swipe, a volume key or an extra key
+like any other action) or with `tpp ui palette`. It opens where the other pickers do
+(`sessions.picker-position`).
 
 ## Terminal appearance
 
@@ -294,6 +313,7 @@ The gesture keys are independent and active at the same time. Valid values, case
 | `open-right-sidebar` | Open the right sidebar when it is enabled. |
 | `open-session-switcher` | Open a compact picker with the current session selected, plus New session, Keyboard and Settings actions. |
 | `open-tmux-switcher` | Open the TermuxPP window picker for the current terminal’s local or remote tmux attachment. |
+| `open-palette` | Open the command palette: search actions, sessions, tmux windows and settings. |
 | `open-menu` | Open the terminal menu, the bottom sheet that a long press on the terminal and then "More..." opens (Extract URL, Share transcript, Autofill, Reset, Kill process, Style, Settings and so on). It never touches the soft keyboard. |
 | `font-size-up` | Increase the terminal font size by one step, like pinching out. It never touches the soft keyboard. |
 | `font-size-down` | Decrease the terminal font size by one step, like pinching in. It never touches the soft keyboard. |
@@ -457,7 +477,7 @@ the same file:
 The two buttons are independent. Valid values of the action keys, case-insensitive, are `modifier`
 and every action of the table above except `run-command` (`none`, `show-keyboard`, `toggle-keyboard`,
 `hide-keyboard`, `show-extra-keys`, `hide-extra-keys`, `toggle-extra-keys`,
-`next-session`, `previous-session`, `open-left-sidebar`, `open-right-sidebar`, `open-session-switcher`, `open-tmux-switcher`, `open-menu`, `font-size-up`, `font-size-down`,
+`next-session`, `previous-session`, `open-left-sidebar`, `open-right-sidebar`, `open-session-switcher`, `open-tmux-switcher`, `open-menu`, `open-palette`, `font-size-up`, `font-size-down`,
 `send-keys`).
 The `*-keys` keys are written as described in "Sending keys".
 
@@ -664,7 +684,7 @@ extra-keys:
 
 A key, or any of its gestures, can run an app **action** instead of sending input: `action` takes
 the same names as the gesture settings (`open-left-sidebar`, `open-right-sidebar`, `new-session`,
-`next-session`, `previous-session`, `open-session-switcher`, `open-tmux-switcher`, `open-menu`,
+`next-session`, `previous-session`, `open-session-switcher`, `open-tmux-switcher`, `open-menu`, `open-palette`,
 `show-keyboard`, `toggle-keyboard`, `hide-keyboard`, `toggle-text-input`, `show-extra-keys`,
 `hide-extra-keys`, `toggle-extra-keys`, `font-size-up`, `font-size-down`).
 Use `macro` to send keys and `command` to run a command. An action key shows a symbol unless

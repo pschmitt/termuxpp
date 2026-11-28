@@ -49,6 +49,16 @@ public final class SettingsSearchIndex {
             this.preferenceSummary = preferenceSummary;
         }
 
+        /** What else finds the result besides its title and breadcrumb: its key and summary. */
+        public String keywords() {
+            return (preferenceKey == null ? "" : preferenceKey) + " " + (preferenceSummary == null ? "" : preferenceSummary);
+        }
+
+        /** A stable name of the result, for {@code SettingsActivity#EXTRA_OPEN_SETTING}. */
+        public String id() {
+            return android.text.TextUtils.join("/", fragmentPath) + "#" + (preferenceKey == null ? title : preferenceKey);
+        }
+
         public boolean matches(@NonNull String query) {
             String searchable = normalize(title + " " + breadcrumb + " "
                 + (preferenceKey == null ? "" : preferenceKey) + " "

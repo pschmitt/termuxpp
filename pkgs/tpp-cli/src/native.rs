@@ -15,9 +15,8 @@ pub const GROUPS: &[(&str, &str)] = &[
     ("session", tpp_session::SUMMARY),
     ("settings", "Reload app properties and styling"),
     ("tmux", "Attach to remote tmux from the shell"),
-    ("ui", "Open the TermuxPP interface"),
+    ("ui", "Show, hide or toggle the TermuxPP interface"),
 ];
-
 
 pub fn is_native(name: &str) -> bool {
     GROUPS.iter().any(|(n, _)| *n == name)

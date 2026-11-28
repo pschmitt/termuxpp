@@ -73,6 +73,9 @@ public enum TerminalGestureAction {
      */
     OPEN_MENU("open-menu"),
 
+    /** Open the command palette: search actions, sessions, tmux windows and settings. */
+    OPEN_PALETTE("open-palette"),
+
     /** Increase the font size of the terminal by one step, like pinching out does. */
     FONT_SIZE_UP("font-size-up"),
 
@@ -152,6 +155,7 @@ public enum TerminalGestureAction {
             case OPEN_SESSION_SWITCHER: return "Session switcher";
             case OPEN_TMUX_SWITCHER: return "Open tmux window picker";
             case OPEN_MENU: return "Menu";
+            case OPEN_PALETTE: return "Command palette";
             case FONT_SIZE_UP: return "Larger text";
             case FONT_SIZE_DOWN: return "Smaller text";
             case RUN_COMMAND: return "Run command";

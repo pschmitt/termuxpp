@@ -372,16 +372,20 @@ final class SettingsPreview extends FrameLayout {
             drawActionPanel(canvas, x, top, x + panelWidth, bottom, surface, foreground, accent,
                 getContext().getString(end ? R.string.ui_tmux_switcher_title : R.string.ui_drawer_title),
                 end ? "0  shell" : "1  local", end ? "1  editor" : "2  remote");
-        } else if (action.equals("open-tmux-switcher") || action.equals("open-session-switcher") || action.equals("open-menu")) {
+        } else if (action.equals("open-tmux-switcher") || action.equals("open-session-switcher") || action.equals("open-menu")
+                || action.equals("open-palette")) {
             boolean tmux = action.equals("open-tmux-switcher");
             boolean menu = action.equals("open-menu");
+            boolean palette = action.equals("open-palette");
             float inset = (right - left) * .16f;
             float y = top + dp(8 + 20 * (1 - actionProgress));
             if (menu) y += dp(12);
             drawActionPanel(canvas, left + inset, y, right - inset, bottom,
                 surface, foreground, accent, tmux ? getContext().getString(R.string.ui_tmux_switcher_title)
-                    : menu ? getContext().getString(R.string.ui_menu_title) : getContext().getString(R.string.ui_drawer_title),
-                tmux ? "0  shell" : menu ? "Copy text" : "1  local", tmux ? "1  editor" : menu ? "Share transcript" : "2  remote");
+                    : menu ? getContext().getString(R.string.ui_menu_title)
+                    : palette ? getContext().getString(R.string.ui_palette_title) : getContext().getString(R.string.ui_drawer_title),
+                tmux ? "0  shell" : menu ? "Copy text" : palette ? "⌕  font" : "1  local",
+                tmux ? "1  editor" : menu ? "Share transcript" : palette ? "Font size" : "2  remote");
         } else if (action.equals("show-keyboard") || action.equals("toggle-keyboard") || action.equals("hide-keyboard")
                 || action.equals("toggle-text-input")) {
             float y = bottom - dp(54 * actionProgress);

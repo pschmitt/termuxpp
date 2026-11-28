@@ -246,6 +246,7 @@ public class ExtraKeyButton {
             case OPEN_SESSION_SWITCHER: return "⇆";
             case OPEN_TMUX_SWITCHER: return "▦";
             case OPEN_MENU: return "⋮";
+            case OPEN_PALETTE: return "⌕";
             case FONT_SIZE_UP: return "A+";
             case FONT_SIZE_DOWN: return "A−";
             default: return action.getValue();

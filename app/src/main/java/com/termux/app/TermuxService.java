@@ -914,6 +914,23 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
         return new String(head, 0, length, StandardCharsets.ISO_8859_1).contains(mark);
     }
 
+    /**
+     * {@code tpp ui}: show, hide or toggle a surface of the terminal screen, or close all of them. Hiding and
+     * closing succeed without a terminal screen (nothing is open then, or only Settings).
+     */
+    private void controlTerminalUi(TerminalUiRequest request) {
+        boolean closing = "clear".equals(request.action) || "hide".equals(request.operation);
+        if (mTermuxTerminalSessionActivityClient == null) {
+            if (!closing) throw new IllegalStateException("Cannot open " + request.action + " from the current TermuxPP screen");
+            if ("clear".equals(request.action) || "settings".equals(request.action))
+                com.termux.app.activities.SettingsActivity.finishOpen();
+            return;
+        }
+        if (!mTermuxTerminalSessionActivityClient.controlTerminalUi(request.action, request.operation,
+                request.query, request.right))
+            throw new IllegalStateException("Cannot open " + request.action + " from the current TermuxPP screen");
+    }
+
     private void openTerminalUi(String action, @Nullable String query) {
         if (mTermuxTerminalSessionActivityClient == null
             || !mTermuxTerminalSessionActivityClient.openTerminalUi(action, query))
@@ -973,11 +990,7 @@ public final class TermuxService extends Service implements AppShell.AppShellCli
             return JSONObject.NULL;
         }
         if ("ui".equals(command)) {
-            String action = args.getString(1);
-            int count = args.length();
-            if (count != 2 && !(count == 3 && "settings".equals(action)))
-                throw new IllegalArgumentException("Invalid terminal UI command arguments");
-            openTerminalUi(action, count == 3 ? args.getString(2) : null);
+            controlTerminalUi(TerminalUiRequest.parse(args));
             return JSONObject.NULL;
         }
         List<TermuxSession> sessions = getTermuxSessions();

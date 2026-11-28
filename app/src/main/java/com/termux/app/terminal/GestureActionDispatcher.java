@@ -40,6 +40,9 @@ public final class GestureActionDispatcher {
         void openSessionSwitcher();
         void openTmuxSwitcher();
 
+        /** Open the command palette. */
+        void openPalette();
+
         /** Open the terminal menu (the bottom sheet), the same one that the long press opens. */
         void openMenu();
 
@@ -146,6 +149,10 @@ public final class GestureActionDispatcher {
 
             case OPEN_MENU:
                 target.openMenu();
+                break;
+
+            case OPEN_PALETTE:
+                target.openPalette();
                 break;
 
             case FONT_SIZE_UP:

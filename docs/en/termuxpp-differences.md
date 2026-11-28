@@ -581,8 +581,11 @@ default session environment, including the Nix guest when enabled.
 `tpp session switcher` opens the TermuxPP session picker from a visible terminal.
 `tpp session list` uses the same display-name fallback as the sidebar, including
 `Session N` for tabs without a custom name or terminal title. The same socket
-powers `tpp ui` commands to open More, Settings (with an optional search
-query), the session picker, and the session sidebar. Upstream Termux's sidebar
+powers `tpp ui` commands to show, hide or toggle More, Settings (with an optional
+search query), the command palette, the session and tmux pickers and the
+sidebars, and `tpp ui clear` to close them all. The command palette (also the
+`open-palette` action) searches actions, sessions, tmux windows and settings;
+upstream Termux has no palette. Upstream Termux's sidebar
 uses numeric prefixes alongside the session name and terminal title.
 [Upstream sidebar source](https://github.com/termux/termux-app/blob/master/app/src/main/java/com/termux/app/terminal/TermuxSessionsListViewController.java).
 

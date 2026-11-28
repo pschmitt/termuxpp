@@ -49,6 +49,7 @@ tpp location get
 tpp torch on
 tpp volume set music 8
 tpp ui settings --search "font size"
+tpp ui palette toggle
 tpp session new --name logs -- tail -f build.log
 ```
 

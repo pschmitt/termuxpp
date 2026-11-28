@@ -179,7 +179,7 @@ public class TerminalGestureActionTest {
 
     @Test
     public void validValuesListsEveryValue() {
-        assertEquals("none, show-keyboard, toggle-keyboard, hide-keyboard, toggle-text-input, show-extra-keys, hide-extra-keys, toggle-extra-keys, next-session, previous-session, new-session, open-left-sidebar, open-right-sidebar, open-session-switcher, open-tmux-switcher, open-menu, font-size-up, font-size-down, run-command, send-keys",
+        assertEquals("none, show-keyboard, toggle-keyboard, hide-keyboard, toggle-text-input, show-extra-keys, hide-extra-keys, toggle-extra-keys, next-session, previous-session, new-session, open-left-sidebar, open-right-sidebar, open-session-switcher, open-tmux-switcher, open-menu, open-palette, font-size-up, font-size-down, run-command, send-keys",
             TerminalGestureAction.getValidValues());
     }
 

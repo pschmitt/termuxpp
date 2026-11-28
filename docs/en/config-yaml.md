@@ -116,7 +116,7 @@ its path and by its key in the former `termux.properties` format.
 
 | Path | Type | Default | Description |
 | --- | --- | --- | --- |
-| `picker-position` | enum: `top`, `center`, `terminal` | `top` | Where the session picker and tmux window picker open. `terminal` centers them on the terminal, above the keyboard. |
+| `picker-position` | enum: `top`, `center`, `terminal` | `top` | Where the session picker, the tmux window picker and the command palette open. `terminal` centers them on the terminal, above the keyboard. |
 | `create-on-single-session-switch` | bool | `false` | With only one session open, next/previous session creates a new one. |
 | `command-context` | enum: `session`, `nix`, `outer` | `session` | Where commands run: every `run-command` gesture and every extra key with a `command`. `session` follows `nix.enabled`, `nix` always uses the guest, and `outer` uses the native prefix. |
 | `tmpdir-cleanup-days` | int −1–100000 | `3` | When the last session exits, delete files in `$TMPDIR` that were not used for this many days. `-1` keeps every file and `0` deletes all of them. |
@@ -258,7 +258,7 @@ These values work for every `action` key. Volume buttons also accept
 `show-extra-keys`, `hide-extra-keys`, `toggle-extra-keys`, `toggle-text-input`,
 `next-session`, `previous-session`, `new-session`, `open-left-sidebar`
 (alias `open-sidebar`), `open-right-sidebar`, `open-session-switcher`,
-`open-tmux-switcher`, `open-menu`, `font-size-up`, `font-size-down`,
+`open-tmux-switcher`, `open-menu`, `open-palette`, `font-size-up`, `font-size-down`,
 `send-keys`, `run-command`.
 
 [Tap and swipe actions](terminal-settings.md#tap-and-swipe-actions) describes

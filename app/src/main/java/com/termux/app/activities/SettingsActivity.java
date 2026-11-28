@@ -12,6 +12,7 @@ import android.widget.EditText;
 
 import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.WindowCompat;
@@ -40,6 +41,23 @@ public class SettingsActivity extends AppCompatActivity
         implements PreferenceFragmentCompat.OnPreferenceStartFragmentCallback {
 
     public static final String EXTRA_SEARCH_QUERY = "dev.pschmitt.termux.settings.SEARCH_QUERY";
+    /** Open one search result directly: the value of {@link SettingsSearchIndex.Result#id()}. */
+    public static final String EXTRA_OPEN_SETTING = "dev.pschmitt.termux.settings.OPEN_SETTING";
+
+    /** The open Settings screen, so that {@code tpp ui settings hide} and {@code tpp ui clear} can close it. */
+    @Nullable private static java.lang.ref.WeakReference<SettingsActivity> open;
+
+    /** Whether a Settings screen is open. */
+    public static boolean isOpen() {
+        SettingsActivity activity = open == null ? null : open.get();
+        return activity != null && !activity.isFinishing();
+    }
+
+    /** Close the open Settings screen, if any. */
+    public static void finishOpen() {
+        SettingsActivity activity = open == null ? null : open.get();
+        if (activity != null && !activity.isFinishing()) activity.finish();
+    }
 
     private final Map<Preference, Boolean> searchVisibility = new LinkedHashMap<>();
     private PreferenceGroup searchScreen;
@@ -59,6 +77,7 @@ public class SettingsActivity extends AppCompatActivity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        open = new java.lang.ref.WeakReference<>(this);
 
         AppCompatActivityUtils.setNightMode(this, NightMode.getAppNightMode().getName(), true);
 
@@ -74,6 +93,9 @@ public class SettingsActivity extends AppCompatActivity
                     updateNavigation();
                     String query = getIntent().getStringExtra(EXTRA_SEARCH_QUERY);
                     if (query != null) searchQuery.setText(query);
+                    String setting = getIntent().getStringExtra(EXTRA_OPEN_SETTING);
+                    // After this transaction: opening a setting runs transactions of its own.
+                    if (setting != null) getWindow().getDecorView().post(() -> openSetting(setting));
                 })
                 .commit();
         }
@@ -248,6 +270,23 @@ public class SettingsActivity extends AppCompatActivity
         for (Map.Entry<Preference, Boolean> entry : searchVisibility.entrySet())
             entry.getKey().setVisible(entry.getValue());
         if (clearSnapshot) searchVisibility.clear();
+    }
+
+    /** Open the search result with {@code id}, as a tap on it in the search results does. */
+    private void openSetting(@NonNull String id) {
+        if (searchIndex == null) searchIndex = SettingsSearchIndex.build(this);
+        for (SettingsSearchIndex.Result result : searchIndex) {
+            if (result.id().equals(id)) {
+                navigateToSearchResult(result);
+                return;
+            }
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (open != null && open.get() == this) open = null;
+        super.onDestroy();
     }
 
     private void navigateToSearchResult(@NonNull SettingsSearchIndex.Result result) {
